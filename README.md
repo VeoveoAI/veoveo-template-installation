@@ -16,6 +16,10 @@ protection remains effective. It is not complete isolation against storage APIs.
 
 ## Local bootstrap
 
+The application PostgreSQL image includes pgvector and PostGIS. Follow the
+[build, existing-database enablement and rollback-only service checks](postgres/README.md);
+Keycloak's separate database and application schema ownership are unchanged.
+
 Keep the ignored `.env`, installation CA and private operator state. Local Keycloak
 and its dedicated PostgreSQL are permanent bootstrap, alongside Lore, PostgreSQL,
 SeaweedFS and the Keycloak HTTPS ingress. Their external data volumes survive
