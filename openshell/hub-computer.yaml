@@ -6,118 +6,29 @@ filesystem_policy:
   read_write: [/tmp, /dev/null]
 network_policies:
   native_control:
+    # One REST configuration permits native HTTP/2 ALPN for tonic/gRPC.
+    # The root selector routes requests; the exact rules below grant RPC access.
     endpoints:
       - host: host.openshell.internal
         port: 17670
-        path: /openshell.v1.OpenShell/ForwardTcp
+        path: /openshell.v1.OpenShell/**
         protocol: rest
         enforcement: enforce
         credential_binding: {provider: vv-hub-native-control}
         rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/ForwardTcp}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/GetProviderProfile
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetProviderProfile}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/GetWorkspace
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetWorkspace}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/CreateWorkspace
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/CreateWorkspace}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/GetSandboxTemplate
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetSandboxTemplate}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/CreateSandboxTemplate
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/CreateSandboxTemplate}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/GetProvider
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetProvider}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/CreateProvider
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/CreateProvider}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/GetSandbox
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetSandbox}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/CreateSandbox
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/CreateSandbox}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/StartSandbox
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/StartSandbox}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/StopSandbox
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/StopSandbox}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/ConfigureProviderRefresh
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/ConfigureProviderRefresh}
-      - host: host.openshell.internal
-        port: 17670
-        path: /openshell.v1.OpenShell/RotateProviderCredential
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-hub-native-control}
-        rules:
           - allow: {method: POST, path: /openshell.v1.OpenShell/RotateProviderCredential}
     binaries:
       - path: /usr/local/bin/veoveo-hub

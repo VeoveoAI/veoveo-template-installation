@@ -147,17 +147,37 @@ Both policies allow only the Hub binary to POST these native RPC paths beneath
 | Workspace-local user/model custody | GetProvider, CreateProvider, ConfigureProviderRefresh, RotateProviderCredential |
 | Native Computer lifecycle | GetSandbox, CreateSandbox, StartSandbox, StopSandbox |
 
-There is no service wildcard, Exec, Delete, UpdateProvider, profile import or
-operator-only credential export. Profiles are installed separately by the trusted
-operator. Each exact endpoint has one consistent binding. The unbound public
+One enforced REST endpoint selects `/openshell.v1.OpenShell/**` at the native
+gateway authority, with the same provider binding and exactly the fourteen POST
+rules above. The service-root selector chooses the HTTP route; it does not grant
+additional RPCs. There is no wildcard allow rule, Exec, Delete, UpdateProvider,
+profile import or operator-only credential export. Profiles are installed separately
+by the trusted operator.
+
+Keep these RPC rules in one endpoint configuration. The native
+[HTTP/2 eligibility predicate](https://github.com/VeoveoAI/OpenShell/blob/9724fb1834dec157b4482a1da97338fd8ca1e50c/crates/openshell-supervisor-network/src/proxy/relay.rs#L45)
+requires one supported REST inspection configuration before advertising `h2`.
+Splitting the same authority into fourteen endpoints forces HTTP/1.1-only ALPN,
+which tonic rejects with `NoApplicationProtocol`. Native
+[per-stream admission](https://github.com/VeoveoAI/OpenShell/blob/9724fb1834dec157b4482a1da97338fd8ca1e50c/crates/openshell-supervisor-network/src/l7/http2.rs#L290)
+still evaluates each actual method/path and resolves the bound credential; this
+configuration change preserves the exact RPC authority and TLS verification.
+The unbound public
 POST `/oauth/token` admits the ordinary browser PKCE code exchange without injecting
 a management credential. The local variant also permits its exact IdP code-token
 POST; the Entra variant retains its existing token/JWKS rules. Existing database
 and issuer-key routes remain. Own-issuer JWT verification reads Hub's signing keys
 locally; no extra public JWKS egress is required for that path.
 
-Before rollout, use native policy parsing/ambiguity admission and profile linting,
-then verify actual issuer/audience/roles/scopes and each selected native RPC with
-test-owned resources. Prove denial of an unlisted RPC, ordinary user data-plane
-identity separation, self PKCE exchange and native control renewal. These examples
-do not claim that an IdP client, provider, endpoint or deployed Computer exists.
+Before rollout, use native policy parsing/ambiguity admission and profile linting.
+Confirm native policy construction produces one REST endpoint configuration, with
+exactly the fourteen POST allow rules and unchanged provider/binary bindings;
+there must be no wildcard allow rule. These structural checks and the reviewed
+per-stream evaluator do not establish successful live RPCs or an observed denial.
+
+Deployment acceptance must verify TLS ALPN `h2`, actual issuer/audience/roles/scopes
+and the required RPCs with test-owned resources, including denial of an unlisted
+RPC such as `/openshell.v1.OpenShell/DeleteSandbox`. Also prove ordinary user
+data-plane identity separation, self PKCE exchange and native control renewal.
+These examples do not claim that an IdP client, provider, endpoint or deployed
+Computer exists, or that an unavailable CLI evaluator/prover was executed.
