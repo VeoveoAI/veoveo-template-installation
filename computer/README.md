@@ -76,6 +76,14 @@ openshell sandbox template create computer --workspace installation \
   --env VEOVEO_LORE_REMOTE=grpcs://host.openshell.internal:41337
 ```
 
+`computers.forwardingConnectionLimit` is the Hub's finite global forwarding bound
+(default and reference: 512). The native gateway examples explicitly configure
+independent TCP limits of 128 active/pending connections per sandbox and 1024
+active/512 pending per replica. Set these in trusted gateway TOML and restart the
+gateway when changing them; SSH limits remain unchanged. Warm HTTP requests open
+their native tunnel immediately and fail at an actual configured limit, with no
+fixed retry delay. Current browser-owner/session admission remains mandatory.
+
 The trusted Compose Lore service publishes only host loopback port 41337; native
 OpenShell's backend host-gateway pin supplies this hostname without a host DNS
 edit. Require the matching Lore leaf DNS SAN and existing CA trust before use;
