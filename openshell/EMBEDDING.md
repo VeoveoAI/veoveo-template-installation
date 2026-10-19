@@ -1,6 +1,8 @@
 # Standalone embedding installation
 
-Implementation candidate; component checks and deployed Mac acceptance remain gates. The exact pinned EmbeddingGemma 2 prerequisite probes do not prove this installed service. Follow the existing architecture/execution plans for evidence and rollout order: qualify Mac, merge/push reviewed main, then deploy/qualify Linux. No Knowledge, vector database, pgvector or Compose application profile is part of this slice.
+This guide configures standalone embedding generation with native OpenShell policy, provider custody, mounts and the Hub binding. Components own their contracts and checks; the installation owns trusted placement and configuration. See the [architecture](https://github.com/VeoveoAI/veoveo-docs/blob/main/LORE_OPENSHELL_INTEGRATION.md#embedding-generation) and [execution plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md#embedding-generation--2026-10-19) for measured deployment evidence and current gates.
+
+Linux deployed acceptance remains pending. Keep prerequisite probes, component checks and deployed qualification separate, following the rollout order: qualify Mac, merge/push reviewed main, then deploy/qualify Linux. No Knowledge, vector database, pgvector or Compose application profile is included.
 
 ## Inspect before changing retained state
 
