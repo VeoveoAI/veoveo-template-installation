@@ -47,7 +47,17 @@ management identity is independent of all Lore users and factory grants.
 | OIDC `client_id = "lore-computer"` | Dedicated secretless public registration with device, refresh and public exchange grants |
 | OIDC `scopes = ["lore:login"]` | Finite deployment/client scopes `lore:login` plus native-added `offline_access` |
 | OIDC `scope_template = "lore-repo-{id}"` | Deployment `scopeTemplate`; factory profile's exact target scope |
-| Private `grpcs://10.231.10.10:41337` | Deployment `endpoint`, native server certificate SAN, policy address and `VEOVEO_LORE_REMOTE` |
+| Private `grpcs://vv-lore.internal:41337` | Deployment `endpoint`, native server certificate SAN, policy hostname and `VEOVEO_LORE_REMOTE` |
+
+The private service name must resolve to `10.231.10.10` through the native
+OpenShell supervisor's trusted DNS resolver. The Compose network alias alone does
+not establish that host-side resolution, and workload `/etc/hosts` entries do not
+configure native policy DNS. Select and verify the installation's private DNS
+record before starting clients. Keep the exact `allowed_ips: [10.231.10.10]`
+restriction in Computer and factory policies, and keep the endpoint hostname,
+certificate DNS SAN, CLI remote and deployment data aligned. Hub derives the
+signed native `root_domains` recipient from the deployment endpoint hostname.
+This does not change the issuer, audience or repository grants.
 
 The `urc-{id}` native resource-ID format and `lore-repo-{id}` exchange selector
 are separate fields. Both are installation data; exactly one canonical lowercase

@@ -7,7 +7,7 @@ filesystem_policy:
 network_policies:
   lore:
     endpoints:
-      - host: 10.231.10.10
+      - host: vv-lore.internal
         port: 41337
         allowed_ips: [10.231.10.10]
         protocol: rest

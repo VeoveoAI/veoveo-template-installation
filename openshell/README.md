@@ -86,8 +86,12 @@ require new images; existing image receipts retain their original scope. The
 Supervisor recipe below retains its separately selected single `ca.crt` input.
 This adds only public installation trust to the normal trust store. Lore discovers
 JWKS from its single configured issuer. There is no adapter issuer/key override,
-auth-service URL or custom catalog. Keep its private gRPC address, certificate IP
-SAN and approved policy endpoint aligned (`grpcs://10.231.10.10:41337` locally).
+auth-service URL or custom catalog. Keep its private gRPC hostname, certificate DNS
+SAN and approved policy endpoint aligned (`grpcs://vv-lore.internal:41337` locally).
+The native supervisor's trusted resolver must resolve that name to the declared
+private address; a Compose-only alias does not provide host-side policy DNS.
+Keep the exact `allowed_ips` restriction and follow the
+[shared endpoint requirements](../computer/LORE_HUB.md).
 Native denied-baseline catalog listing is empty; provide known assigned URLs. Native
 repository lookup now lets a verified caller resolve an ID/name/metadata hash;
 reading repository contents still requires its native grant. No new human
