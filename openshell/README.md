@@ -40,18 +40,20 @@ openshell status
 openshell sandbox list --all-workspaces
 ```
 
-`identity/configure-openshell` provisions only the local management clients.
-`identity/configure-lore` separately provisions the local factory clients, built-in
-optional repository scopes/mappers and the public `lore-cli` metadata registration.
-It preserves client secrets and service-account subjects. A Keycloak service-account
-OAuth flow does not set Lore's protection-bypass `is_service_account` claim.
-Neither helper is a runtime dependency for an external issuer.
+`identity/configure-openshell` provisions only local native management clients.
+Lore uses [Hub-issued native resource grants](../computer/LORE_HUB.md): the public
+client is secretless; a separate factory client's secret enters native refresh
+custody. Human identity comes from Hub's existing enterprise broker. IdP clients,
+roles or optional scopes do not own Hub repository assignments. The old
+`identity/configure-lore` helper and its helper-only tests are retired.
 
-Private operator configuration is under `state/openshell/lore-direct/`, directory
-0700/files 0600. The IdP client secrets enter native refresh material with explicit
-secret classification; they are not injectable workload credentials. The generated
-`server.toml` contains trusted hook assignments and is mounted read-only in Lore.
-Agents cannot edit this state. The tracked `lore/server.toml` is the public template.
+Trusted server/storage configuration remains under the existing private
+`state/openshell/lore-direct/` directory (0700/files 0600). Prepare its selected
+native `server.toml` and storage environment using the existing storage/TLS recipe;
+no grant bookkeeping file/helper replaces the retired tool. The tracked
+`lore/server.toml` supplies public Hub-native auth defaults and unchanged trusted
+storage/TLS/hook sections. Preserve other native server settings and exact hook
+assignments. Agents cannot edit that state.
 
 ## Build and provision
 
@@ -213,79 +215,35 @@ uses the configured backend with trusted storage credentials. Run it in an
 isolated operator container. It creates fresh repo/branch IDs, valid empty heads
 and protected `main`. Save the final JSON line privately as
 `state/openshell/factory-hook-fixture.json`; it is not a server/agent bootstrap API.
-Run `identity/configure-lore`, then start bootstrap with `--profile keycloak`.
-Real installations replace the disposable manifest with approved trusted bindings.
+Keep this fixture output as test evidence only. Select native server settings and
+explicit hook bindings in trusted TOML; publish actual repository/grant data
+through Hub's existing control plane. Start only the intended bootstrap services
+through the coordinated native setup; no IdP repository-mapping helper is needed.
 
 ## Native provider and qualification
 
-The public [profile example](providers/lore.example.yaml) shows native
-`oauth2_client_credentials` metadata. Render its issuer, repository scope and
-profile ID from trusted installation configuration. Each independently revocable
-factory has its own IdP client and provider. Refresh lead is 180 seconds, maximum
-lifetime 300 seconds; preflight rejects a longer signed IdP lifetime. Workloads
-receive an identity-bound `openshell:resolve:` reference, never client secrets or JWTs.
+Select [the Hub-native issuer and factory profile](../computer/LORE_HUB.md) with
+its exact repository scope, separate factory principal and native
+`oauth2_client_credentials` custody. Hub admits the current explicit assignment
+and returns Lore's native signed resource entry; native OpenShell renews it. The
+factory receives only its opaque `LORE_AUTH_TOKEN` reference. No model/agent,
+human refresh grant, management identity, IdP admin credential or raw JWT is
+attached to a deterministic factory.
 
-In `veoveo-qualify-openshell`, build `first-path` with
-`cargo build --locked --features first-path --bin first-path`.
-Provision the disposable smoke factory with the image you built:
+Keep local component tests, deployed probes and model acceptance distinct.
+Qualify unchanged native Lore CLI device login/exchange/refresh, actual issuer
+signature/audience/recipient/identity, exact granted and ungranted repositories,
+factory renewal beyond expiry and current grant withdrawal. Already-issued JWTs
+retain their native expiry boundary. Preserve existing owner/provider data and
+clean up only test-owned resources. Actual Linux ingress/native proxy and browser
+owner isolation remain separate gates in the execution plan.
 
-```sh
-target/debug/first-path --installation /absolute/path/to/veoveo-template-installation \
-  factory --image veoveo/factory:local --replace
-```
-
-Other checks use the same `--installation` argument:
-
-- `lore-preflight` verifies signatures, type/audience/subject, bounded grant shape,
-  lifetime and omitted/unlinked scope denial without storing token bytes.
-- `factory --image IMAGE --replace` provisions the native smoke provider and replaces
-  the disposable smoke factory using the supplied image and read-only RPC policy.
-  It is a setup action, not automatic renewal evidence. Ordinary renewal needs no
-  manual token file.
-- `lore --repository ID --forbidden ID` and `boundaries` check the smoke path,
-  custody, inaccessible operator files and denied direct egress.
-- `lore-direct --image IMAGE_ID` runs the disposable direct-issuer workflow and
-  timed lifecycle gates. Build its std-only canonical test workload using
-  `LoreDirect.Dockerfile` in the qualification repository. `--phase workflow` omits
-  lifecycle measurement and cannot qualify renewal/removal. `--phase renewal`
-  selects only the workflow and renewal gate; `--phase remaining`
-  and `--phase recovery` select independent gates; they do not imply renewal passed.
-- `lore-negative` checks a valid direct grant against a management bearer. The
-  probe runs only on the trusted host and does not expose credentials to workloads.
-- `service --image IMAGE --reuse` checks the existing native private MCP fixture.
-
-The lifecycle workload captures its opaque reference once and checks a random
-per-launch marker in fresh command replies while running real Lore commands across
-at least two native renewals and original expiry plus 60-second verifier leeway.
-Only one initial native rotate is allowed
-per provider. It tests unavailable issuance by disabling only fixture A's IdP
-client while B operates/renews; this local qualification action uses Keycloak admin
-credentials only on the trusted host, never in a workload or runtime service.
-Cleanup restores the prior enabled value only for a client changed by that run.
-The recovery gate leaves A's state untouched. Its process marker comes from a fresh
-answered command, allowing native workload restarts while preserving sandbox identity.
-Earlier PID-only records do not establish uninterrupted process lifetime.
-
-OpenShell intentionally rejects detach while a policy references the provider.
-The supported sequence removes the explicit binding with native `UpdateConfig`,
-awaits the active policy revision, then detaches and awaits applied `REVOKED`.
-Results distinguish this combined transition from detach alone. Notification streams
-carry actual branch events; report their observed behavior, then stop the sandbox
-and await stopped state when execution must end. Disabling an IdP client alone
-cannot revoke existing JWTs immediately, and removal alone does not promise to
-cancel requests already forwarded. No Lore transport changes manufacture a cutoff.
-
-Reports remain private under `state/openshell/lore-direct/`; the execution checklist
-records current acceptance. Temporary resources have ownership-aware cleanup,
-including partial setup. Existing workspaces are refused. Preserve unrelated
-workspaces/providers and durable Lore/identity data.
-
-The pre-push hook remains a normal-push workflow guard, not complete low-level
-branch isolation. Protected branches and ordinary human permissions keep their
-native meaning. See the [hook contract](https://github.com/VeoveoAI/lore/blob/native-openshell/docs/reference/factory-branch-hook.md).
-The active Linux/Entra and signed webhook goal uses the existing native path.
-Customer issuers, interactive human Lore login, GPU/CUDA and broader composition
-remain separate qualifications in the [execution plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md).
+Historical `first-path lore-direct`/Keycloak lifecycle receipts remain historical;
+their removed provisioning helper is not an active installation command. No new
+qualification launcher replaces it. Use component-owned native test harnesses and
+the coordinated Linux acceptance lane. The optional factory pre-push hook remains
+a normal-push workflow guard, not complete branch isolation; native protection
+and ordinary permissions keep their existing meaning.
 
 ## Hub and Time preparation
 
@@ -297,8 +255,8 @@ and the prepared Lore/factory build remain execution gates.
 ## Prepared Time factory
 
 The [prepared Time workflow](FACTORY_TIME.md) adds separate standard policies and
-profiles for a trusted source publisher and bounded factory. The original fixture
-policy and qualification flow above remain separate. Do not publish source or run
+profiles for a trusted source publisher and bounded factory. Historical fixture
+receipts remain separate. Do not publish source or run
 a model until the execution checklist has accepted deployed Hub/Time.
 
 ## Private Artifact follow-up

@@ -111,7 +111,9 @@ trusted model-seed Env reference must be supplied separately as reviewed
 installation input; it is not the native management identity. Do not put
 `HUB_NATIVE_CONTROL_REFERENCE` or an access JWT into `hub.env`: native attachment
 supplies that reference. Preserve existing Hub database/signing/registration
-state and other services; no reset is required by this installation choice.
+state and other services. The separately authorized unreleased Hub resource-binding
+migration discards disposable OAuth continuity, not native service custody or
+Computer working storage; see [issuer cutover](LORE_HUB.md#live-publication-and-first-cutover).
 
 For a fresh Hub sandbox, select the matching Computer-enabled policy and reviewed
 immutable Hub image. The existing native mount configuration supplies the

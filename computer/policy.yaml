@@ -51,13 +51,37 @@ network_policies:
     binaries:
       - path: /usr/local/bin/lore
   lore_identity:
-    # Distinct IdP authority, not a Hub alias. Use the actual server-advertised
-    # issuer and reviewed discovery/device/token hosts. Transparent TCP cannot
-    # overlap the Hub's managed MCP authority under native policy admission.
-    # Native Lore verifies HTTPS end-to-end; no shared key is injected.
+    # Native public-client OAuth through Hub's existing issuer. These REST paths
+    # are disjoint from managed /mcp/computer; no transparent TCP to this authority.
+    # No credential binding: Lore owns the user's login/exchange/refresh grant.
     endpoints:
-      - host: identity.veoveo.example.com
+      - host: veoveo.example.com
         port: 443
-        protocol: tcp
+        path: /oauth/.well-known/openid-configuration
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /oauth/.well-known/openid-configuration}
+      - host: veoveo.example.com
+        port: 443
+        path: /oauth/device_authorization
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: POST, path: /oauth/device_authorization}
+      - host: veoveo.example.com
+        port: 443
+        path: /oauth/token
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: POST, path: /oauth/token}
+      - host: veoveo.example.com
+        port: 443
+        path: /oauth/jwks.json
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /oauth/jwks.json}
     binaries:
       - path: /usr/local/bin/lore

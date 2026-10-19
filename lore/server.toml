@@ -1,11 +1,11 @@
-# Direct IdP grants validated by native Lore. Factory assignments are trusted.
+# Hub-issued native resource grants. Factory hook assignments remain trusted.
 [hooks.factory_branch]
 enabled = true
 assignments = {}
 
 [server.auth]
-jwt_issuer = "https://auth.localhost:8443/realms/veoveo"
-jwt_audience = ["lores://vv-lore.internal:41337"]
+jwt_issuer = ["https://veoveo.example.com/oauth"]
+jwt_audience = ["https://veoveo.example.com/resources/lore"]
 jwt_typ = "at+jwt"
 resource_claim = "resources"
 resource_id_claim = "resource_id"
@@ -15,8 +15,9 @@ baseline_access = "denied"
 repository_catalog = "baseline"
 
 [server.auth.oidc]
-client_id = "lore-cli"
-scopes = ["openid"]
+client_id = "lore-computer"
+scopes = ["lore:login"]
+preferred = true
 scope_template = "lore-repo-{id}"
 
 [server.quic]

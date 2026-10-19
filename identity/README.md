@@ -191,16 +191,22 @@ and [authorization code flow](https://learn.microsoft.com/en-us/entra/identity-p
 documentation. Entra requires the reference tenant and app registration; this
 local setup does not create those or modify the remote deployment.
 
-## Direct Lore factory credentials
+## Lore identity and repository ownership
 
-`configure-lore` provisions ordinary optional repository scopes and confidential
-factory clients using built-in Keycloak mappers. It keeps stable subjects/secrets
-in private operator state and renders trusted hook assignments. Native OpenShell
-client-credentials refresh holds their secrets; Lore directly discovers/verifies
-this issuer's JWKS. See [native setup](../openshell/README.md).
+Entra (or the selected upstream IdP) authenticates humans into Hub. The existing
+Hub broker application remains confidential and its credential stays trusted.
+Native Lore's secretless public client and distinct factory client are registered
+with Hub, not provisioned as directory repository-role/resource mappers. Hub's
+revisioned control plane owns exact native repository registrations and explicit
+tenant/principal/action assignments. Follow [Hub-issued native Lore](../computer/LORE_HUB.md)
+for public-client, issuer, factory custody and live publication settings.
 
-The former `veoveo-lore` Desktop registration is disabled. Its adapter/ingress and
-manual signing helpers are retired. Native `openshell-cli`, `veoveo-controller`
-and `lore-cli` registrations remain separate and enabled. Preserve the private
-recovery checkpoint and durable identity database. Do not restore Desktop-specific
-bootstrap merely to implement factory token renewal.
+The retired `configure-lore` direct-issuer helper and its helper-only tests have
+been removed. Do not regenerate its local client/grant bookkeeping. Retain any
+trusted existing storage/TLS/identity state; removal of tooling does not authorize
+deleting operator data. Directory administration is not required to change a Hub
+repository assignment. Native Lore behavior remains unchanged.
+
+The former `veoveo-lore` Desktop registration remains disabled. Its adapter/ingress
+and manual signing helpers stay retired. Preserve durable identity data and the
+private recovery checkpoint; do not restore Desktop bootstrap for factory renewal.

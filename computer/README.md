@@ -145,26 +145,20 @@ and complete the Hub contract's finalize step where required. Qualify actual
 upload/download byte counts and hashes separately from metadata/MCP success.
 See the [native signed-authority contract](../openshell/REFERENCE.md#native-seaweedfs-https-and-signed-authority).
 
-Lore is different: each user explicitly runs native
-`lore auth login "$VEOVEO_LORE_REMOTE" --no-browser` on first use and completes the
-IdP prompt. `VEOVEO_LORE_REMOTE` is installation instruction input, not a Lore-native
-endpoint setting. Native Lore gets OIDC issuer/client/scopes from its server and
-uses its own persistent token store; later expiry uses native refresh. Existing
-old grants without refresh-client binding require one new login. Neither factory
-tokens nor shared human credentials are injected. [The native OIDC fragment](lore-oidc.example.toml)
-shows server metadata configuration; merge it with the actual server's existing
-claims/audiences/TLS/storage and registered public client. The example uses the
-distinct external IdP authority `https://identity.veoveo.example.com`, matched in
-`policy.yaml`; the actual Entra issuer uses `login.microsoftonline.com`. Review
-the server-advertised issuer and every discovery/device/token authority before
-selecting exact native Lore TCP egress. Current native policy rejects transparent
-TCP overlapping the Hub's managed MCP authority on the same host/port, even when
-executable selectors differ. Do not introduce a Hub host alias, proxy, broad HTTPS
-rule or interception workaround. The example issuer is a separate IdP selection,
-not an alias for Hub. If the actual issuer shares Hub's authority, this example
-cannot be admitted unchanged; resolve the native policy boundary before rollout.
-The example issuer and private URI are not receipts that those endpoints exist
-or are live.
+Lore uses the user's native persistent login, separate from the Computer browser
+and MCP grant. Select the [Hub-issued native Lore setup](LORE_HUB.md): Entra proves
+identity through Hub's existing broker, Hub manages explicit live repository
+assignments and signs native claims, and unchanged Lore enforces its own contract.
+The native `lore auth login "$VEOVEO_LORE_REMOTE" --no-browser` command uses the
+server-advertised public client/device/exchange settings; later expiry uses native
+refresh. No human token is copied to a factory or another Computer.
+
+The [native OIDC fragment](lore-oidc.example.toml), Hub contribution/client records
+and exact OAuth REST paths in policy must be selected together. Native private
+gRPC remains direct TLS. The OAuth paths share Hub's authority but are disjoint
+from managed MCP; there is no transparent TCP overlap, issuer host alias or broad
+network fallback. These examples are not deployed credentials or real-login
+receipts. Existing source/image pins remain unchanged until coordinated review.
 
 ## Validation boundary
 

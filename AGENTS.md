@@ -16,12 +16,17 @@
   branch guard belongs in Lore's existing pre-push hook and trusted configuration;
   it is not a comprehensive branch authorization or transport-expiry system.
   Credential lifecycle qualification stays separate in native OpenShell controls.
-- The user withdrew Desktop acceptance on 2026-10-17. Follow
-  [the direct Lore credential plan](../veoveo-docs/LORE_DIRECT_OIDC_PLAN.md): IdP
-  issuance, native OpenShell renewal/injection and native Lore resource grants.
-  The Desktop adapter, signer and ingress are retired. Do not restore them or add
-  a machine-token endpoint, new signer or refresh daemon. Historical Desktop results
-  are not active operator instructions or completion gates.
+- The user withdrew Desktop acceptance on 2026-10-17. The current accepted
+  [Hub-issued native Lore architecture](../veoveo-docs/LORE_OPENSHELL_INTEGRATION.md#hub-issued-native-lore-credentials)
+  uses Entra for human identity, Hub's existing issuer and revisioned control plane
+  for explicit repository assignments/native tokens, and unchanged native Lore
+  enforcement. Native OpenShell owns factory renewal/injection; user Lore refresh
+  remains in each private Computer. The retired Desktop adapter/standalone signer
+  and ingress remain retired. Do not add another issuer service, refresh daemon,
+  custom Lore authorization rules, automatic admin/member repository rights or
+  global grants to compensate for an installation mismatch. Local Keycloak
+  remains identity/management bootstrap; repository assignments belong to Hub.
+  Do not restore the retired direct-issuer provisioning helper or its grant state.
 - Never commit credentials. `.env`, TLS/private state and local backups remain
   ignored and excluded from build contexts.
 - During rapid development, application data is disposable for authorized resets
