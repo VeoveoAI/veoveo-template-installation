@@ -1,0 +1,53 @@
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log]
+  read_write: [/sandbox, /tmp, /dev/null]
+network_policies:
+  hub:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /mcp/computer
+        protocol: mcp
+        enforcement: enforce
+        credential_binding: {provider: computer-hub}
+        mcp:
+          versions: ["2026-07-28"]
+          # Hub applies current user/profile/Work Context authorization to every
+          # route. Native MCP framing/known-method enforcement still applies.
+          allow_all_known_mcp_methods: true
+    binaries:
+      - path: /usr/local/bin/opencode
+  model:
+    endpoints:
+      - host: api.deepinfra.com
+        port: 443
+        path: /v1/openai/chat/completions
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: computer-model}
+        rules:
+          - allow: {method: POST, path: /v1/openai/chat/completions}
+    binaries:
+      - path: /usr/local/bin/opencode
+  lore:
+    # Replace together with VEOVEO_LORE_REMOTE and public CA trust. Native gRPC
+    # TLS and the user's own Lore grant remain end-to-end; no factory injection.
+    endpoints:
+      - host: 10.231.10.10
+        port: 41337
+        allowed_ips: [10.231.10.10]
+        protocol: tcp
+    binaries:
+      - path: /usr/local/bin/lore
+  lore_identity:
+    # Example issuer host. Use the actual server-advertised issuer and reviewed
+    # discovery/device/token hosts. Native Lore verifies HTTPS; no shared key is
+    # injected and no provider response is interpreted by installation glue.
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        protocol: tcp
+    binaries:
+      - path: /usr/local/bin/lore

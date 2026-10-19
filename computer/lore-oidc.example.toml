@@ -1,0 +1,15 @@
+# Native Lore server configuration FRAGMENT. Merge into the selected server's
+# trusted configuration; do not replace its storage/TLS/authorization settings.
+# Use the real issuer/public client registered with the chosen IdP.
+[server.auth]
+jwt_issuer = ["https://veoveo.example.com/identity"]
+# Keep the installation's actual jwt_audience, resource/permission claims and
+# baseline authorization. A public client ID is not the API token audience.
+
+[server.auth.oidc]
+client_id = "lore-computer"
+scopes = ["openid", "offline_access"]
+preferred = true
+# Retain any installation-required resource_template/scope_template. The first
+# jwt_issuer's standard discovery document supplies issuer/device/token metadata.
+# No client secret, factory token, shared refresh grant or extra token service.

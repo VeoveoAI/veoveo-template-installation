@@ -1,0 +1,44 @@
+{
+  "computers": {
+    "gateway": {
+      "endpoint": "https://gateway.veoveo.example.com/",
+      "certificateAuthority": "/etc/hub/openshell-ca.crt",
+      "bearerEnvironment": "OPENSHELL_COMPUTER_PROVISIONER"
+    },
+    "template": {
+      "workspace": "installation",
+      "name": "computer"
+    },
+    "policyFile": "/etc/hub/computer-policy.yaml",
+    "command": [
+      "/bin/sh",
+      "-ec",
+      "umask 077; exec /usr/local/bin/opencode serve --trusted-local-proxy --hostname 127.0.0.1 --port 4096 --base-path \"${PUBLIC_BASE_PATH:?trusted PUBLIC_BASE_PATH is required}\""
+    ],
+    "oauthClient": "computer-browser",
+    "profile": "computer",
+    "workContext": "default",
+    "port": 4096,
+    "hubProvider": {
+      "profile": "vv-computer-hub",
+      "credentialKey": "COMPUTER_HUB_REFERENCE"
+    },
+    "modelProvider": {
+      "profile": "vv-computer-model",
+      "credentialKey": "DEEPINFRA_API_KEY",
+      "secret": "computer-model-api-key"
+    }
+  },
+  "secrets": [
+    {
+      "id": "computer-model-api-key",
+      "source": "env",
+      "purpose": "provider_api_key",
+      "locator": "VEOVEO_COMPUTER_MODEL_API_KEY",
+      "owner": {
+        "kind": "hub"
+      },
+      "metadata": {}
+    }
+  ]
+}

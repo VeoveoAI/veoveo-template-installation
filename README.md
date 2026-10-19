@@ -49,6 +49,14 @@ and merge reviewed updates into that installation; private runtime state stays o
 of both repositories. Follow its acceptance record to distinguish deployed and
 verified behavior from work still in progress.
 
+## User Computers
+
+[Computer image and native configuration](computer/README.md) extend the reviewed
+factory toolchain with native OpenCode and user-owned Lore credentials. Persistent
+HOME/XDG state belongs in the native owner workspace; factories remain deterministic
+builders without agents or model credentials. These inputs require separate source,
+image and deployed qualification.
+
 ## Scope and recovery
 
 Desktop acceptance was withdrawn. Its adapter, signing/manual-token helpers and

@@ -31,3 +31,12 @@ requests retain Veoveo permission checks and narrowed tokens.
 The first implementation slice is local only. Linux replacement, general builds,
 environment composition and application migration are subsequent work through the
 same selected runtime path; their completion requires recorded evidence.
+
+Private user Computers use Hub browser admission and native OpenShell owner
+workspaces, provider custody, ForwardTcp and persistent Docker workspaces. The
+[installation inputs](computer/README.md) keep mutable HOME/XDG/source state under
+`/sandbox` and trusted agent configuration under `/etc/computer`. Human Lore grants
+remain in native Lore's own store; Hub user grants and the installation model key
+are mediated by native workspace-local providers. No agent or model credential is
+restored to deterministic factories. Image/template preparation does not claim
+live user, persistence, revocation or model acceptance.

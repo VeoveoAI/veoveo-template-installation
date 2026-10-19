@@ -1,0 +1,20 @@
+id: vv-computer-hub
+display_name: Computer user Hub session
+credentials:
+  - name: access_token
+    env_vars: [COMPUTER_HUB_REFERENCE]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+    refresh:
+      strategy: oauth2_refresh_token
+      token_url: https://veoveo.example.com/oauth/token
+      # Preserve the initial Hub PKCE grant: no scopes in profile or material.
+      refresh_before: 180s
+      max_lifetime: 3600s
+      material:
+        - name: client_id
+          required: true
+        - name: refresh_token
+          required: true
+          secret: true
