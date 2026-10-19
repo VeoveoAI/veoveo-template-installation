@@ -80,7 +80,9 @@ The trusted Compose Lore service publishes only host loopback port 41337; native
 OpenShell's backend host-gateway pin supplies this hostname without a host DNS
 edit. Require the matching Lore leaf DNS SAN and existing CA trust before use;
 see [the endpoint requirements](LORE_HUB.md). Replace the endpoint only as a
-consistent installation input. `SSL_CERT_DIR` adds the image's installed public CA
+consistent installation input. The Computer's exact Lore TCP rule uses `tls: skip`
+to pass through the immediate gRPC TLS handshake; Lore still verifies the server
+certificate and hostname. `SSL_CERT_DIR` adds the image's installed public CA
 roots alongside OpenShell's injected `SSL_CERT_FILE`; keep both so native Lore
 trusts the private service and the supervised OAuth route. Set this template input
 for existing reviewed images; future Computer builds also include it by default.

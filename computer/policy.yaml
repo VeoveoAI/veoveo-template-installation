@@ -49,6 +49,8 @@ network_policies:
       - host: host.openshell.internal
         port: 41337
         protocol: tcp
+        # Lore starts TLS immediately; preserve its end-to-end gRPC handshake.
+        tls: skip
     binaries:
       - path: /usr/local/bin/lore
   lore_identity:
