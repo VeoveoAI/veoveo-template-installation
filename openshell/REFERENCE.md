@@ -231,6 +231,38 @@ separate refresh entries. An Entra client secret is not a Hub client-credentials
 grant. Fully unattended hosted Hub clients retain their existing `private_key_jwt`
 contract and need a separately reviewed caller-custody decision.
 
+After an authorized development database reset, Hub's old application refresh
+families no longer exist. Obtain fresh, separate administrator/member PKCE grants,
+then reauthorize their **existing** native custodian. For the reference QA provider,
+configure each corresponding key using its new refresh token through a private
+child environment variable:
+
+```sh
+openshell provider refresh configure vv-hub-qualification --workspace vv-hub-qa \
+  --credential-key HUB_ADMIN_REFERENCE --strategy oauth2-refresh-token \
+  --material client_id=opencode \
+  --secret-material-env refresh_token=NEW_ADMIN_REFRESH_TOKEN
+```
+
+Repeat with `HUB_MEMBER_REFERENCE` and that member's distinct refresh grant.
+Do not use `provider update --credential` for these access-token fields: native
+OpenShell rejects direct writes to refresh-owned outputs, including entries parked
+as `reauthorization_required`. Inspect `provider refresh status`; if the worker has
+not already minted the new access token, request one `provider refresh rotate` for
+that key. The controller stores the minted token and any rotated refresh material.
+Do not provide the PKCE access JWT or an explicit old-credential expiry to refresh
+configuration, create a second provider, or share QA's grant with OpenCode.
+
+Explicit refresh configuration begins a new authorization epoch, invalidating old
+workload handles. Recreate/restart affected QA processes after both entries have
+refreshed; subsequent ordinary renewals preserve the new epochs. For expiry proof,
+record the first successful mint and initial workload identities/handle hashes.
+The reference profile's 300-second native lease is shorter than Hub's 900-second
+JWT lifetime. If the controller-held JWT was not decoded, use a conservative bound
+of initial mint completion plus the configured 900 seconds, identify it as a
+source/configuration-derived bound, and verify fresh calls after it without manual
+rotation. A call after only the native lease is not post-JWT-expiry proof.
+
 ### Canonical Hub authority and private service placement
 
 Service registration uses the existing per-service initial-access providers.
