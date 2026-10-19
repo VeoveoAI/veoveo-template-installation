@@ -1,0 +1,8 @@
+id: vv-embedding-registration
+display_name: Embedding initial registration
+credentials:
+  - name: initial_access_token
+    env_vars: [VEOVEO_REGISTRATION_SECRET]
+    required: true
+    auth_style: bearer
+    header_name: authorization

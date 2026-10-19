@@ -1,0 +1,9 @@
+{
+  "docker": {
+    "cdi_devices": ["nvidia.com/gpu=0"],
+    "mounts": [
+      {"type": "volume", "source": "vv-embedding-cache", "target": "/var/cache/huggingface", "read_only": true},
+      {"type": "volume", "source": "vv-embedding-runtime-config", "target": "/etc/veoveo/embedding", "read_only": true}
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "docker": {
+    "mounts": [
+      {"type": "volume", "source": "vv-embedding-state", "target": "/var/lib/veoveo/embedding", "read_only": false}
+    ]
+  }
+}

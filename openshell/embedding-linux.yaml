@@ -1,0 +1,91 @@
+# Linux CUDA runtime exposed only through authenticated native OpenShell service ingress.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log]
+  read_write: [/tmp, /dev/null, /var/lib/veoveo/embedding]
+network_policies:
+  registration:
+    endpoints:
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /oauth/register
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-embedding-registration}
+        rules:
+          - allow: {method: POST, path: /oauth/register}
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-embedding
+  hub_metadata:
+    endpoints:
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /.well-known/oauth-authorization-server
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /.well-known/oauth-authorization-server}
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /jwks.json
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /jwks.json}
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /oauth/register/*
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /oauth/register/*}
+          - allow: {method: DELETE, path: /oauth/register/*}
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-embedding
+  hub_token_exchange:
+    endpoints:
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /oauth/token
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: POST, path: /oauth/token}
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-embedding
+  embedding_runtime:
+    endpoints:
+      - host: vv-services--embedding-runtime--http.openshell.localhost
+        port: 17670
+        path: /capabilities
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-embedding-inference}
+        rules:
+          - allow: {method: GET, path: /capabilities}
+      - host: vv-services--embedding-runtime--http.openshell.localhost
+        port: 17670
+        path: /readyz
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-embedding-inference}
+        rules:
+          - allow: {method: GET, path: /readyz}
+      - host: vv-services--embedding-runtime--http.openshell.localhost
+        port: 17670
+        path: /embeddings
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-embedding-inference}
+        rules:
+          - allow: {method: POST, path: /embeddings}
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-embedding
+  database:
+    endpoints:
+      - host: host.openshell.internal
+        port: 5432
+        protocol: tcp
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-embedding

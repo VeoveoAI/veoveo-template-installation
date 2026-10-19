@@ -28,6 +28,8 @@ ARTIFACT_BINDING = {'endpoint': 'http://artifact.internal:8801/artifact/mcp', 'w
                     'sandbox': 'artifact', 'port': 8801}
 MEDIA_BINDING = {'endpoint': 'http://media.internal:8802/media/mcp', 'workspace': 'vv-services',
                  'sandbox': 'media', 'port': 8802}
+EMBEDDING_BINDING = {'endpoint': 'http://embedding.internal:8803/embedding/mcp', 'workspace': 'vv-services',
+                     'sandbox': 'embedding', 'port': 8803}
 
 
 def private(path, text, exclusive=False):
@@ -210,23 +212,26 @@ def retained_catalog():
     return json.loads(path.read_text()) if path.exists() else None
 
 
-def select_services(include_artifact, include_media, retained):
+def select_services(include_artifact, include_media, retained, include_embedding=False):
     """Preserve approved selections and reject foreign placement before provisioning."""
     if retained is not None:
         bindings = retained['nativeUpstreams']['bindings']
         approved = ([TIME_BINDING], [TIME_BINDING, ARTIFACT_BINDING],
                     [TIME_BINDING, ARTIFACT_BINDING, MEDIA_BINDING])
+        approved += tuple(binding + [EMBEDDING_BINDING] for binding in approved)
         if bindings not in approved:
             raise ValueError('existing native bindings differ; review operator placement before regeneration')
         include_artifact = include_artifact or ARTIFACT_BINDING in bindings
         include_media = include_media or MEDIA_BINDING in bindings
+        include_embedding = include_embedding or EMBEDDING_BINDING in bindings
     if include_media and not include_artifact:
         raise ValueError('Media requires selected Artifact; use --include-artifact or retain its approved binding')
-    return include_artifact, include_media
+    return include_artifact, include_media, include_embedding
 
 
-def catalog(origin, include_artifact=False, include_media=False, retained=None):
-    include_artifact, include_media = select_services(include_artifact, include_media, retained)
+def catalog(origin, include_artifact=False, include_media=False, retained=None, include_embedding=False):
+    include_artifact, include_media, include_embedding = select_services(
+        include_artifact, include_media, retained, include_embedding)
     resource = origin + '/mcp/local'
     roles = ['member', 'admin'] + (['billed'] if include_media else [])
     clients = ['vv-hub-' + role for role in roles]
@@ -266,6 +271,8 @@ def catalog(origin, include_artifact=False, include_media=False, retained=None):
         result['nativeUpstreams']['bindings'].append(dict(MEDIA_BINDING))
         result['authorization']['roles'].append(
             {'name': 'billed', 'access': ['read', 'write'], 'risks': ['billed']})
+    if include_embedding:
+        result['nativeUpstreams']['bindings'].append(dict(EMBEDDING_BINDING))
     if retained is not None:
         result['workContexts'] = copy.deepcopy(retained['workContexts'])
         result['policies'] = copy.deepcopy(retained['policies'])
@@ -343,7 +350,7 @@ def authorization_jwk(encoded_key):
 
 def entra_catalog(origin, discovery, tenant_id, client_id, tenant, context, policy, owner,
                   members, admins, billed, application_client, redirects, gateway, key_id,
-                  include_artifact=False, include_media=False, retained=None):
+                  include_artifact=False, include_media=False, retained=None, include_embedding=False):
     """Render existing Hub/OIDC schemas only. This function has no identity/network I/O."""
     origin, gateway = https_origin(origin), https_origin(gateway)
     tenant_id, client_id = canonical_uuid(tenant_id), canonical_uuid(client_id)
@@ -361,14 +368,15 @@ def entra_catalog(origin, discovery, tenant_id, client_id, tenant, context, poli
     owner = canonical_uuid(owner)
     if not principals['member'] or not principals['admin'] or owner not in principals['admin']:
         raise ValueError('explicit member/admin principals and an administrator output owner are required')
-    include_artifact, include_media = select_services(include_artifact, include_media, retained)
+    include_artifact, include_media, include_embedding = select_services(
+        include_artifact, include_media, retained, include_embedding)
     if (include_media and not principals['billed']) or (principals['billed'] and not include_media):
         raise ValueError('explicit billed principals require selected Media and vice versa')
     redirects = sorted({redirect_uri(value) for value in redirects})
     if not redirects:
         raise ValueError('an explicit application client redirect is required')
     # Reuse the existing installation shape and reviewed private placement selection.
-    result = catalog(origin, include_artifact, include_media)
+    result = catalog(origin, include_artifact, include_media, include_embedding=include_embedding)
     resource, application_issuer = origin + '/mcp/local', origin + '/oauth'
     result['identityProviders'] = [{'id': 'entra', 'issuer': issuer,
         'jwks': {'source': 'remote', 'jwksUri': endpoints['jwks_uri']},
@@ -432,6 +440,7 @@ def prepare_entra(options):
         billed=options.billed_object_id, application_client=options.application_client_id,
         redirects=options.client_redirect_uri, gateway=options.native_gateway,
         include_artifact=options.include_artifact, include_media=options.include_media,
+        include_embedding=options.include_embedding,
         retained=retained)
     # Validate every public selection and retained authority before creating private material.
     entra_catalog(key_id=(arguments['retained'] or {}).get('authorizationServers', [{}])[0]
@@ -465,6 +474,8 @@ def main():
                         help='explicitly select the private vv-services/artifact native binding')
     parser.add_argument('--include-media', action='store_true',
                         help='select private vv-services/media, requiring selected Artifact')
+    parser.add_argument('--include-embedding', action='store_true',
+                        help='select private vv-services/embedding without adding roles or billed risk')
     options = parser.parse_args()
     os.umask(0o077)
     if options.identity_provider == 'entra':
@@ -479,8 +490,9 @@ def main():
     if options.hub_origin.rstrip('/') != HUB_ORIGIN:
         raise ValueError('this local setup requires the reviewed vv-control/hub/http origin on 17670')
     retained = retained_catalog()
-    include_artifact, include_media = select_services(options.include_artifact, options.include_media, retained)
-    prepared_catalog = catalog(HUB_ORIGIN, include_artifact, include_media, retained)
+    include_artifact, include_media, include_embedding = select_services(
+        options.include_artifact, options.include_media, retained, options.include_embedding)
+    prepared_catalog = catalog(HUB_ORIGIN, include_artifact, include_media, retained, include_embedding)
     os.umask(0o077)
     STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
     STATE.chmod(0o700)

@@ -1,0 +1,8 @@
+id: vv-embedding-inference
+display_name: Private embedding runtime
+credentials:
+  - name: api_key
+    env_vars: [VEOVEO_EMBEDDING_RUNTIME_TOKEN]
+    required: true
+    auth_style: bearer
+    header_name: authorization

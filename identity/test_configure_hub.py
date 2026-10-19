@@ -53,10 +53,10 @@ class NativePlacementTests(unittest.TestCase):
         selected = helper.catalog(helper.HUB_ORIGIN, include_artifact=True, include_media=True)
         self.assertEqual(selected['nativeUpstreams']['bindings'],
                          [helper.TIME_BINDING, helper.ARTIFACT_BINDING, helper.MEDIA_BINDING])
-        self.assertEqual(helper.select_services(False, False, selected), (True, True))
+        self.assertEqual(helper.select_services(False, False, selected), (True, True, False))
         self.assertEqual(helper.catalog(helper.HUB_ORIGIN, retained=selected), selected)
         artifact = helper.catalog(helper.HUB_ORIGIN, include_artifact=True)
-        self.assertEqual(helper.select_services(False, True, artifact), (True, True))
+        self.assertEqual(helper.select_services(False, True, artifact), (True, True, False))
 
     def test_media_billed_role_is_narrow_and_member_admission_is_unchanged(self):
         baseline = helper.catalog(helper.HUB_ORIGIN, include_artifact=True)
@@ -101,6 +101,40 @@ class NativePlacementTests(unittest.TestCase):
             retained['nativeUpstreams']['bindings'] = bindings
             with self.assertRaisesRegex(ValueError, 'review operator placement'):
                 helper.select_services(False, True, retained)
+
+    def test_embedding_is_optional_and_adds_no_authority_or_billed_risk(self):
+        baseline = helper.catalog(helper.HUB_ORIGIN)
+        selected = helper.catalog(helper.HUB_ORIGIN, include_embedding=True)
+        self.assertEqual(selected['nativeUpstreams']['bindings'], [helper.TIME_BINDING, helper.EMBEDDING_BINDING])
+        selected['nativeUpstreams']['bindings'].pop()
+        self.assertEqual(selected, baseline)
+
+    def test_embedding_retains_every_service_policy_and_grant_without_mutating_input(self):
+        for artifact, media in [(False, False), (True, False), (True, True)]:
+            baseline = helper.catalog(helper.HUB_ORIGIN, include_artifact=artifact, include_media=media)
+            baseline['policies'].append({'version': 'retained', 'rules': []})
+            before = json.dumps(baseline)
+            selected = helper.catalog(helper.HUB_ORIGIN, retained=baseline, include_embedding=True)
+            self.assertEqual(json.dumps(baseline), before)
+            self.assertEqual(selected['authorization'], baseline['authorization'])
+            self.assertEqual(selected['oauthClients'], baseline['oauthClients'])
+            self.assertEqual(selected['workContexts'], baseline['workContexts'])
+            self.assertEqual(selected['policies'], baseline['policies'])
+            self.assertEqual(selected['nativeUpstreams']['bindings'], baseline['nativeUpstreams']['bindings'] + [helper.EMBEDDING_BINDING])
+            self.assertEqual(helper.catalog(helper.HUB_ORIGIN, retained=selected), selected)
+            self.assertEqual(helper.select_services(False, False, selected), (artifact, media, True))
+
+    def test_embedding_foreign_duplicate_and_ambiguous_bindings_fail_closed(self):
+        selected = helper.catalog(helper.HUB_ORIGIN, include_embedding=True)
+        for bindings in [
+            [helper.TIME_BINDING, dict(helper.EMBEDDING_BINDING, port=9999)],
+            [helper.TIME_BINDING, helper.EMBEDDING_BINDING, helper.EMBEDDING_BINDING],
+            [helper.EMBEDDING_BINDING, helper.TIME_BINDING],
+            [helper.TIME_BINDING, helper.MEDIA_BINDING, helper.EMBEDDING_BINDING],
+        ]:
+            selected['nativeUpstreams']['bindings'] = bindings
+            with self.assertRaisesRegex(ValueError, 'review operator placement'):
+                helper.select_services(False, False, selected)
 
 
 
@@ -175,6 +209,16 @@ class EntraPreparationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'review operator placement'):
             helper.entra_catalog(**arguments, retained=changed)
 
+    def test_entra_embedding_adds_only_placement_and_retains_identity_authority(self):
+        arguments = self.arguments()
+        baseline = helper.entra_catalog(**arguments)
+        selected = helper.entra_catalog(**arguments, retained=baseline, include_embedding=True)
+        self.assertEqual(selected['nativeUpstreams']['bindings'], baseline['nativeUpstreams']['bindings'] + [helper.EMBEDDING_BINDING])
+        for field in ['identityProviders', 'authorizationServers', 'profiles', 'authorization',
+                      'tenants', 'workContexts', 'oauthClients', 'oidcClients', 'secrets']:
+            self.assertEqual(selected[field], baseline[field])
+        self.assertEqual(helper.entra_catalog(**arguments, retained=selected), selected)
+
     def test_bad_urls_tenant_mapping_and_empty_authority_are_rejected(self):
         for origin in ['http://veoveo.example.com', 'https://user@veoveo.example.com',
                        'https://veoveo.example.com/path', 'https://veoveo.example.com/?x=1',
@@ -222,7 +266,7 @@ class EntraPreparationTests(unittest.TestCase):
                 work_context='reference-work', policy_version='reference-policy', owner_object_id=self.ADMIN,
                 member_object_id=[self.MEMBER], admin_object_id=[self.ADMIN], billed_object_id=[self.BILLED],
                 application_client_id='opencode', client_redirect_uri=['http://127.0.0.1:3210/callback'],
-                native_gateway='https://host.openshell.internal:17670', include_artifact=True, include_media=True)
+                native_gateway='https://host.openshell.internal:17670', include_artifact=True, include_media=True, include_embedding=False)
             helper.prepare_entra(options)
             original = {name: (Path(directory) / name).read_bytes()
                         for name in ['hub.env', 'hub.json', 'authorization-server.jwks.json']}
