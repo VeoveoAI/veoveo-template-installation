@@ -38,6 +38,7 @@ network_policies:
       - host: objects.veoveo.example.com
         port: 443
         protocol: tcp
+        tls: skip
     binaries:
       - path: /usr/bin/curl
   lore:
