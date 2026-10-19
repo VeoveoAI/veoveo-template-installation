@@ -29,10 +29,12 @@ workload egress follows native OpenShell policy and credential mediation.
 A fresh installation must first provision identity credentials and external volumes.
 No agent joins bootstrap networks, mounts operator state or accesses Docker.
 
-`factory/` packages OpenCode 2.0.29, the existing Lore CLI auth fixes and a pinned
-Rust toolchain. The server uses native OIDC with its public CA trust and the
-existing hook extension. The first smoke factory's RPC policy is read-only and
-has no inference provider. Build commands select the required patched sources;
+`factory/` packages the native Lore CLI, a pinned Rust toolchain and the scoped
+Hub SDK client. Factories execute explicit build commands against published Lore
+revisions. OpenCode and model credentials belong in user Computers. The server
+uses native OIDC with its public CA trust and the existing hook extension. The
+first smoke factory's RPC policy is read-only. Build commands select the required
+patched sources;
 the [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md) records current acceptance.
 
 For the Entra-backed reference Linux goal, follow the existing native contracts

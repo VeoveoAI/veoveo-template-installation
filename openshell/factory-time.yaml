@@ -71,17 +71,6 @@ network_policies:
       - path: /usr/bin/git
       - path: /usr/lib/git-core/git-remote-http
       - path: /usr/lib/git-core/git-remote-https
-  inference:
-    endpoints:
-      - host: api.deepinfra.com
-        port: 443
-        protocol: rest
-        enforcement: enforce
-        credential_binding: {provider: vv-time-inference}
-        rules:
-          - allow: {method: POST, path: /v1/openai/chat/completions}
-    binaries:
-      - path: /usr/local/bin/opencode
   hub_member:
     endpoints:
       - host: vv-control--hub--http.openshell.localhost

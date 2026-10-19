@@ -1,9 +1,11 @@
 # Build prepared Time source
 
-This is trusted installation preparation, followed by a bounded model task. Execute
+This is trusted installation preparation, followed by a bounded deterministic job. Execute
 publishing and preflight only after the [execution checklist](../../veoveo-docs/OPENSHELL_HARDCUT_PLAN.md)
 accepts deployed Hub/Time. The source, image, providers and release build must pass
-without model calls first. These instructions do not record runtime acceptance.
+their component checks first. Agents work on Computers and publish source to Lore;
+the factory clones the selected immutable revision and runs the declared commands.
+These instructions do not record runtime acceptance.
 Keep the original `factory.yaml` and disposable Lore qualification identities intact.
 
 ## Tool image
@@ -12,7 +14,8 @@ Use Time's existing Dockerfile `dev` image through a verified local tag,
 `TIME_DEV_IMAGE_REF`, and retain its approved immutable `TIME_DEV_IMAGE_ID`. A raw
 `sha256:` image ID is not a valid Docker `FROM` reference in this setup. Use the
 same Docker engine/builder that owns the verified local tag. It supplies the
-component toolchain; the shared layer supplies Lore, installation CA, pinned OpenCode 2.0.29 and the SDK's Cargo-installed conformance CLI. SDK
+component toolchain; the shared layer supplies Lore, installation CA and the SDK's
+Cargo-installed CLI. SDK
 `a1d9d653ae3d723821cdeeab92f4a67acdca39ce` is the committed installation contract;
 there is no SDK runtime image. The layer contains no prebuilt Time release binary.
 Run from this installation root after the existing Lore client image build:
@@ -33,7 +36,7 @@ Run from this installation root after the existing Lore client image build:
 
 The checks before and after the build must both match the approved base ID. Record
 the resulting factory image ID as `FACTORY_TIME_IMAGE_ID`; native sandbox `--from`
-uses that exact `sha256:` ID for publisher, preflight and model run. The reviewed
+uses that exact `sha256:` ID for publisher, preflight and build job. The reviewed
 Time commit `90eabf9d3a103075c2aff907f008cf63f341f822` is published on its Git remote
 and is the prepared source for `TIME_GIT_COMMIT`. The existing
 [component lock](../component-lock.json) records the published reviewed component
@@ -211,35 +214,20 @@ profile [hub-member.yaml](providers/hub-member.yaml), using its existing trusted
 client material and native refresh procedure from [Hub/Time setup](HUB_TIME.md).
 Do not attach its admin, qualification, management or registration providers.
 
-Import [time-inference.yaml](providers/time-inference.yaml) in `vv-time-build`.
-Supply the approved inference secret through the trusted shell environment or
-native secret input; disable shell tracing. This installation already keeps it as
-`DEEPINFRA_API_TOKEN` in the ignored root `.env`. Load it with the trusted
-installation environment workflow and map it to `VEOVEO_INFERENCE_TOKEN` only in
-the operator provisioning process; never print it or copy `.env` into the sandbox.
-For an already exported
-`VEOVEO_INFERENCE_TOKEN`, creation uses an environment lookup (no literal secret):
-
-```sh
-openshell profile import --workspace vv-time-build --file openshell/providers/time-inference.yaml
-openshell provider create --workspace vv-time-build --name vv-time-inference \
-  --type vv-time-inference --credential VEOVEO_INFERENCE_TOKEN
-```
-
 Inspect existing objects before reruns; do not replace foreign/conflicting state.
-The model's policy is [factory-time.yaml](factory-time.yaml). It permits only Lore
+The factory policy is [factory-time.yaml](factory-time.yaml). It permits only Lore
 read RPCs, sparse registry/download GETs, Git read protocol paths for the three
-pinned Cargo dependency repositories, scoped inference and member SDK discovery/
-`time__resolve_time`. It does not grant model MCP integrations; the SDK CLI is the
-preflight client. Git fetches use Cargo's CLI mode; no Git push endpoint, host Git
-credentials, token fetcher, rustup downloads or unbounded network rule is included.
+pinned Cargo dependency repositories and member SDK discovery/`time__resolve_time`.
+The SDK CLI is the preflight client. Git fetches use Cargo's CLI mode; no Git push
+endpoint, host Git credentials, token fetcher, rustup downloads or unbounded network
+rule is included.
 Verify actual executable paths, redirects and dependency access during preflight;
 report unsupported operations to development rather than widening the policy.
 
 ```sh
 openshell sandbox create --workspace vv-time-build --name factory-time \
   --from "$FACTORY_TIME_IMAGE_ID" --policy openshell/factory-time.yaml \
-  --provider vv-lore-time --provider vv-hub-member --provider vv-time-inference \
+  --provider vv-lore-time --provider vv-hub-member \
   --no-auto-providers --detach -- sleep infinity
 ```
 
@@ -249,27 +237,7 @@ provisioned workload CA through existing native `SSL_CERT_FILE`; never disable T
 verification or rewrite Host. The exact Hub HTTPS authority must match the actual
 native exposure; the policy's local origin is not a substitute for that check.
 
-## No-model preflight, then one bounded task
-
-Offline inspection of the installed pinned OpenCode 2.0.29 loaded
-`/etc/opencode/opencode.json` and confirmed `prepared-time` has four steps.
-`default_agent` remains the two-step `build` agent. Select the installed config
-explicitly with `OPENCODE_CONFIG=/etc/opencode/opencode.json`; the CLI has no
-`--config` flag. The no-model check is `opencode debug config` under that environment.
-Use `opencode run --agent prepared-time` followed by the prepared instructions as
-one positional message for the model invocation. Do not rely on the default agent. Keep integrations disabled and
-the provider/output limits as configured.
-
-Static inspection of the installed shell implementation confirms `timeout` is a
-nonnegative integer in milliseconds. Foreground defaults to 120000; an explicit
-900000 is accepted and passed unchanged to its timer, with no shell-specific cap.
-On expiry it terminates the command with a three-second force-kill grace. Zero
-disables the timer, and background execution defaults to no timeout. Select a
-finite foreground timeout sufficient for the measured release build. The provider
-HTTP `timeout: 300000` is a separate limit and does not bound a shell build. Do not
-use zero, background execution or the assumed default. A schema/tool failure
-returns to development before spending model tokens. Keep OpenCode version/digests
-pinned.
+## Preflight, then one bounded build job
 
 With the exact image/policy/providers, manually clone `TIME_LORE_REVISION` from
 `grpcs://10.231.10.10:41337/TIME_REPOSITORY_ID` using the same `--identity` and opaque
@@ -290,19 +258,40 @@ veoveo-hub-sdk-cli --hub https://vv-control--hub--http.openshell.localhost:17670
 
 Check tool discovery and typed successful Time output, not only HTTP status. Verify
 writable Cargo state, dependency downloads, release binary and unchanged source.
-No model call belongs in this phase. Failure goes to development; do not create an
-environment repair loop.
+Failure returns diagnostics to the user's Computer for a source fix and a new
+published revision.
 
-Only after preflight, give `prepared-time` the exact revision, identity, clone URL,
-fresh clone/target paths and validated shell timeout. Ask it to clone that revision,
-run the same release command once, and report revision, command, exit status and
-binary path. Four agent steps bound clone/build/report; no edits, speculative
-retries, dependency changes, MCP exploration, deployment or extra agents. Use a
-fresh target directory so the output was built in this run; dependency caches may
-be reused. Verify unchanged source and retain actual command output. Build the
-runtime image outside the model from that same Lore revision using Time's existing
-Dockerfile, then deploy through native OpenShell and verify readiness plus a
-Hub-routed call. Those remain separate execution gates.
+After preflight, run the exact clone/build command through native Exec with a
+finite 900-second deadline. The trusted caller supplies the admitted immutable
+revision and identity; the sandbox receives its existing opaque Lore reference.
+Fresh source and target directories distinguish this job's output from preflight:
+
+```sh
+openshell sandbox exec --workspace vv-time-build --no-tty --no-login-shell \
+  --timeout 900 --env "TIME_REPOSITORY_ID=$TIME_REPOSITORY_ID" \
+  --env "TIME_LORE_REVISION=$TIME_LORE_REVISION" --env "TIME_SUBJECT=$TIME_SUBJECT" \
+  factory-time -- bash -euc '
+  test ! -e /sandbox/time-job
+  test ! -e /sandbox/time-job-target
+  export CARGO_HOME=/sandbox/cargo
+  export CARGO_NET_GIT_FETCH_WITH_CLI=true
+  export RUSTUP_HOME=/usr/local/rustup
+  export CARGO_TARGET_DIR=/sandbox/time-job-target
+  lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" \
+    repository clone "grpcs://10.231.10.10:41337/$TIME_REPOSITORY_ID" \
+    /sandbox/time-job --revision "$TIME_LORE_REVISION"
+  cd /sandbox/time-job
+  cargo build --locked --release --bin veoveo-mcp-time
+  sha256sum /sandbox/time-job-target/release/veoveo-mcp-time
+'
+```
+
+Retain the admitted revision, image identity, command, exit status, diagnostics and
+binary digest. Verify unchanged source. The trusted publisher builds the runtime
+image from that same verified Lore revision using Time's existing Dockerfile;
+native deployment, readiness and a Hub-routed call remain separate execution gates.
+The factory receives neither deployment nor registry credentials. Model-driven
+qualification runs separately on a Computer after the deterministic gates pass.
 
 For the runtime image, export the verified Lore source into a clean temporary
 Docker build context, excluding `.lore` metadata. Time's current `.dockerignore`

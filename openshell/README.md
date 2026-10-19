@@ -105,7 +105,7 @@ payloads and verifies remote fetches by default. No data reset or migration is
 performed by these source/build instructions.
 
 Build the Lore CLI from the same shared source export created above, then package
-it with OpenCode and the Rust toolchain selected by `factory/Dockerfile`:
+it with the Rust toolchain and scoped Hub SDK client selected by `factory/Dockerfile`:
 
 ```bash
 (
@@ -186,7 +186,8 @@ records which paths have been qualified. Run the focused
 `veoveo-qualify-openshell` against fresh sandboxes. Its README describes the probe
 image build and measured limits; Hub/Time application acceptance is separate.
 
-The first factory has no inference provider and makes no model calls.
+Factories run explicit build commands against published Lore revisions. They have
+no OpenCode installation or inference provider; agent sessions run in user Computers.
 
 For disposable qualification only, export the offline seeder:
 
