@@ -1,8 +1,9 @@
 # Native Lore server configuration FRAGMENT. Merge into the selected server's
 # trusted configuration; do not replace its storage/TLS/authorization settings.
-# Use the real issuer/public client registered with the chosen IdP.
+# Use the actual distinct IdP issuer/public client registered with that IdP.
+# This is not a host alias for the Hub application authority. Match policy.yaml.
 [server.auth]
-jwt_issuer = ["https://veoveo.example.com/identity"]
+jwt_issuer = ["https://identity.veoveo.example.com"]
 # Keep the installation's actual jwt_audience, resource/permission claims and
 # baseline authorization. A public client ID is not the API token audience.
 

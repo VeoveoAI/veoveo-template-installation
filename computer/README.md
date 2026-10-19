@@ -96,9 +96,12 @@ Review public origin replacements together in `opencode.json`, `policy.yaml`,
 into a valid native Hub control plane, not a second configuration schema: declare
 its public PKCE+refresh client, callback, profile/resource, Work Context and current
 user membership through the existing Hub contracts. Its environment secret
-reference is a locator only. Provisioning authority is a separate trusted native
-OpenShell identity with workspace/provider/sandbox creation rights; the ordinary
-sandbox-only forwarder is insufficient. Never inject that authority into Computers.
+reference is a locator only. Select the [Computer-enabled native control installation](NATIVE_CONTROL.md): one
+new dedicated OpenShell service identity/provider supplies both upstream forwarding
+and Computer provisioning through the same native reference. The ordinary
+sandbox-only forwarder remains unchanged and is insufficient. Native workspace
+creation/global-profile access require the configured platform-admin role plus
+the six scoped permissions; that authority never enters user Computers.
 
 Hub creates workspace-local `computer-hub` from global `vv-computer-hub` and
 `computer-model` from `vv-computer-model`. The user's existing Hub OAuth refresh
@@ -120,6 +123,19 @@ Hub's current route authorization. Installing configuration is not a model call
 or evidence of real inference. Run paid acceptance only after deterministic,
 component and deployed probes pass, with this exact model selected.
 
+Artifact object transfers use Hub-issued upload/download grants and native
+`/usr/bin/curl` from the agent's Bash tool. The `artifact_bytes` policy admits
+only that binary to `objects.veoveo.example.com:443` as unbound TCP, preserving
+end-to-end HTTPS and SigV4 method, authority, path/query and headers without
+HTTP interception or credential injection. Replace this exact authority together
+with Artifact's signing endpoint and verified TLS route; do not add arbitrary
+HTTPS egress or OpenCode itself to this object-byte rule. Hub/model credentials
+must never accompany signed object requests. Keep signed URLs/headers out of
+reports and tracing, use the returned method/URL/required headers unchanged,
+and complete the Hub contract's finalize step where required. Qualify actual
+upload/download byte counts and hashes separately from metadata/MCP success.
+See the [native signed-authority contract](../openshell/REFERENCE.md#native-seaweedfs-https-and-signed-authority).
+
 Lore is different: each user explicitly runs native
 `lore auth login "$VEOVEO_LORE_REMOTE" --no-browser` on first use and completes the
 IdP prompt. `VEOVEO_LORE_REMOTE` is installation instruction input, not a Lore-native
@@ -128,15 +144,30 @@ uses its own persistent token store; later expiry uses native refresh. Existing
 old grants without refresh-client binding require one new login. Neither factory
 tokens nor shared human credentials are injected. [The native OIDC fragment](lore-oidc.example.toml)
 shows server metadata configuration; merge it with the actual server's existing
-claims/audiences/TLS/storage and registered public client. Review native Lore's
-IdP discovery/device/token host egress in `policy.yaml` too. The example public
-issuer and private URI are not receipts that those endpoints exist or are live.
+claims/audiences/TLS/storage and registered public client. The example uses the
+distinct external IdP authority `https://identity.veoveo.example.com`, matched in
+`policy.yaml`; the actual Entra issuer uses `login.microsoftonline.com`. Review
+the server-advertised issuer and every discovery/device/token authority before
+selecting exact native Lore TCP egress. Current native policy rejects transparent
+TCP overlapping the Hub's managed MCP authority on the same host/port, even when
+executable selectors differ. Do not introduce a Hub host alias, proxy, broad HTTPS
+rule or interception workaround. The example issuer is a separate IdP selection,
+not an alias for Hub. If the actual issuer shares Hub's authority, this example
+cannot be admitted unchanged; resolve the native policy boundary before rollout.
+The example issuer and private URI are not receipts that those endpoints exist
+or are live.
 
 ## Validation boundary
+
+Changes to `instructions.md` require rebuilding the Computer image because the
+Dockerfile copies it into `/etc/computer`; changing policy alone requires no
+binary rebuild. The signed-transfer instructions in this slice need a new image.
 
 Before promotion, validate the JSON with this fork's native OpenCode Config.Info
 schema after substituting synthetic opaque references; parse the policy through
 native `openshell_policy::parse_sandbox_policy_file` and lint both native profiles.
+Also admit the selected Hub control policy/profile using the exact RPC/binding
+boundary in [NATIVE_CONTROL.md](NATIVE_CONTROL.md).
 Build the image from the reviewed local contexts without inference. Under UID1000,
 check exact binary versions/digests, seeded ownership, writable HOME/XDG paths,
 non-writable `/etc/computer`, and absence of a factory token. A native test-owned

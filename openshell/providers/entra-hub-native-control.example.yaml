@@ -1,0 +1,24 @@
+# Dedicated trusted Hub service identity; never attach to a user Computer.
+id: vv-hub-native-control
+display_name: Entra Hub native control
+credentials:
+  - name: access_token
+    env_vars: [HUB_NATIVE_CONTROL_REFERENCE]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+    refresh:
+      strategy: oauth2_client_credentials
+      token_url: https://login.microsoftonline.com/11111111-1111-4111-8111-111111111111/oauth2/v2.0/token
+      # Use the OpenShell resource App ID URI; .default requests its assigned app roles.
+      # Assign openshell-admin plus exactly workspace:read, workspace:write,
+      # sandbox:read, sandbox:write, provider:read and provider:write. Not openshell:all.
+      scopes: ["api://22222222-2222-4222-8222-222222222222/.default"]
+      refresh_before: 180s
+      max_lifetime: 3600s
+      material:
+        - name: client_id
+          required: true
+        - name: client_secret
+          required: true
+          secret: true

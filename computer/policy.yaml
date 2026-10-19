@@ -31,6 +31,15 @@ network_policies:
           - allow: {method: POST, path: /v1/openai/chat/completions}
     binaries:
       - path: /usr/local/bin/opencode
+  artifact_bytes:
+    # Replace with the exact Artifact signing authority. Keep SigV4 bytes outside
+    # HTTP interception: no credential binding, header injection or URL rewriting.
+    endpoints:
+      - host: objects.veoveo.example.com
+        port: 443
+        protocol: tcp
+    binaries:
+      - path: /usr/bin/curl
   lore:
     # Replace together with VEOVEO_LORE_REMOTE and public CA trust. Native gRPC
     # TLS and the user's own Lore grant remain end-to-end; no factory injection.
@@ -42,11 +51,12 @@ network_policies:
     binaries:
       - path: /usr/local/bin/lore
   lore_identity:
-    # Example issuer host. Use the actual server-advertised issuer and reviewed
-    # discovery/device/token hosts. Native Lore verifies HTTPS; no shared key is
-    # injected and no provider response is interpreted by installation glue.
+    # Distinct IdP authority, not a Hub alias. Use the actual server-advertised
+    # issuer and reviewed discovery/device/token hosts. Transparent TCP cannot
+    # overlap the Hub's managed MCP authority under native policy admission.
+    # Native Lore verifies HTTPS end-to-end; no shared key is injected.
     endpoints:
-      - host: veoveo.example.com
+      - host: identity.veoveo.example.com
         port: 443
         protocol: tcp
     binaries:

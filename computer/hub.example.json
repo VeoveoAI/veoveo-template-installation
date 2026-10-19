@@ -1,15 +1,15 @@
 {
   "computers": {
     "gateway": {
-      "endpoint": "https://gateway.veoveo.example.com/",
-      "certificateAuthority": "/etc/hub/openshell-ca.crt",
-      "bearerEnvironment": "OPENSHELL_COMPUTER_PROVISIONER"
+      "endpoint": "https://host.openshell.internal:17670",
+      "certificateAuthority": "/run/openshell-supervisor-ca/material/ca.crt",
+      "bearerEnvironment": "HUB_NATIVE_CONTROL_REFERENCE"
     },
     "template": {
       "workspace": "installation",
       "name": "computer"
     },
-    "policyFile": "/etc/hub/computer-policy.yaml",
+    "policyFile": "/etc/veoveo/hub/computer-policy.yaml",
     "command": [
       "/bin/sh",
       "-ec",
@@ -40,5 +40,30 @@
       },
       "metadata": {}
     }
-  ]
+  ],
+  "nativeUpstreams": {
+    "gateway": "https://host.openshell.internal:17670",
+    "certificateAuthority": "/run/openshell-supervisor-ca/material/ca.crt",
+    "bearerEnvironment": "HUB_NATIVE_CONTROL_REFERENCE",
+    "bindings": [
+      {
+        "endpoint": "http://time.internal:8800/time/mcp",
+        "workspace": "vv-services",
+        "sandbox": "time",
+        "port": 8800
+      },
+      {
+        "endpoint": "http://artifact.internal:8801/artifact/mcp",
+        "workspace": "vv-services",
+        "sandbox": "artifact",
+        "port": 8801
+      },
+      {
+        "endpoint": "http://media.internal:8802/media/mcp",
+        "workspace": "vv-services",
+        "sandbox": "media",
+        "port": 8802
+      }
+    ]
+  }
 }

@@ -1,0 +1,163 @@
+# Computer-enabled Hub only; replace origins together with computer/hub.example.json.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log, /var/lib/veoveo]
+  read_write: [/tmp, /dev/null]
+network_policies:
+  native_control:
+    endpoints:
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/ForwardTcp
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/ForwardTcp}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/GetProviderProfile
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/GetProviderProfile}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/GetWorkspace
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/GetWorkspace}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/CreateWorkspace
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/CreateWorkspace}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/GetSandboxTemplate
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/GetSandboxTemplate}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/CreateSandboxTemplate
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/CreateSandboxTemplate}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/GetProvider
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/GetProvider}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/CreateProvider
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/CreateProvider}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/GetSandbox
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/GetSandbox}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/CreateSandbox
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/CreateSandbox}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/StartSandbox
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/StartSandbox}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/StopSandbox
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/StopSandbox}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/ConfigureProviderRefresh
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/ConfigureProviderRefresh}
+      - host: host.openshell.internal
+        port: 17670
+        path: /openshell.v1.OpenShell/RotateProviderCredential
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: vv-hub-native-control}
+        rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/RotateProviderCredential}
+    binaries:
+      - path: /usr/local/bin/veoveo-hub
+  browser_code_exchange:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /oauth/token
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: POST, path: /oauth/token}
+    binaries:
+      - path: /usr/local/bin/veoveo-hub
+  browser_identity_exchange:
+    endpoints:
+      - host: auth.localhost
+        port: 8443
+        path: /realms/veoveo/protocol/openid-connect/token
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: POST, path: /realms/veoveo/protocol/openid-connect/token}
+    binaries:
+      - path: /usr/local/bin/veoveo-hub
+  issuer_keys:
+    endpoints:
+      - host: host.openshell.internal
+        port: 8443
+        path: /realms/veoveo/protocol/openid-connect/certs
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /realms/veoveo/protocol/openid-connect/certs}
+    binaries:
+      - path: /usr/local/bin/veoveo-hub
+  database:
+    endpoints:
+      - host: host.openshell.internal
+        port: 5432
+        protocol: tcp
+    binaries:
+      - path: /usr/local/bin/veoveo-hub
