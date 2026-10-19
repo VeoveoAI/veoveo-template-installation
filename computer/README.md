@@ -72,12 +72,14 @@ openshell profile import --global --from computer/providers
 openshell sandbox template create computer --workspace installation \
   --image "$COMPUTER_IMAGE_ID" --cpu 2 --memory 4Gi \
   --driver-config-json '{"docker":{"persistent_workspace":true}}' \
-  --env VEOVEO_LORE_REMOTE=grpcs://vv-lore.internal:41337
+  --env VEOVEO_LORE_REMOTE=grpcs://host.openshell.internal:41337
 ```
 
-Resolve the private Lore service name through the native supervisor's trusted
-resolver before use; see [the endpoint requirements](LORE_HUB.md). Replace it only
-with a consistently configured, certified installation endpoint. The template
+The trusted Compose Lore service publishes only host loopback port 41337; native
+OpenShell's backend host-gateway pin supplies this hostname without a host DNS
+edit. Require the matching Lore leaf DNS SAN and existing CA trust before use;
+see [the endpoint requirements](LORE_HUB.md). Replace the endpoint only as a
+consistent installation input. The template
 supplies image/environment/resources/driver settings only. Hub clones
 it into the owner's workspace, supplies nonsecret `PUBLIC_BASE_PATH`, and creates
 with `openshell.nvidia.com/retention=persistent`, the fixed command from

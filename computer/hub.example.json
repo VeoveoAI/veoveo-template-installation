@@ -82,7 +82,7 @@
         "id": "primary",
         "resourceName": "lore",
         "audience": "https://veoveo.example.com/resources/lore",
-        "endpoint": "grpcs://vv-lore.internal:41337",
+        "endpoint": "grpcs://host.openshell.internal:41337",
         "authorizationServer": "hub",
         "policyVersion": "installation",
         "loginScopes": [

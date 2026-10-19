@@ -150,7 +150,7 @@ openshell sandbox exec --workspace vv-time-source --no-tty --no-login-shell \
   mkdir /sandbox/time-source
   cd /sandbox/time-source
   lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" \
-    repository create --id "$TIME_REPOSITORY_ID" grpcs://vv-lore.internal:41337/time
+    repository create --id "$TIME_REPOSITORY_ID" grpcs://host.openshell.internal:41337/time
   tar -xf /sandbox/time-source.tar
   lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" stage --scan .
   lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" \
@@ -245,7 +245,7 @@ native exposure; the policy's local origin is not a substitute for that check.
 ## Preflight, then one bounded build job
 
 With the exact image/policy/providers, manually clone `TIME_LORE_REVISION` from
-`grpcs://vv-lore.internal:41337/TIME_REPOSITORY_ID` using the same `--identity` and opaque
+`grpcs://host.openshell.internal:41337/TIME_REPOSITORY_ID` using the same `--identity` and opaque
 `--access-token` inputs, followed by `repository clone URL PATH --revision HASH`.
 Set `CARGO_HOME=/sandbox/cargo` and `CARGO_NET_GIT_FETCH_WITH_CLI=true` **after** any
 login-shell profile. Keep the installed `RUSTUP_HOME=/usr/local/rustup`. Use a fresh
@@ -283,7 +283,7 @@ openshell sandbox exec --workspace vv-time-build --no-tty --no-login-shell \
   export RUSTUP_HOME=/usr/local/rustup
   export CARGO_TARGET_DIR=/sandbox/time-job-target
   lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" \
-    repository clone "grpcs://vv-lore.internal:41337/$TIME_REPOSITORY_ID" \
+    repository clone "grpcs://host.openshell.internal:41337/$TIME_REPOSITORY_ID" \
     /sandbox/time-job --revision "$TIME_LORE_REVISION"
   cd /sandbox/time-job
   cargo build --locked --release --bin veoveo-mcp-time

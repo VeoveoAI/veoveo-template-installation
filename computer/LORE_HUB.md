@@ -47,17 +47,33 @@ management identity is independent of all Lore users and factory grants.
 | OIDC `client_id = "lore-computer"` | Dedicated secretless public registration with device, refresh and public exchange grants |
 | OIDC `scopes = ["lore:login"]` | Finite deployment/client scopes `lore:login` plus native-added `offline_access` |
 | OIDC `scope_template = "lore-repo-{id}"` | Deployment `scopeTemplate`; factory profile's exact target scope |
-| Private `grpcs://vv-lore.internal:41337` | Deployment `endpoint`, native server certificate SAN, policy hostname and `VEOVEO_LORE_REMOTE` |
+| Private `grpcs://host.openshell.internal:41337` | Deployment `endpoint`, native server certificate SAN, policy hostname and `VEOVEO_LORE_REMOTE` |
 
-The private service name must resolve to `10.231.10.10` through the native
-OpenShell supervisor's trusted DNS resolver. The Compose network alias alone does
-not establish that host-side resolution, and workload `/etc/hosts` entries do not
-configure native policy DNS. Select and verify the installation's private DNS
-record before starting clients. Keep the exact `allowed_ips: [10.231.10.10]`
-restriction in Computer and factory policies, and keep the endpoint hostname,
-certificate DNS SAN, CLI remote and deployment data aligned. Hub derives the
-signed native `root_domains` recipient from the deployment endpoint hostname.
-This does not change the issuer, audience or repository grants.
+The trusted Compose Lore service publishes only `127.0.0.1:41337:41337`.
+Native OpenShell policy DNS maps `host.openshell.internal` to the backend-provided
+host-gateway address; the trusted Docker supervisor reaches the host loopback
+publication. No host `/etc/hosts` edit, workload Docker network attachment or
+separate DNS service is required. Keep the policy's exact hostname, port and
+executable. Remove the old Lore-container `allowed_ips: [10.231.10.10]`: native
+host-gateway pinning takes precedence over that field. Do not replace it with a
+loopback CIDR; ordinary `allowed_ips` rejects loopback ranges. The native backend
+pin admits only its own host address, not arbitrary loopback destinations.
+
+The Lore TLS leaf must contain **DNS SAN `host.openshell.internal`**, signed by the
+existing trusted installation CA. Extend the current trusted OpenSSL leaf issuance
+inputs with that DNS SAN while preserving the existing SANs, CA and private key
+custody. A certificate valid only for `vv-lore.internal` or `10.231.10.10` is
+insufficient for this client URI. Preserve the mounted certificate/key paths
+(`vv-lore.internal.crt`/`.key` may retain their filenames); no new CA or image trust
+change is needed when the existing issuer CA is unchanged. The Compose-only alias
+`vv-lore.internal` and private address `10.231.10.10` remain internal service data.
+
+Keep the endpoint hostname, certificate DNS SAN, CLI remote and template input
+aligned. Hub derives the signed native `root_domains` recipient from its live
+`lore.deployments[].endpoint` hostname. Publish that endpoint through the existing
+live control-plane API; do not replace unrelated catalog data. This changes neither
+the OAuth issuer/audience nor repository grants. Native raw TCP preserves Lore's
+gRPC/TLS bytes; this does not use OpenShell's HTTP service-exposure route.
 
 The `urc-{id}` native resource-ID format and `lore-repo-{id}` exchange selector
 are separate fields. Both are installation data; exactly one canonical lowercase

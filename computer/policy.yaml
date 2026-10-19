@@ -41,13 +41,13 @@ network_policies:
     binaries:
       - path: /usr/bin/curl
   lore:
-    # Resolve this private name through the native supervisor's trusted resolver.
+    # Native host-gateway pin reaches Lore's host-loopback publication only.
+    # Keep the exact port and binary; do not add an obsolete container allowed_ips.
     # Replace together with VEOVEO_LORE_REMOTE and public CA trust. Native gRPC
     # TLS and the user's own Lore grant remain end-to-end; no factory injection.
     endpoints:
-      - host: vv-lore.internal
+      - host: host.openshell.internal
         port: 41337
-        allowed_ips: [10.231.10.10]
         protocol: tcp
     binaries:
       - path: /usr/local/bin/lore

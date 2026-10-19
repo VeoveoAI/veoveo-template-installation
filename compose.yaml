@@ -221,6 +221,8 @@ services:
       additional_contexts:
         lore-source: ./state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3
         ca: ./tls/ca
+    ports:
+    - 127.0.0.1:41337:41337
     networks:
       vv-local:
         ipv4_address: 10.231.10.10
