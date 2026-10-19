@@ -81,12 +81,13 @@ reading repository contents still requires its native grant. No new human
 permission policy or issuer registration is introduced here.
 
 The obsolete `server.auth.identity_claim = "sub"` setting is removed from the
-public template. `configure-lore` also removes that exact default from generated
-configuration on its next explicit run; it refuses a nondefault value for review.
-Upstream ignores this removed key and natively selects `identity`, then its
-namespaced alias, then `sub`. Existing factory claim mappers supply no identity
-override, so their stable subject remains the identity. Resource claims, catalog
-mode, native branch protection and trusted factory assignments are preserved.
+public template. Upstream ignores this removed key and natively selects `identity`,
+then its namespaced alias, then `sub`. During the authorized cutover, remove that
+one obsolete line from existing private configuration and verify that all other
+parsed TOML values are unchanged. No automatic configuration migration is needed.
+Existing factory claim mappers supply no identity override, so their stable subject
+remains the identity. Resource claims, catalog mode, native branch protection and
+trusted factory assignments are preserved.
 
 Upgrade the host CLI, images and any existing local Lore background service
 as a coordinated set. Upstream changed client/service IPC from JSON to bitcode

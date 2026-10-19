@@ -197,20 +197,6 @@ class ConfigureLoreTests(unittest.TestCase):
             self.invoke('--client-id', 'vv-lore-a', '--repository-id', REPOSITORY)
         self.assertEqual(self.issuer.clients, {})
 
-    def test_obsolete_identity_setting_is_removed_without_changing_factory_subject_or_grants(self):
-        self.named('--assigned-branch-id', BRANCH)
-        client = copy.deepcopy(self.state()['clients']['time'])
-        mappers = copy.deepcopy(self.issuer.mappers)
-        path = self.root / 'state/openshell/lore-direct/server.toml'
-        path.write_text(path.read_text() + '\n[server.auth]\nidentity_claim = "sub"\nresource_claim = "resources"\n')
-        self.named()
-        self.assertEqual(self.state()['clients']['time'], client)
-        self.assertEqual(self.issuer.mappers, mappers)
-        auth = tomllib.loads(path.read_text())['server']['auth']
-        self.assertNotIn('identity_claim', auth)
-        self.assertEqual(auth['resource_claim'], 'resources')
-        self.assertEqual(self.assignments()[client['subject']]['branch'], BRANCH)
-
     def test_explicit_branch_change_retains_unrelated_tables_and_is_idempotent(self):
         self.named('--assigned-branch-id', BRANCH)
         directory = self.root / 'state/openshell/lore-direct'
@@ -223,28 +209,6 @@ class ConfigureLoreTests(unittest.TestCase):
         parsed = tomllib.loads(before)
         self.assertEqual(parsed['server']['auth']['jwt_typ'], 'at+jwt')
         self.assertEqual(next(iter(self.assignments().values()))['branch'], '6' * 32)
-
-
-class NativeIdentityConfigurationTests(unittest.TestCase):
-    def test_retires_only_the_default_obsolete_identity_setting(self):
-        server = ('[hooks.factory_branch]\nenabled = true\nassignments = {}\n'
-                  '[server.auth]\njwt_issuer = "https://issuer.example"\nidentity_claim = "sub" # obsolete\n'
-                  'resource_claim = "resources"\nrepository_catalog = "baseline"\n'
-                  '[server.auth.oidc]\nclient_id = "lore-cli"\nscope_template = "lore-repo-{id}"\n')
-        updated = helper.native_identity_configuration(server)
-        self.assertNotIn('identity_claim', updated)
-        wanted = tomllib.loads(server)
-        wanted['server']['auth'].pop('identity_claim')
-        self.assertEqual(tomllib.loads(updated), wanted)
-        self.assertEqual(helper.native_identity_configuration(updated), updated)
-
-    def test_nondefault_identity_selection_requires_review(self):
-        with self.assertRaisesRegex(ValueError, 'issuer-claim review'):
-            helper.native_identity_configuration('[server.auth]\nidentity_claim = "oid"\n')
-
-    def test_configuration_without_the_obsolete_key_is_unchanged(self):
-        server = '[hooks.factory_branch]\nenabled = true\nassignments = {}\n'
-        self.assertEqual(helper.native_identity_configuration(server), server)
 
 
 if __name__ == '__main__':
