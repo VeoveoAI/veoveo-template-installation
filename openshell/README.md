@@ -74,7 +74,15 @@ docker build -f factory/Lore.Dockerfile --target runtime \
 )
 ```
 
-This adds only the public installation CA to the normal trust store. Lore discovers
+Factory and Lore builds install the reviewed public `*.crt` files from the trusted
+`ca` named context through the normal system trust update, one certificate per file.
+A single `ca.crt` input remains valid. The context must contain public CA certificates
+only, never private keys or operator state. Linux Lore can trust its own new private
+service CA alongside the existing public root that verifies storage TLS without
+replacing storage certificates. Computer inherits Factory trust. These trust changes
+require new images; existing image receipts retain their original scope. The
+Supervisor recipe below retains its separately selected single `ca.crt` input.
+This adds only public installation trust to the normal trust store. Lore discovers
 JWKS from its single configured issuer. There is no adapter issuer/key override,
 auth-service URL or custom catalog. Keep its private gRPC address, certificate IP
 SAN and approved policy endpoint aligned (`grpcs://10.231.10.10:41337` locally).

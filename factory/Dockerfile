@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
 RUN cargo install --locked --git https://github.com/VeoveoAI/veoveo-hub-sdk \
     --rev a1d9d653ae3d723821cdeeab92f4a67acdca39ce --root /usr/local veoveo-hub-sdk-cli
 COPY --from=lore --chmod=0755 /usr/local/bin/lore /usr/local/bin/lore
-COPY --from=ca --chmod=0644 ca.crt /usr/local/share/ca-certificates/veoveo-installation.crt
+# The trusted named context contains reviewed public CA certificates only, one per file.
+COPY --from=ca --chmod=0644 /*.crt /usr/local/share/ca-certificates/
 RUN (id sandbox >/dev/null 2>&1 || useradd --create-home --uid 1000 --shell /bin/bash sandbox) \
     && find / -xdev -type f -perm /6000 -exec chmod ug-s {} + \
     && update-ca-certificates >/dev/null \

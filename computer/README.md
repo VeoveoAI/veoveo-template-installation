@@ -47,8 +47,17 @@ docker image inspect --format '{{.Id}}' veoveo/computer:reviewed
 
 The Dockerfile has no fallback base image, package download or runtime self-update.
 Promote the inspected immutable image identity, never the example tag, into the
-trusted native workload template. The inherited factory CA must trust both the
-private Lore service and the selected public/native endpoints.
+trusted native workload template. The inherited factory trust must cover both the
+private Lore service and the selected public/native endpoints. The Factory and
+Lore `ca` named contexts contain only reviewed public `*.crt` files, exactly one
+certificate per file. For the Linux private Lore endpoint, include its new
+installation-specific Lore CA and the existing public CA that verifies native
+storage TLS. Private CA/server keys stay on the trusted host, outside all build
+contexts. The Dockerfiles install these public certificates through the standard
+system trust update; Computer inherits Factory trust. A context containing only
+`ca.crt` remains valid. Rebuild Lore, Factory and Computer when this trust input
+changes; do not replace the storage server certificate or export a native gateway
+private key. Supervisor's separate build recipe is unchanged by this input seam.
 
 ## State and native governance
 

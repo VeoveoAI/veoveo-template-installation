@@ -35,8 +35,9 @@ RUN apt-get update \
 COPY --from=build /out/lore /out/loreserver /usr/local/bin/
 # The server's shipped defaults, then the installation's settings in local.toml.
 COPY --from=build /build/lore-server/config/default.toml /etc/lore/config/default.toml
-# Public trust only; private issuer/signing material never enters this image.
-COPY --from=ca /ca.crt /usr/local/share/ca-certificates/veoveo-installation.crt
+# The trusted named context contains reviewed public CA certificates only, one per file.
+# Private issuer/signing material never enters this image.
+COPY --from=ca --chmod=0644 /*.crt /usr/local/share/ca-certificates/
 RUN update-ca-certificates
 ENV LORE_CONFIG_PATH=/etc/lore/config
 EXPOSE 41337/tcp
