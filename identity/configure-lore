@@ -117,6 +117,28 @@ def client_configuration(previous, public, client_id):
                                  'client_credentials.use_refresh_token': 'false', 'pkce.code.challenge.method': 'S256'}}
 
 
+def native_identity_configuration(server):
+    """Retire only the obsolete default setting; native tokens still choose identity/sub."""
+    parsed = tomllib.loads(server)
+    auth = parsed.get('server', {}).get('auth', {})
+    if 'identity_claim' not in auth:
+        return server
+    if auth['identity_claim'] != 'sub':
+        raise ValueError('obsolete nondefault identity_claim requires issuer-claim review')
+    def normalize(section):
+        value, count = re.subn(r'(?m)^identity_claim\s*=.*(?:\n|$)', '', section.group())
+        if count != 1:
+            raise ValueError('obsolete identity_claim syntax requires review')
+        return value
+    server, count = re.subn(r'(?m)^\[server\.auth\][^\n]*\n(?:(?!^\[).*(?:\n|$))*', normalize, server)
+    if count != 1:
+        raise ValueError('native auth section requires review')
+    auth.pop('identity_claim')
+    if tomllib.loads(server) != parsed:
+        raise ValueError('unrelated trusted authentication configuration changed')
+    return server
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fixture', default='state/openshell/factory-hook-fixture.json')
@@ -140,7 +162,7 @@ def main():
     server_path = directory / 'server.toml'
     server = server_path.read_text() if server_path.exists() else (ROOT / 'lore/server.toml').read_text()
     # Validate trusted configuration before touching the issuer.
-    tomllib.loads(server)
+    server = native_identity_configuration(server)
     if options.client_id:
         roles = time_request(options, clients)
         repositories = [roles[0][1]]

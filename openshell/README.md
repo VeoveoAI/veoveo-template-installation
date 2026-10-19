@@ -11,7 +11,13 @@ local binaries; deliberately select and requalify the reviewed source afterward.
 
 The direct Lore path is **IdP issuance → OpenShell renewal/injection → Lore native
 authorization**. Veoveo supplies trusted configuration and branch assignments.
-The build commands below select the patched sources directly. Native OpenShell
+The build commands below select reviewed Lore source at
+`8be7e6e69216c9c974f12027b35910ad1d3fd708`, merging upstream
+`ec6bdc2195753b50f70696d367788b4bc8d08964` (0.10.2-nightly). Native OIDC
+discovery, device login and partition exchange come from upstream. Human token
+refresh remains unimplemented there; this source update does not qualify that flow.
+Only the existing opaque-token factory integration and configured push hook remain
+Veoveo additions. Native OpenShell
 configuration selects runtime images; the [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md)
 records current acceptance. Local image tags are not registry releases.
 
@@ -50,14 +56,14 @@ Agents cannot edit this state. The tracked `lore/server.toml` is the public temp
 Run the following blocks in Bash from the installation root with the maintained
 `../lore` and `../openshell` repositories available. Each block refuses an existing
 source destination and stops on export or build failure. Existing source exports
-are left untouched. Build the server from its hook-enabled revision:
+are left untouched. Build the server from the reviewed hook-enabled candidate:
 
 ```bash
 (
 set -euo pipefail
 mkdir -p state/openshell
 mkdir state/openshell/lore-hook-source
-git -C ../lore archive cb2c191feb2d317f989af40be287c2d6acb7fb4f \
+git -C ../lore archive 8be7e6e69216c9c974f12027b35910ad1d3fd708 \
   | tar -x -C state/openshell/lore-hook-source
 docker build -f factory/Lore.Dockerfile --target runtime \
   --build-context lore-source=./state/openshell/lore-hook-source \
@@ -69,9 +75,32 @@ This adds only the public installation CA to the normal trust store. Lore discov
 JWKS from its single configured issuer. There is no adapter issuer/key override,
 auth-service URL or custom catalog. Keep its private gRPC address, certificate IP
 SAN and approved policy endpoint aligned (`grpcs://10.231.10.10:41337` locally).
-Native denied-baseline catalog listing is empty; provide known assigned URLs.
+Native denied-baseline catalog listing is empty; provide known assigned URLs. Native
+repository lookup now lets a verified caller resolve an ID/name/metadata hash;
+reading repository contents still requires its native grant. No new human
+permission policy or issuer registration is introduced here.
 
-Build the Lore CLI with the existing auth-only fixes, then package it with OpenCode
+The obsolete `server.auth.identity_claim = "sub"` setting is removed from the
+public template. `configure-lore` also removes that exact default from generated
+configuration on its next explicit run; it refuses a nondefault value for review.
+Upstream ignores this removed key and natively selects `identity`, then its
+namespaced alias, then `sub`. Existing factory claim mappers supply no identity
+override, so their stable subject remains the identity. Resource claims, catalog
+mode, native branch protection and trusted factory assignments are preserved.
+
+Upgrade the host CLI, images and any existing local Lore background service
+as a coordinated set. Upstream changed client/service IPC from JSON to bitcode
+message protocol 2: client and local service must come from the same build, and
+an older running service must stop before the replacement starts. Use the matching
+currently installed CLI for `lore service status` and `lore service stop` before
+replacing it; then use the new CLI for `lore service start` and status. This local IPC
+change is separate from the repository gRPC protocol; qualify the deployed path
+and existing store reopen before claiming upgrade acceptance. Do not use
+`--trust-remote` merely to make a check pass: upstream now trusts local stored
+payloads and verifies remote fetches by default. No data reset or migration is
+performed by these source/build instructions.
+
+Build the Lore CLI from that same candidate, then package it with OpenCode
 and the Rust toolchain selected by `factory/Dockerfile`:
 
 ```bash
@@ -79,7 +108,7 @@ and the Rust toolchain selected by `factory/Dockerfile`:
 set -euo pipefail
 mkdir -p state/openshell
 mkdir state/openshell/lore-client-source
-git -C ../lore archive 162df649366fe6b4c1b10240acf420a8e5ec0822 \
+git -C ../lore archive 8be7e6e69216c9c974f12027b35910ad1d3fd708 \
   | tar -x -C state/openshell/lore-client-source
 docker build -f factory/Lore.Dockerfile --target runtime \
   --build-context lore-source=./state/openshell/lore-client-source \

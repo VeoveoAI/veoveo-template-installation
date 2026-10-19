@@ -7,7 +7,6 @@ assignments = {}
 jwt_issuer = "https://auth.localhost:8443/realms/veoveo"
 jwt_audience = ["lores://vv-lore.internal:41337"]
 jwt_typ = "at+jwt"
-identity_claim = "sub"
 resource_claim = "resources"
 resource_id_claim = "resource_id"
 permission_claim = "permission"
