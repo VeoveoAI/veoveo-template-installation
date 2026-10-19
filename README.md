@@ -4,6 +4,10 @@ A Veoveo installation records approved identity, component revisions and environ
 configuration. Lore owns source/revisions; native OpenShell executes factories and
 managed MCP workloads through its Docker driver.
 
+The selected [Lore storage backend](openshell/LORE_STORAGE.md) uses a dedicated
+schema and login in the existing `veoveo` PostgreSQL database and a dedicated
+SeaweedFS bucket. Its source/deployed qualification precedes the live backend switch.
+
 Factory credentials follow one path: **IdP issuance → native OpenShell renewal and
 injection → native Lore authorization**. Veoveo supplies trusted configuration and
 branch assignments. There is no Veoveo token service, refresh daemon or signer.

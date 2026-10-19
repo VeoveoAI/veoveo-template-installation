@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.27@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # Lore 0.10.2-nightly from the reviewed source pin in openshell/README.md.
-# Native OIDC comes from upstream; retain the minimal opaque-token factory
-# integration and configured pre-push hook. Build the CLI/server together.
+# Native OIDC comes from upstream. The reviewed fork adds native S3/PostgreSQL
+# storage, minimal opaque-token factory integration and the configured pre-push
+# hook. Build the CLI/server together from the same source revision.
 # Every host builds from source, because Lore's arm64 release
 # binaries carry a Neoverse tuning that Apple Silicon does not run.
 FROM rust:1.99.0-trixie@sha256:6ff07edce8775d0f64be7aba9197229407301bddf2054d62c27b541a6238a181 AS build

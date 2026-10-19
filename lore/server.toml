@@ -26,8 +26,20 @@ enabled = false
 cert_file = "/etc/lore/tls/vv-lore.internal.crt"
 pkey_file = "/etc/lore/tls/vv-lore.internal.key"
 
-[immutable_store.local]
-path = "/data"
+[immutable_store]
+mode = "s3_postgres"
 
-[mutable_store.local]
-path = "/data"
+[mutable_store]
+mode = "s3_postgres"
+
+# Resource locks coordinate one owning Lore process, not a multi-server cluster.
+[lock_store]
+mode = "local"
+
+[plugins.s3_postgres]
+postgres_url_env = "LORE_POSTGRES_URL"
+schema = "lore"
+s3_bucket = "lore"
+s3_endpoint_url = "http://vv-seaweedfs.internal:9000"
+s3_region = "us-east-1"
+s3_force_path_style = true

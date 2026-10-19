@@ -207,12 +207,19 @@ services:
     security_opt:
     - no-new-privileges:true
     image: vv-lore:local
+    env_file:
+    - ./state/openshell/lore-direct/storage.env
+    depends_on:
+      vv-postgres:
+        condition: service_healthy
+      vv-seaweedfs:
+        condition: service_started
     build:
       context: .
       dockerfile: factory/Lore.Dockerfile
       target: runtime
       additional_contexts:
-        lore-source: ./state/openshell/lore-hook-source
+        lore-source: ./state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3
         ca: ./tls/ca
     networks:
       vv-local:

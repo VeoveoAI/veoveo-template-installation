@@ -12,12 +12,14 @@ local binaries; deliberately select and requalify the reviewed source afterward.
 The direct Lore path is **IdP issuance → OpenShell renewal/injection → Lore native
 authorization**. Veoveo supplies trusted configuration and branch assignments.
 The build commands below select reviewed Lore source at
-`8be7e6e69216c9c974f12027b35910ad1d3fd708`, merging upstream
+`7785408e70ed302296a24383ae302c3a606e78c3`, based on upstream
 `ec6bdc2195753b50f70696d367788b4bc8d08964` (0.10.2-nightly). Native OIDC
 discovery, device login and partition exchange come from upstream. Human token
 refresh remains unimplemented there; this source update does not qualify that flow.
-Only the existing opaque-token factory integration and configured push hook remain
-Veoveo additions. Native OpenShell
+The existing opaque-token factory integration, configured push hook and native
+[S3 + PostgreSQL storage plugin](LORE_STORAGE.md) are Veoveo additions. The backend
+passes native component conformance against real PostgreSQL and SeaweedFS;
+deployed server, dependency restart and factory qualification remain pending. Native OpenShell
 configuration selects runtime images; the [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md)
 records current acceptance. Local image tags are not registry releases.
 
@@ -54,19 +56,20 @@ Agents cannot edit this state. The tracked `lore/server.toml` is the public temp
 ## Build and provision
 
 Run the following blocks in Bash from the installation root with the maintained
-`../lore` and `../openshell` repositories available. Each block refuses an existing
-source destination and stops on export or build failure. Existing source exports
-are left untouched. Build the server from the reviewed hook-enabled candidate:
+`../lore` and `../openshell` repositories available. The source export refuses an
+existing destination and stops on failure. All build targets reuse that one fresh export;
+existing source exports are left untouched. Build the server from the reviewed
+Lore candidate:
 
 ```bash
 (
 set -euo pipefail
 mkdir -p state/openshell
-mkdir state/openshell/lore-hook-source
-git -C ../lore archive 8be7e6e69216c9c974f12027b35910ad1d3fd708 \
-  | tar -x -C state/openshell/lore-hook-source
+mkdir state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3
+git -C ../lore archive 7785408e70ed302296a24383ae302c3a606e78c3 \
+  | tar -x -C state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3
 docker build -f factory/Lore.Dockerfile --target runtime \
-  --build-context lore-source=./state/openshell/lore-hook-source \
+  --build-context lore-source=./state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3 \
   --build-context ca=./tls/ca -t vv-lore:local .
 )
 ```
@@ -96,23 +99,20 @@ an older running service must stop before the replacement starts. Use the matchi
 currently installed CLI for `lore service status` and `lore service stop` before
 replacing it; then use the new CLI for `lore service start` and status. This local IPC
 change is separate from the repository gRPC protocol; qualify the deployed path
-and existing store reopen before claiming upgrade acceptance. Do not use
+and selected-backend fresh-process reopen before claiming upgrade acceptance. Do not use
 `--trust-remote` merely to make a check pass: upstream now trusts local stored
 payloads and verifies remote fetches by default. No data reset or migration is
 performed by these source/build instructions.
 
-Build the Lore CLI from that same candidate, then package it with OpenCode
-and the Rust toolchain selected by `factory/Dockerfile`:
+Build the Lore CLI from the same shared source export created above, then package
+it with OpenCode and the Rust toolchain selected by `factory/Dockerfile`:
 
 ```bash
 (
 set -euo pipefail
-mkdir -p state/openshell
-mkdir state/openshell/lore-client-source
-git -C ../lore archive 8be7e6e69216c9c974f12027b35910ad1d3fd708 \
-  | tar -x -C state/openshell/lore-client-source
+test -f state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3/Cargo.toml
 docker build -f factory/Lore.Dockerfile --target runtime \
-  --build-context lore-source=./state/openshell/lore-client-source \
+  --build-context lore-source=./state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3 \
   --build-context ca=./tls/ca -t veoveo/lore-client:local .
 docker build -f factory/Dockerfile \
   --build-context lore=docker-image://veoveo/lore-client:local \
@@ -192,13 +192,15 @@ For disposable qualification only, export the offline seeder:
 
 ```sh
 docker build -f factory/Lore.Dockerfile --target fixture \
-  --build-context lore-source=./state/openshell/lore-hook-source \
+  --build-context lore-source=./state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3 \
   --build-context ca=./tls/ca \
   --output type=local,dest=./state/openshell/factory-hook-bin .
 ```
 
-Stop the owning Lore server and take a consistent private volume backup before
-opening its stores. Run `factory-branch-fixture /data` with that volume in an
+For the fresh disposable backend cutover, follow [native Lore storage](LORE_STORAGE.md).
+Stop the owning Lore server before opening its stores. The plugin-capable fixture
+takes a native configuration directory containing `local.toml`, not `/data`, and
+uses the configured backend with trusted storage credentials. Run it in an
 isolated operator container. It creates fresh repo/branch IDs, valid empty heads
 and protected `main`. Save the final JSON line privately as
 `state/openshell/factory-hook-fixture.json`; it is not a server/agent bootstrap API.
