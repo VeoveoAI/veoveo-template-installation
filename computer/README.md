@@ -21,7 +21,8 @@ Build for one explicit target platform; all three contexts must match it.
   runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
   online-only UI. Use the final reviewed native platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
-- Native OpenShell gateway/driver: `90577de61bbea00c389b0920cdb931dcc9e58b1a`.
+- Native OpenShell gateway/driver: `ea9b680dc780c1f24fd0cbf703cbfaf9b04f2d40`,
+  including persistent working storage and connected-target forwarding readiness.
   Select matching reviewed runtime/supervisor images through native configuration.
 
 Source commits and local builds do not establish live deployment or user/model
