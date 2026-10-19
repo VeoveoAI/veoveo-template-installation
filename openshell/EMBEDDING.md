@@ -2,7 +2,7 @@
 
 This guide configures standalone embedding generation with native OpenShell policy, provider custody, mounts and the Hub binding. Components own their contracts and checks; the installation owns trusted placement and configuration. See the [architecture](https://github.com/VeoveoAI/veoveo-docs/blob/main/LORE_OPENSHELL_INTEGRATION.md#embedding-generation) and [execution plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md#embedding-generation--2026-10-19) for measured deployment evidence and current gates.
 
-Linux deployed acceptance remains pending. Keep prerequisite probes, component checks and deployed qualification separate, following the rollout order: qualify Mac, merge/push reviewed main, then deploy/qualify Linux. No Knowledge, vector database, pgvector or Compose application profile is included.
+Mac MPS and Linux CUDA deployed qualification passed in the requested order: Mac qualification, reviewed main merge/push, then Linux deployment and qualification. Evidence covers real Hub inference, token accounting, capacity, access denial, numerical parity and persistent state across MCP/runtime restarts; component fixtures are reported separately. This scope is embedding generation; Knowledge, vector storage/search and PostgreSQL extensions are separate work.
 
 ## Inspect before changing retained state
 
