@@ -23,11 +23,15 @@
   a machine-token endpoint, new signer or refresh daemon. Historical Desktop results
   are not active operator instructions or completion gates.
 - Never commit credentials. `.env`, TLS/private state and local backups remain
-  ignored and excluded from build contexts. Protect durable data independently of
-  disposable sandbox lifecycle.
+  ignored and excluded from build contexts.
+- During rapid development, application data is disposable for authorized resets
+  on breaking contracts; do not add migrations, backward compatibility or backups
+  merely to retain development data. Retain source and trusted installation/identity
+  configuration as rebuild inputs. Preserve normal durable ownership across routine
+  sandbox lifecycle; revisit retention when production data enters scope.
 - Use upstream bootstrap images pinned by digest. Verify releases when changing pins.
   Committed public origins use `https://veoveo.example.com`.
 - Validate changed bootstrap configuration and the focused new path on macOS.
   The reference Linux deployment, Entra and signed Media webhook are now in scope
-  under the execution plan. Preserve remote state; GPU/CUDA qualification is separate.
+  under the execution plan. GPU/CUDA qualification is separate.
 - Commit coherent changes without AI attribution.
