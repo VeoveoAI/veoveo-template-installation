@@ -14,14 +14,9 @@ Build for one explicit target platform; all three contexts must match it.
 
 - Factory toolchain: installation commit `71e2c0b` or a reviewed descendant retaining
   the deterministic factory boundary. Select its inspected immutable image ID.
-- Native Lore: source commit `b32265924ccf1d3c09de8f76ea4eecc8c2562b05` (direct exact repository
-  role grants, native OIDC refresh over `821da217`, storage base `7785408e`). Export
-  this reviewed source into the existing [Lore Dockerfile](../factory/Lore.Dockerfile)
-  `lore-source` context and select the trusted CA context; build CLI and server
-  together. Use the resulting immutable image ID for the server and Computer's
-  Lore context. Earlier built `821da217` image receipts do not include direct-role
-  support; new native Lore and Computer image builds remain required. A local
-  reviewed commit does not imply it is published in upstream Git history.
+- Native Lore: source commit `821da21710a9085797dc8a9d98955c1f3af1c389` (native OIDC refresh over storage base
+  `7785408e`). Build with the existing [Lore Dockerfile](../factory/Lore.Dockerfile)
+  and the selected source/CA named contexts. Use the resulting immutable image ID.
 - OpenCode: source commit `376324a9fe6870e6e9825e97bcd96d4948d84d5a`, including
   runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
   online-only UI. Use the final reviewed native platform package directory, with
@@ -158,11 +153,7 @@ uses its own persistent token store; later expiry uses native refresh. Existing
 old grants without refresh-client binding require one new login. Neither factory
 tokens nor shared human credentials are injected. [The native OIDC fragment](lore-oidc.example.toml)
 shows server metadata configuration; merge it with the actual server's existing
-claims/audiences/TLS/storage and registered public client. For the separate native
-Entra direct-role profile, follow [LORE_ENTRA.md](LORE_ENTRA.md) and
-[lore-entra.example.toml](lore-entra.example.toml): distinct API/public CLI,
-assigned exact repository roles, and a signed recipient claim. The source pin above includes
-that native mode; matching image builds and actual tenant acceptance remain required. The example uses the
+claims/audiences/TLS/storage and registered public client. The example uses the
 distinct external IdP authority `https://identity.veoveo.example.com`, matched in
 `policy.yaml`; the actual Entra issuer uses `login.microsoftonline.com`. Review
 the server-advertised issuer and every discovery/device/token authority before
