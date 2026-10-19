@@ -132,10 +132,14 @@ docker volume create --label openshell.ai/sandbox-attachable=true \
   --label openshell.ai/sandbox-attachable-workspace=vv-services vv-media-provider-config
 ```
 
-Inspect labels and contents first. Inventory the legacy Media key and migration
-checksums before generating another key or changing schema state. If a key exists,
-adopt only `keys/server-key.p8` into `vv-media-state`, preserving its public identity,
-mode 0600 and UID 10001 ownership. The writable state survives sandbox replacement.
+Inspect labels and contents first. Ordinary sandbox replacement preserves the
+approved `keys/server-key.p8` in `vv-media-state`, mode 0600 and UID 10001 ownership.
+For an authorized breaking-contract development cutover, reset disposable database
+and Task state; do not reconcile legacy migration checksums or add compatibility
+for old results. Keep trusted installation inputs, and follow the
+[fresh reference preparation](REFERENCE.md#fresh-bootstrap-and-retired-reference-keys)
+when retiring an installation. Writable service state survives routine sandbox
+replacement.
 Configuration is directory 0700/file 0600. [Media](media-mounts.json) mounts only
 `vv-media-config` read-only, while [the fixture](media-provider-mounts.json) mounts
 only its separate `vv-media-provider-config` read-only at the same component path.

@@ -3,9 +3,12 @@
 These files prepare the existing native Hub → Time contract. They do not deploy
 services or establish application, renewal, database or restart acceptance. Use the
 [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md#subsequent-adoption)
-for those gates. Preserve the existing databases, legacy schemas and server data.
-Hub creates its own `hub` schema; this preparation performs no database migration,
-reset or rename.
+for those gates. Ordinary reruns preserve application state. During the current
+development phase, an authorized breaking-contract cutover resets disposable
+application data and qualifies the matched stack from fresh state; it does not
+require legacy migrations or backups. See the [fresh reference preparation](REFERENCE.md#fresh-bootstrap-and-retired-reference-keys).
+Hub creates its own `hub` schema; this preparation helper performs no database
+migration, reset or rename.
 
 ## Trusted identity preparation
 

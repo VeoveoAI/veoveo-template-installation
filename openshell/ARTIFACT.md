@@ -9,12 +9,13 @@ source templates and successful builds alone prove no deployed behavior.
 ## Trusted preparation
 
 Select the exact reviewed Artifact runtime image ID and matching test artifact.
-The runtime runs as UID 10001. Before first startup inspect existing Artifact state,
-including the legacy `vv-local_vv-mcp-artifact` volume. Adopt the existing
-`keys/server-key.p8` privately into the approved state volume; verify its public
-JWK thumbprint before/after. Do not generate a replacement key or mount the old
-operator/application directory wholesale. Retain the existing `artifact` database
-schema and all object data. Artifact obtains its own PostgreSQL login through Hub
+The runtime runs as UID 10001. Ordinary restarts retain the approved service key,
+`artifact` schema and object data. An authorized development cutover instead resets
+disposable application state and starts current migrations on a fresh database;
+legacy key adoption, history migrations and backups are not prerequisites. Retain
+trusted installation inputs and use the [fresh reference preparation](REFERENCE.md#fresh-bootstrap-and-retired-reference-keys)
+when replacing a retired installation. Never mount an operator/application
+directory wholesale. Artifact obtains its own PostgreSQL login through Hub
 registration and migrates only its own schema.
 
 Use the existing SeaweedFS 4.48 native identity/IAM interfaces to provision a dedicated
@@ -23,8 +24,10 @@ credential belongs to trusted bootstrap administration; do not copy it into
 Artifact. Before activation verify that the bootstrap administrator remains usable,
 the service can perform the bucket/object/multipart operations Artifact requires,
 and it is refused access to an unrelated bucket and administrative identity APIs.
-Preserve existing identities and data. Credential adoption/provisioning is a trusted
-operator operation, not part of `configure-hub` or an agent factory.
+Ordinary reruns preserve existing identities and data. A SeaweedFS development
+reset also removes its IAM state: reprovision the dedicated Artifact identity and
+bucket policy before starting the fresh service. Credential provisioning is a
+trusted operator operation, not part of `configure-hub` or an agent factory.
 
 SeaweedFS 4.48's `s3.user.provision -role=readwrite` preset alone is insufficient:
 Artifact also initializes the bucket/lifecycle and manages multipart uploads.
