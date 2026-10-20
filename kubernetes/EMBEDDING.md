@@ -299,18 +299,25 @@ service-storage or existing application file is changed by these inputs.
 Then separately prove native GPU allocation/actual CUDA forwards, read-only cache
 and token files, registration/discovery, Artifact byte identity, ordered multimodal
 vectors/coverage/tokens, usage, real ACL refusal, composition and service restart
-recovery. Reuse frozen media/options/8192 recipes and MPS baselines. The checks
-follow the coordinator's
+recovery. Reuse the frozen media/options/8192 recipes and the six retained native
+Linux outputs for matching deployed Linux comparisons. Follow the coordinator's
 [Linux CUDA qualification decision](../../veoveo-docs/OPENSHELL_HARDCUT_PLAN.md#multimodal-embedding-replacement--2026-10-19).
-Identical-feature numerical comparison retains maximum component difference
-0.0001 and cosine 0.9999. Native cross-platform cases retain exact source/model/
-settings, coverage, tokens, cardinality/dimensions, finite normalized vectors and
-actual full-model GPU placement, with cosine at least 0.9999; still report their
-maximum component difference and original comparison verdict. Deployed Linux
-calls additionally meet both original numerical thresholds against retained
-native Linux baselines. The original native failure remains recorded; the
-controlled pass proves one joint full-tower input only. This explicit acceptance
-design correction follows observed different native video inputs and changes no
-serving transform, precision or threshold number. Preserve failed attempts
-and never replay ambiguous inference automatically. Component checks, disposable
-CUDA qualification, native K3s deployment and final client acceptance are distinct.
+
+All six native CUDA outputs are now collected, with source/model/settings,
+coverage, tokens, cardinality/dimensions, finite normalized vectors and actual
+full-model GPU placement checked. Their original strict cross-platform numerical
+comparisons remain failed. One controlled identical-feature experiment passes
+maximum component difference 0.0001 and cosine 0.9999; it proves one joint
+full-tower input only. Strict cross-platform numerical equivalence remains
+unqualified. The coordinator's working deployment assumption is native
+preprocessing on each platform; an optional user preference about strict
+cross-platform equivalence is still pending.
+
+Deployed Linux must match the six corresponding retained native Linux outputs at
+both original thresholds: maximum component difference 0.0001 and cosine at least
+0.9999. Other modality/options/composed probes require their native contract and
+authorization checks and explicitly identify any missing Linux numerical
+reference. This preserves the original failed verdicts and changes no serving
+transform, precision or threshold number. Preserve failed attempts and never
+replay ambiguous inference automatically. Component checks, disposable CUDA
+qualification, native K3s deployment and final client acceptance are distinct.
