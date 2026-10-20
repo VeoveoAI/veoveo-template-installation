@@ -128,6 +128,31 @@ Artifact/Lore identities and their existing
 key in applications or replace bucket grants with global permission. Store the
 resulting application credentials only in their own trusted Secret inputs.
 
+After creating those existing IAM identities and before application use, bootstrap
+each bucket once through the native TLS-enabled operator shell. Run inside the
+trusted filer Pod so the chart's mounted `/etc/seaweedfs/security.toml` supplies
+`[grpc].ca` and `[grpc.client].cert`/`.key`; do not disable TLS or print that file
+(it also contains signing material):
+
+```sh
+kubectl -n veoveo-system exec -it seaweedfs-filer-0 -- weed shell \
+  -master=seaweedfs-master.veoveo-system.svc.cluster.local:9333 \
+  -filer=seaweedfs-filer.veoveo-system.svc.cluster.local:8888
+```
+
+At the native shell prompt, substitute the **existing configured IAM identity
+names**, not access-key IDs or newly invented identities:
+
+```text
+s3.bucket.create -name artifacts -owner <existing_artifact_identity_name>
+s3.bucket.create -name lore -owner <existing_lore_identity_name>
+```
+
+The owner must match the identity name in native S3 IAM configuration. This is
+trusted installation bootstrap, not an application `Admin` grant or startup Job.
+The command leaves an already-existing bucket unchanged; rerunning it does not
+reassign ownership. Keep the existing separate bucket policies and credentials.
+
 S3 clients use HTTPS on `seaweedfs-s3.veoveo-system.svc.cluster.local:9000`.
 Internal master/volume/filer data and metadata use their explicit local-path PVCs;
 there is no hostPath. The chart's native network policies admit its peers and the

@@ -56,15 +56,21 @@ private key. Supervisor's separate build recipe is unchanged by this input seam.
 
 ## State and native governance
 
-`WORKDIR=/sandbox` is the native Docker persistent-volume target. `/sandbox/home`
+`WORKDIR=/sandbox` is the native persistent-workspace target. `/sandbox/home`
 contains HOME, XDG config/data/state/cache, OpenCode databases and native Lore's
 credential/config/data directories. `/sandbox/projects` holds working trees. The
-image seeds private UID/GID 1000 paths; native Docker volume copy-up must remain
-enabled to preserve that ownership. `/etc/computer` is immutable installation
+image seeds private UID/GID 1000 paths. Docker preserves them through its configured
+persistent workspace volume and native copy-up. Kubernetes uses OpenShell's
+automatic per-sandbox workspace PVC and native image-workdir seeding with sandbox
+UID/fsGroup ownership; do not add a shared explicit `/sandbox` claim or another
+copy-up Job. `/etc/computer` is immutable installation
 configuration outside the persistent mount. No secret is copied into the image.
 
 The operator imports the global, nonsecret native provider profiles and creates the
-trusted workload template using the existing authenticated native CLI:
+trusted workload template using the existing authenticated native CLI. The example
+below selects the Docker development fixture; Linux Kubernetes uses the
+[automatic-PVC template command](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
+without the Docker driver-config flag:
 
 ```sh
 openshell profile lint --global --from computer/providers

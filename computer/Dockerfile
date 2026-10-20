@@ -16,7 +16,8 @@ ENV HOME=/sandbox/home \
     LORE_AUTH_PATH=/sandbox/home/.config/lore/auth \
     OPENCODE_CONFIG=/etc/computer/opencode.json \
     OPENCODE_DISABLE_MODELS_FETCH=1
-# Native Docker volume copy-up preserves these seeded, private UID-1000 paths.
+# Native Docker copy-up or Kubernetes automatic workspace-PVC seeding preserves
+# these image defaults and private UID-1000 paths; no extra copy-up Job is needed.
 # Trusted configuration stays outside the persistent workdir and is not writable.
 RUN test "$(id -u sandbox)" = 1000 \
     && install -d -o 1000 -g 1000 -m 0700 /sandbox /sandbox/home /sandbox/projects \

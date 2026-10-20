@@ -41,6 +41,9 @@ factory protected-branch scenario. Create `lore-settings` from the native TOML,
 `lore-server-tls` as a TLS Secret, and `lore-storage` from a private env file with
 exact keys `LORE_POSTGRES_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
 Use `server_lore`, schema/bucket `lore`, and the dedicated native S3 identity.
+Create that bucket once with its existing IAM identity name using the
+[native TLS operator bootstrap](README.md#seaweedfs) before application use; do
+not grant the Lore or Artifact application storage identity `Admin` permission.
 Its PostgreSQL URI uses the Service DNS with `sslmode=verify-full` and
 `sslrootcert=/etc/lore/postgres-ca/postgres-ca.crt`. Create `postgres-client-ca`
 ConfigMap key `postgres-ca.crt` in `veoveo-system` from only the CNPG public CA;
