@@ -3,7 +3,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-client-ca-v1
-  namespace: openshell-veoveo-k3s-vv-control
+  namespace: openshell-openshell-vv-control
   labels:
     openshell.ai/sandbox-attachable: 'true'
     openshell.ai/sandbox-attachable-workspace: vv-control
@@ -19,7 +19,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: seed-postgres-client-ca-v1
-  namespace: openshell-veoveo-k3s-vv-control
+  namespace: openshell-openshell-vv-control
 spec:
   backoffLimit: 0
   template:
@@ -72,7 +72,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-client-ca-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
   labels:
     openshell.ai/sandbox-attachable: 'true'
     openshell.ai/sandbox-attachable-workspace: vv-services
@@ -88,7 +88,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: seed-postgres-client-ca-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
 spec:
   backoffLimit: 0
   template:

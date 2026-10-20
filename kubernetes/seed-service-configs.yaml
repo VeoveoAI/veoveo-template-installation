@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: seed-artifact-config-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
 spec:
   backoffLimit: 0
   template:
@@ -55,7 +55,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: seed-media-config-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
 spec:
   backoffLimit: 0
   template:

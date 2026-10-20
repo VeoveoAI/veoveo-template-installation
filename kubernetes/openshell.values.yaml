@@ -32,7 +32,8 @@ server:
   sandboxUid: 1000
   sandboxGid: 1000
   sandboxJwt:
-    gatewayId: veoveo-k3s
+    # Selects the default managed namespace ID; render matching PVC/Job namespaces.
+    gatewayId: openshell
   tls:
     enableMtls: true
     certSecretName: openshell-server-tls
@@ -48,7 +49,7 @@ gatewayConfig:
   openshell:
     version: 2
   openshell.gateway:
-    name: veoveo-k3s
+    name: openshell
     compute_driver: kubernetes
   openshell.gateway.tcp_forwarding:
     active_per_sandbox: 128

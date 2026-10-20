@@ -3,7 +3,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: time-state-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
   labels:
     openshell.ai/sandbox-attachable: 'true'
     openshell.ai/sandbox-attachable-workspace: vv-services
@@ -19,7 +19,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: artifact-state-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
   labels:
     openshell.ai/sandbox-attachable: 'true'
     openshell.ai/sandbox-attachable-workspace: vv-services
@@ -35,7 +35,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: artifact-config-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
   labels:
     openshell.ai/sandbox-attachable: 'true'
     openshell.ai/sandbox-attachable-workspace: vv-services
@@ -51,7 +51,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: media-state-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
   labels:
     openshell.ai/sandbox-attachable: 'true'
     openshell.ai/sandbox-attachable-workspace: vv-services
@@ -67,7 +67,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: media-config-v1
-  namespace: openshell-veoveo-k3s-vv-services
+  namespace: openshell-openshell-vv-services
   labels:
     openshell.ai/sandbox-attachable: 'true'
     openshell.ai/sandbox-attachable-workspace: vv-services
