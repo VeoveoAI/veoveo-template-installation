@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: veoveo-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshell
+# OpenShell creates and owns its managed workspace namespaces separately.

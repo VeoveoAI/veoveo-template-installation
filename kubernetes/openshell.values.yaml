@@ -1,0 +1,59 @@
+# Maintained OpenShell chart from 846de5fa01234a22827915b3f4e5b9092367078b.
+# REQUIRED private override: all three fork image registry/repository/digests,
+# OIDC issuer/audience/claim mappings, and installation gateway name if changed.
+fullnameOverride: openshell
+replicaCount: 1
+workload:
+  kind: deployment
+imagePullSecrets:
+  - name: registry-pull
+gateway:
+  image:
+    digest: REPLACE_WITH_GATEWAY_SHA256
+supervisor:
+  image:
+    digest: REPLACE_WITH_SUPERVISOR_SHA256
+sandboxRuntime:
+  image:
+    digest: REPLACE_WITH_SANDBOX_RUNTIME_SHA256
+server:
+  externalDbSecret: openshell-gateway-db
+  disableTls: false
+  workspaceStorageClass: local-path
+  workspaceDefaultStorageSize: 10Gi
+  sandboxUid: 1000
+  sandboxGid: 1000
+  sandboxJwt:
+    gatewayId: veoveo-k3s
+  tls:
+    enableMtls: true
+    certSecretName: openshell-server-tls
+    clientCaSecretName: openshell-server-client-ca
+    clientTlsSecretName: openshell-client-tls
+pkiInitJob:
+  enabled: true
+  serverDnsNames:
+    - openshell.openshell.svc.cluster.local
+certManager:
+  enabled: false
+gatewayConfig:
+  openshell:
+    version: 2
+  openshell.gateway:
+    name: veoveo-k3s
+    compute_driver: kubernetes
+  openshell.gateway.tcp_forwarding:
+    active_per_sandbox: 128
+    active_per_replica: 1024
+    pending_per_sandbox: 128
+    pending_per_replica: 512
+  openshell.gateway.auth:
+    allow_unauthenticated_users: false
+  openshell.gateway.oidc:
+    issuer: https://identity.example.com/REPLACE_WITH_ISSUER
+    audience: REPLACE_WITH_MANAGEMENT_AUDIENCE
+  openshell.drivers.kubernetes:
+    allow_driver_config: true
+    workspace_mode: managed
+    image_pull_secrets:
+      - registry-pull

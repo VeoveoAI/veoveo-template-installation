@@ -1,0 +1,81 @@
+# Official seaweedfs/seaweedfs chart 4.48.0; server 4.48.
+# Existing native IAM owns the distinct Artifact/Lore identities and policies.
+global:
+  seaweedfs:
+    enableSecurity: true
+certificates:
+  externalCertificates:
+    enabled: true
+master:
+  replicas: 1
+  imageOverride: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  defaultReplication: "000"
+  data:
+    type: persistentVolumeClaim
+    size: 2Gi
+    storageClass: local-path
+  logs:
+    type: emptyDir
+volume:
+  replicas: 1
+  imageOverride: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  dataDirs:
+    - name: data1
+      type: persistentVolumeClaim
+      size: 100Gi
+      storageClass: local-path
+      maxVolumes: 0
+  resizeHook:
+    enabled: false
+  logs:
+    type: emptyDir
+filer:
+  replicas: 1
+  imageOverride: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  data:
+    type: persistentVolumeClaim
+    size: 5Gi
+    storageClass: local-path
+  logs:
+    type: emptyDir
+  s3:
+    enabled: false
+s3:
+  enabled: true
+  replicas: 1
+  imageOverride: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  httpsPort: 9000
+  tlsSecret: seaweedfs-s3-cert
+  enableAuth: true
+  existingConfigSecret: seaweedfs-s3-identities
+  lancePort: 0
+  icebergPort: 0
+admin:
+  enabled: false
+worker:
+  enabled: false
+sftp:
+  enabled: false
+cosi:
+  enabled: false
+networkPolicy:
+  enabled: true
+  # Foundation servers/tunnel and mediated native sandbox egress may reach S3.
+  # Workload Pods are not supervisors and retain the native boundary policy.
+  extraIngress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: veoveo-system
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              openshell.ai/boundary-role: supervisor
+      ports:
+        - protocol: TCP
+          port: 9000
+  egress:
+    enabled: true
+    allowDNS: true
+    kubeApiServer:
+      enabled: false
