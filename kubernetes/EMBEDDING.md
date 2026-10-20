@@ -15,6 +15,16 @@ both existing CA mounts, and the native-service alias DNS supervisor fix
 generation before relying on those paths; do not replace shared values or restart
 unrelated workloads to install embedding.
 
+GPU provisioning requires the combined OpenShell gateway source
+`f70a959c2da8617d5a0a1599b542e844db01f401` or a reviewed descendant retaining
+both `2c9fe478` Pending-supervisor recovery and the `7878752f` GPU-boundary fix.
+Select separately reviewed compatible supervisor and sandbox-runtime image pins
+from the current foundation; this gateway change does not require replacing them.
+The combined gateway's deployment and native CUDA startup/restart validation are
+pending. A source commit or successful image build is not that acceptance. After
+rollout, confirm a fresh native GPU runtime generation and actual CUDA access;
+existing immutable bootstrap material is not rewritten in place.
+
 ## GPU prerequisite
 
 Use the official NVIDIA device-plugin chart **0.20.1**. Its archive SHA256 is

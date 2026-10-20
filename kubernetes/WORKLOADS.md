@@ -2,8 +2,9 @@
 
 These are ordinary trusted bootstrap commands, not a launcher or runtime inventory.
 Use the authenticated maintained-fork CLI pointed at the selected Kubernetes
-gateway. Keep the gateway, supervisor and sandbox-runtime images on the same
-reviewed revision. Keep existing native roles/scopes and mediation: Kubernetes
+gateway. Select individually reviewed, compatible source and image pins for the
+gateway, supervisor and sandbox runtime; a shared tag alone does not prove that
+compatibility. Keep existing native roles/scopes and mediation: Kubernetes
 placement does not add a new authentication or Lore permission system.
 
 ## Private service names and trust
