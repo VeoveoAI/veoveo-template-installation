@@ -228,6 +228,8 @@ services:
         ipv4_address: 10.231.10.10
         aliases:
         - vv-lore.internal
+    ports:
+    - 127.0.0.1:${VEOVEO_LORE_PORT:-41337}:41337
     volumes:
     - vv-lore:/data
     - ./state/openshell/lore-direct/server.toml:/etc/lore/config/local.toml:ro
