@@ -169,7 +169,12 @@ VEOVEO_STORAGE_BUCKET=artifacts
 ```
 
 The public signing authority must match the Computer curl policy/tunnel route and
-TLS certificate. Never substitute the private Service authority into a signed URL.
+TLS certificate. Media's Artifact client also sends signed uploads directly to this
+authority: select the same host and port in Media's `object_storage` policy for
+`/usr/local/bin/veoveo-mcp-media`. Its `tls: skip` preserves end-to-end TLS and the
+signed method, URL and headers without credential injection or HTTP interception.
+The client still verifies the server certificate. Never substitute the private
+Service authority into a signed URL.
 
 ### PostgreSQL client trust shared within each workspace
 

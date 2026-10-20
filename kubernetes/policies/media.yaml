@@ -153,9 +153,14 @@ network_policies:
     binaries:
     - path: /usr/local/bin/veoveo-mcp-media
   object_storage:
+    # Artifact signs client uploads for the public authority; preserve SigV4 bytes.
     endpoints:
     - host: seaweedfs-s3.veoveo-system.svc.cluster.local
       port: 9000
+      protocol: tcp
+      tls: skip
+    - host: objects.veoveo.example.com
+      port: 443
       protocol: tcp
       tls: skip
     binaries:
