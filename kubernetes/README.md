@@ -145,6 +145,23 @@ Artifact/Lore identities and their existing
 key in applications or replace bucket grants with global permission. Store the
 resulting application credentials only in their own trusted Secret inputs.
 
+For identities configured with Seaweed's native `actions` field, the scoped
+examples include bucket-root read as well as object operations:
+
+```text
+Lore:     ["Read:lore", "Read:lore/*", "Write:lore/*", "List:lore"]
+Artifact: ["Read:artifacts", "Read:artifacts/*", "Write:artifacts/*", "List:artifacts", "Tagging:artifacts/*"]
+```
+
+Seaweed `4.48` routes authenticated `HEAD /<bucket>` through
+[native `ACTION_READ`](https://github.com/seaweedfs/seaweedfs/blob/4.48/weed/s3api/s3api_server.go#L1041-L1045).
+Object-only `Read:<bucket>/*` does not match that bucket-root request, and
+`List:<bucket>` is a different action. Lore and Artifact check bucket availability
+with HeadBucket; successful object PUT/GET/DELETE alone does not prove this check.
+Keep the exact own-bucket read action in the existing identity, without global
+`Read` or `Admin`. These are native action examples, not AWS IAM statement syntax;
+retain the separate reviewed policies when using the attached-policy path.
+
 After creating those existing IAM identities and before application use, bootstrap
 each bucket once through the native TLS-enabled operator shell. Run inside the
 trusted filer Pod so the chart's mounted `/etc/seaweedfs/security.toml` supplies
