@@ -73,7 +73,7 @@ network_policies:
           - allow: {method: tools/call, tool: artifact__complete_upload}
           - allow: {method: tools/call, tool: artifact__abort_upload}
           - allow: {method: resources/read}
-          # ArtifactClient.until_verified uses a resource subscription.
+          # Native MCP resource subscriptions.
           - allow: {method: subscriptions/listen}
     binaries:
       - path: /usr/local/bin/veoveo-mcp-media

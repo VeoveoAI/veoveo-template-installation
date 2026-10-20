@@ -199,8 +199,9 @@ openshell sandbox create --workspace vv-services --name media \
 Keep `VEOVEO_PUBLIC_ORIGIN` unset. No Media service exposure is created: Hub reaches
 its logical endpoint over authenticated native ForwardTcp. [Media's policy](media.yaml)
 separates registration, metadata/JWKS, `/oauth/token`, and `/mcp/local` Artifact
-calls. The SDK upload path requires create/sign-parts/complete/abort tools,
-resource reads and subscriptions for verification; it uses modern MCP inspection.
+calls. The SDK upload path requires create/sign-parts/complete/abort tools and
+returns an available Artifact after size validation, without a content-hash wait.
+Native resource reads and subscriptions remain admitted by modern MCP inspection.
 PostgreSQL and signed S3 bytes use TCP on ports 5432 and 9000, respectively.
 Verify `host.openshell.internal:9000` from each byte client without changing signed
 authority/headers; the [Mac resolution prerequisite](ARTIFACT.md#trusted-preparation)

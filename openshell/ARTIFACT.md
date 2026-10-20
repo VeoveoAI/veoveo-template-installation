@@ -213,8 +213,8 @@ export VEOVEO_ACCEPTANCE_ADMIN_BEARER_ENV=HUB_ADMIN_REFERENCE
   --nocapture --test-threads=1
 ```
 
-Run these six private cases serially. They exercise signed upload/download integrity
-and ranges, verification/sweep, Hub permission denial, grant listing/revocation,
+Run these six private cases serially. They exercise signed upload/download bytes
+and ranges, size validation/sweep, Hub permission denial, grant listing/revocation,
 quota and access-request approval. The current one-tenant/two-contributor setup
 does not prove cross-tenant or object isolation through deployment; those remain
 component tests. Public share redemption remains a retained, separately qualified
@@ -232,5 +232,6 @@ Observe applied native provider renewal before a restart probe and leave a measu
 margin before the next update. Renewal intentionally fences old connections; do
 not hide an interrupted operation or replay a mutation. Record actual image IDs,
 registration endpoint, public key, native lifecycle and successful/denied calls.
-No in-flight verification-Task recovery, public sharing, Media integration or new
+Artifact completion validates stored size directly; it does not create a content-hash
+verification Task. No public sharing, Media integration or new
 customer/tenant issuer qualification is claimed by this slice.
