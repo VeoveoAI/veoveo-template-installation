@@ -218,6 +218,30 @@ TLS and mTLS enabled; the chart's idempotent native PKI hook owns gateway/client
 certificates and sandbox signing keys. Keep the gateway ID stable across restarts.
 Do not export private gateway/bootstrap keys into application workloads.
 
+The selected gateway must include the native Kubernetes `additional_ca_bundle`
+fix `f39b1fee81891646b57441d15d0d6e3a0c890385`. Create the public-only
+`platform-destination-roots-v1` ConfigMap in `openshell`, key `ca.crt`, from a
+reviewed PEM bundle containing the retained chart gateway CA and current Lore/
+Seaweed destination roots. Do not include private keys or unrelated certificates.
+The example mounts it read-only at `/etc/openshell/platform-ca` through existing
+chart extra volumes and sets the native driver path to `ca.crt` there:
+
+```sh
+kubectl -n openshell create configmap platform-destination-roots-v1 \
+  --from-file=ca.crt="$PRIVATE/destination-roots.pem"
+```
+
+The separately scheduled supervisor does not inherit CAs installed only in a
+workload image or mounted only in its filesystem. The driver validates this
+bounded PEM input, stages it in the existing immutable supervisor bootstrap
+Secret for each generation, and passes its existing `--additional-ca-bundle`
+flag. Supervisor upstream TLS and workload trust receive these roots; exact
+network policy and hostname verification still apply. No proxy or TLS bypass
+is configured. A running generation retains its original roots; recreate only
+an affected runtime to select changed roots. When adding private Helm overrides,
+retain **both** database-CA and destination-CA mounts: Helm replaces volume lists
+rather than appending them. These inputs are not deployed TLS acceptance.
+
 ```sh
 helm upgrade --install openshell "$OPENSHELL_SOURCE/deploy/helm/openshell" \
   --namespace openshell -f kubernetes/openshell.values.yaml \
@@ -243,8 +267,8 @@ prepare its required provider custody. Native credential mint/store invokes
 persists the workspace object. Verify that actual namespace before creating the
 operator-approved PVC and bootstrap Job there. Do not create the namespace yourself
 or add a dummy provider. PVCs cannot be mounted across namespaces. The Job copies
-only approved private config from a temporary native Secret, sets the actual
-sandbox UID/GID ownership, and exits. Mount that admitted PVC read-only outside
+only approved private config from a temporary native Secret, sets the approved
+component file owner, and exits. Mount that admitted PVC read-only outside
 `/sandbox`; remove the temporary Secret/Job after successful copy. Do not mount
 caller-selected Secrets, ConfigMaps, host paths or protected `/run` paths through
 driver configuration, and do not introduce a copy controller.

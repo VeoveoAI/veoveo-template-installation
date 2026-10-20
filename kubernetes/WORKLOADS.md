@@ -117,10 +117,12 @@ The latter preserves the file-backed JWKS path in `identity/entra.example.json`;
 it contains public verification keys, never signing keys. Match these four names
 to `hub-config-pvc.yaml`. Before
 running the one-time Job, replace its copy-image marker with the verified immutable
-Linux utility image. The Hub runtime uses UID/GID `10001:10001`; its config
-seed Job runs as that owner so mode `0600` files remain readable to Hub. This is
-not the Computer image's `1000:1000` owner. Confirm ownership against the selected
-runtime image. The Job copies only those files without output and refuses an
+Linux utility image. Hub and MCP runtime images use UID `10001`; the config
+seed Job uses that UID so mode `0600` files remain readable to the component.
+The Job's group `10001` does not require the image's primary GID to match: Time
+and Artifact images can use GID `999`, while the measured native Hub uses GID
+`10001`. Owner UID controls these private files. This is not the Computer image's
+`1000:1000` owner. Confirm actual identities against the selected runtime. The Job copies only those files without output and refuses an
 existing target. The PVC labels
 match native default resource admission for workspace `vv-control`.
 
@@ -143,9 +145,10 @@ provider references instead.
 `service-storage.yaml` and `seed-service-configs.yaml` provide the same initial
 native `vv-services` bootstrap for Time/Artifact/Media. Use only Artifact's
 `storage.env` and Media's `provider.env` in their separate temporary Secrets;
-the config Jobs run as the component owner `10001:10001`, copy exact files as
-mode `0600`, and never copy operator directories. Confirm that owner against the
-selected Artifact/Media runtime images. Their `*-driver-config.json`
+the config Jobs run as UID `10001` with seed group `10001`, copy exact files as
+mode `0600`, and never copy operator directories. The component's owner UID must
+match; its primary GID need not match for these owner-only files. Confirm actual
+identities against the selected Artifact/Media runtime images. Their `*-driver-config.json`
 inputs mount each service's own writable state and read-only configuration.
 Delete completed seed Jobs and their temporary Secrets. This is initial trusted
 storage preparation, never a Helm inventory or runtime reconciliation process.
