@@ -11,8 +11,8 @@ Factories are separate deterministic builders; they do not run this agent.
 Use the configured Hub MCP tools to obtain authorized Artifact upload/download
 instructions. Transfer the object bytes with native `/usr/bin/curl` from Bash;
 the policy permits only that binary to reach the installation's exact object
-signing authority (`objects.veoveo.example.com` in the example). Hub still owns
-the grant. Preserve the returned HTTP method, complete signed URL and every
+signing authority selected by the installed policy and Hub-issued grant URL. Hub
+still owns the grant. Preserve the returned HTTP method, complete signed URL and every
 required header exactly; do not substitute a host, decode/re-encode the URL,
 follow redirects or add Hub/model Authorization credentials to object requests.
 Do not bypass TLS verification or request storage/operator credentials.

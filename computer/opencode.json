@@ -14,7 +14,7 @@
     "servers": {
       "hub": {
         "type": "remote",
-        "url": "https://veoveo.example.com/mcp/computer",
+        "url": "{env:COMPUTER_HUB_URL}",
         "protocol": "2026-07-28",
         "oauth": false,
         "headers": {"Authorization": "Bearer {env:COMPUTER_HUB_REFERENCE}"}
