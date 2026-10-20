@@ -322,8 +322,9 @@ belong in the installation's own record. The maintained source pins are:
 | --- | --- |
 | Hub | `9b83c26e9bdc926b054d089fd87ca26e3cba6f31` |
 | Time | `d70ac8e2f9bdfb1c012ee744e5cd119ce4bca1dd` |
-| Artifact | `00c8e93f5ca3ffe9137773754a4945c6d349b3bf` |
-| Media / synthetic provider fixture | `4e8504b2c9bc72b0b249a8cf122e29983634d2e8` |
+| Artifact server | `00c8e93f5ca3ffe9137773754a4945c6d349b3bf` |
+| Media | `f01cdb0b772a87e20835f5b88be18910a7785e54` |
+| Synthetic Media provider fixture | `4e8504b2c9bc72b0b249a8cf122e29983634d2e8` |
 | Native Lore | `6b7a0e598b8fbbaed82c777109135ddb25873bbf` |
 | OpenCode | `4bd4891e9e3d67460eb43dcfcdefb5172c1279ff` |
 | OpenShell integration | `b849a25c79177e9306c52a93de82d9dfc879cb92` |
@@ -331,6 +332,15 @@ belong in the installation's own record. The maintained source pins are:
 These are maintained-fork source revisions, not upstream release versions or
 reproducible-build claims. The corrected Factory/Computer build uses the UID/GID
 10001 installation inputs; an earlier UID-1000 image is not accepted.
+
+The qualified Media runtime digest is
+`sha256:2da66a129757e3d54e379bb8a34c2b15da8b768681cd00702229ec44d838a920`;
+its matching QA image digest is
+`sha256:a6ba2faddd3b3c6320538bbc64d0a37e0e01b001bd7f4e2201685b32428b0c0f`.
+Media uses Artifact client revision `58f9fbd2ceab7f267144676284b62bf756945427`,
+included in Artifact main `9a535440d989e24021ae172f71f3f5c08aa2703b`.
+The deployed Artifact server remains at the separately recorded revision; the
+synthetic provider image remains `sha256:398f86bbda316b6cd40b2a88c332fadc6fcc809ca53f91b713fb6322227080d4`.
 
 Deterministic/component evidence includes both Hub Docker check gates (231 passed,
 one skipped per platform), focused native CA/DNS tests and strict Clippy,
@@ -360,10 +370,17 @@ pre-existing unrelated Pod identities remained unchanged. This proves the stated
 synthetic fixture scenario, not model inference or general reproducible builds.
 
 Time's seven routed cases passed in 10.21 seconds; Artifact's six passed in
-223.15 seconds, including the 1-GiB multipart/range/release case. Media registered
-and completed native provider startup status checks at 09:02 UTC; completed
-Kubernetes Task acceptance and Computer terminal/WebSocket qualification remain
-pending. Host reboot/recovery and the final bounded
+223.15 seconds, including the 1-GiB multipart/range/release case. Media's six
+synthetic deployed cases passed serially in 49.06 seconds. A separate in-flight
+Task continued across scoped Hub and Media restarts in 112.42 seconds and returned
+65,536 bytes, SHA-256 `c6ee57f09dbd4b0e5c6072ec59f2bbce2decf3ef9b1c695af802f26ae28931ce`.
+The initial Media attempt failed two cases: a concurrent run-insert conflict and
+an aborted Artifact upload reported as success on an idempotent client retry.
+The fixes preserve tenant isolation and reject terminal failed uploads. Media's
+policy also lacked its public signed-upload authority; that exact authority is
+now admitted with TLS passthrough. The original transfer error was not retained,
+so its historical cause is not proved. These are synthetic byte/Task checks,
+not inference or valid media encoding. Host reboot/recovery and the final bounded
 `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` scenario remain pending at this checkpoint.
 Do not carry historical Docker or signed-provider evidence forward as proof of
 these pending Kubernetes cases.

@@ -305,6 +305,30 @@ adding/removing/registering services or changing grants does not restart Hub or
 unrelated workloads. Drain/reconnect active operations explicitly. Never replay a
 non-idempotent mutation automatically or promise zero downtime.
 
+### Replacing one service image
+
+The current native API has no in-place sandbox image update. Stop/Start reuses
+the admitted image. To replace Media's image, first drain or explicitly qualify
+its active Tasks, retain its complete native creation inputs privately, then run:
+
+```sh
+openshell --workspace vv-services sandbox stop media
+openshell --workspace vv-services sandbox delete media
+```
+
+Repeat the reviewed `sandbox create --name media --from "$MEDIA_IMAGE_AT_DIGEST"`
+invocation with the replacement digest, preserving the workspace, logical name,
+provider attachments, environment, command, resources, restart policy and supplied
+PVC configuration. Apply only intentionally reviewed policy changes. Keep
+`media-state-v1`, `media-config-v1` and `postgres-client-ca-v1`; do not reseed or
+delete these claims, their providers or the workspace. The supplied state claim
+retains Media's registration key; this is not a promise that Delete preserves
+the automatically owned `/sandbox` PVC. Preserve/recreate only this service's
+exposures if it has any. Gate requests on fresh Hub registration and application
+listener/readiness, not merely native phase Ready. The same logical destination
+and registration key do not require a Hub or unrelated workload restart. Never
+automatically replay a non-idempotent request across replacement.
+
 ## Isolated synthetic Media provider
 
 The existing testing-only fixture image needs `MEDIA_PROVIDER_WEBHOOK_SECRET`
