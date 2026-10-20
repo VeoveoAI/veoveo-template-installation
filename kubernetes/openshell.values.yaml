@@ -1,5 +1,6 @@
 # Maintained chart schema from 846de5fa01234a22827915b3f4e5b9092367078b.
 # additional_ca_bundle requires gateway fix f39b1fee81891646b57441d15d0d6e3a0c890385.
+# Pending-supervisor reboot recovery requires gateway 2c9fe478f49773998d8602f8da68fce0864343fd.
 # REQUIRED private override: all three fork image registry/repository/digests,
 # OIDC issuer/audience/claim mappings, and installation gateway name if changed.
 fullnameOverride: openshell

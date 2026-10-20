@@ -206,15 +206,29 @@ through the tunnel; never rewrite the public object hostname to Service DNS.
 ## Native OpenShell gateway
 
 Use maintained OpenShell source
-`b849a25c79177e9306c52a93de82d9dfc879cb92`, published on the fork's `main`,
-including the Kubernetes destination-CA
-and native Service-DNS fixes atop chart/runtime base
+`2c9fe478f49773998d8602f8da68fce0864343fd` for the gateway/driver,
+including Kubernetes destination-CA and Pending-supervisor recovery fixes atop
+the native Service-DNS work and chart/runtime base
 `846de5fa01234a22827915b3f4e5b9092367078b`. Supply all three actual
 registry/repository/digest overrides; do not select stock images with the same
-tag. The reference gateway was built from `0299a1ec1e9f8305ebfe967c2b033f36ecc7ba18`,
+tag. The reference gateway was built from `2c9fe478f49773998d8602f8da68fce0864343fd`,
 its supervisor from `b849a25c79177e9306c52a93de82d9dfc879cb92`, and the unchanged
 sandbox runtime from the base revision. Record each component's own source and
 image identity rather than treating a shared tag as matching-source evidence.
+Its deployed gateway image is
+`registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/gateway@sha256:b36083f28400e0136521bfa72ffdf91aaddbf0b0f9a6345bd261963080692d95`.
+The supervisor remains at the reviewed b849 artifact; a newer source commit alone
+does not replace that selected image.
+
+During the first host reboot, the earlier gateway reported supervisors unavailable
+and durably suspended the workloads. Its earlier classification also treated a
+same-UID/generation `Pending`/`ContainerCreating` Pod as unavailable. Revision
+`2c9fe478` preserves running intent while that Pod recovers,
+publishing readiness unavailable until it is Ready. Independent generation, fence,
+missing/terminal/deleting Pod checks and explicit Stop remain fail-closed.
+The replacement gateway is Ready at reference Helm revision 5; an expired-bundle
+bootstrap probe and the repeat host reboot remain unproved. Do not count rollout
+readiness as recovery acceptance.
 Create the standard `registry-pull` dockerconfigjson Secret in the `openshell` namespace from the private pull-only registry config. Native managed
 workspace reconciliation copies the referenced image-pull Secret. Renew registry
 credentials through that registry's existing operator mechanism, not a new worker.
@@ -327,7 +341,9 @@ belong in the installation's own record. The maintained source pins are:
 | Synthetic Media provider fixture | `4e8504b2c9bc72b0b249a8cf122e29983634d2e8` |
 | Native Lore | `6b7a0e598b8fbbaed82c777109135ddb25873bbf` |
 | OpenCode | `4bd4891e9e3d67460eb43dcfcdefb5172c1279ff` |
-| OpenShell integration | `b849a25c79177e9306c52a93de82d9dfc879cb92` |
+| OpenShell gateway/driver | `2c9fe478f49773998d8602f8da68fce0864343fd` |
+| OpenShell supervisor | `b849a25c79177e9306c52a93de82d9dfc879cb92` |
+| OpenShell sandbox runtime | `846de5fa01234a22827915b3f4e5b9092367078b` |
 
 These are maintained-fork source revisions, not upstream release versions or
 reproducible-build claims. The corrected Factory/Computer build uses the UID/GID
