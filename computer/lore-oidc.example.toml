@@ -1,0 +1,27 @@
+# Native Lore server authentication FRAGMENT; merge into trusted server settings.
+# Preserve the existing TLS, PostgreSQL/S3 storage and hook configuration. Select
+# this native ResourceGrants mode explicitly: environment.endpoint.auth_url must
+# be absent, not combined with this resource_claim. No Lore source change.
+[server.auth]
+jwt_issuer = ["https://veoveo.example.com/oauth"]
+jwt_audience = ["https://veoveo.example.com/resources/lore"]
+jwt_typ = ["at+jwt"]
+resource_claim = "resources"
+resource_id_claim = "resource_id"
+resource_id_template = "urc-{id}"
+permission_claim = "permission"
+# Retain the native non-disclosing baseline. This is not a grant-filtered catalog.
+repository_catalog = "baseline"
+baseline_access = "denied"
+
+[server.auth.oidc]
+client_id = "lore-computer"
+# Native device login adds offline_access to these finite advertised scopes.
+scopes = ["lore:login"]
+preferred = true
+scope_template = "lore-repo-{id}"
+# No resource_template: native scope and resource exchange targets are exclusive.
+# No token_exchange_issuer: native discovery uses the same Hub issuer.
+# Hub publishes discovery/device/token/JWKS. Tokens contain native identity,
+# signed root_domains for the exact private recipient, and resources entries.
+# Public client has no secret; no ID token, custom role parser or native auth service.

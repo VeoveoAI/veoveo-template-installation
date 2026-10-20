@@ -1,0 +1,21 @@
+# Dedicated trusted Hub service identity; never attach to a user Computer.
+id: vv-hub-native-control
+display_name: Local Hub native control
+credentials:
+  - name: access_token
+    env_vars: [HUB_NATIVE_CONTROL_REFERENCE]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+    refresh:
+      strategy: oauth2_client_credentials
+      token_url: https://auth.localhost:8443/realms/veoveo/protocol/openid-connect/token
+      scopes: [workspace:read, workspace:write, sandbox:read, sandbox:write, provider:read, provider:write]
+      refresh_before: 180s
+      max_lifetime: 300s
+      material:
+        - name: client_id
+          required: true
+        - name: client_secret
+          required: true
+          secret: true

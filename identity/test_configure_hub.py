@@ -138,6 +138,110 @@ class NativePlacementTests(unittest.TestCase):
 
 
 
+class LocalPublicClientTests(unittest.TestCase):
+    MEMBER = '33333333-3333-4333-8333-333333333333'
+    OTHER = '44444444-4444-4444-8444-444444444444'
+
+    def arguments(self):
+        return dict(client_id='opencode-local', members=[self.MEMBER], context_id='chosen-work',
+                    resource=helper.HUB_ORIGIN + '/mcp/local',
+                    redirects=['http://127.0.0.1:3210/callback'])
+
+    def catalog(self):
+        retained = helper.catalog(helper.HUB_ORIGIN, include_artifact=True, include_media=True)
+        context = retained['workContexts'][0]
+        context['id'], context['tenant'] = 'chosen-work', 'chosen-tenant'
+        retained['tenants'].append({'id': 'chosen-tenant', 'title': 'Chosen'})
+        retained['metadata']['retained'] = 'untouched'
+        retained['nativeUpstreams']['bindings'].append({'endpoint': 'http://embedding.internal:8803/mcp',
+            'workspace': 'vv-services', 'sandbox': 'embedding', 'port': 8803})
+        retained['lore'] = {'retained': 'native contribution data'}
+        return retained
+
+    def test_only_explicit_human_member_and_context_are_added_without_rebuilding_catalog(self):
+        retained = self.catalog()
+        before = json.dumps(retained)
+        prepared = helper.local_public_catalog(retained, **self.arguments())
+        self.assertEqual(json.dumps(retained), before)
+        self.assertEqual(prepared['oauthClients'][-1], {
+            'id': 'opencode-local', 'authorizationServer': 'local', 'defaultWorkContext': 'chosen-work',
+            'invocationMode': 'direct', 'allowedResources': [helper.HUB_ORIGIN + '/mcp/local'],
+            'grantTypes': ['authorization_code_pkce', 'refresh_token'], 'authMethods': ['none'],
+            'redirectUris': ['http://127.0.0.1:3210/callback'],
+            'allowedScopes': ['mcp', 'offline_access'], 'tenant': 'chosen-tenant', 'metadata': {}})
+        self.assertEqual(prepared['authorization']['grants'][-1], {'role': 'member',
+            'subject': {'principal': self.MEMBER}, 'tenant': 'chosen-tenant'})
+        self.assertEqual(prepared['workContexts'][0]['memberships'][-1],
+                         {'level': 'contributor', 'principals': [self.MEMBER]})
+        self.assertNotIn(self.OTHER, json.dumps(prepared))
+        self.assertEqual(helper.local_public_catalog(prepared, **self.arguments()), prepared)
+        prepared['oauthClients'].pop()
+        prepared['authorization']['grants'].pop()
+        prepared['workContexts'][0]['memberships'].pop()
+        self.assertEqual(prepared, retained)
+
+    def test_native_user_properties_preserve_sub_and_have_no_service_or_admin_identity(self):
+        prepared = helper.local_public_catalog(self.catalog(), **self.arguments())
+        client, mappers = helper.local_public_client(prepared['oauthClients'][-1], prepared['workContexts'][0])
+        self.assertTrue(client['publicClient'])
+        self.assertTrue(client['standardFlowEnabled'])
+        for field in ['serviceAccountsEnabled', 'directAccessGrantsEnabled', 'implicitFlowEnabled', 'fullScopeAllowed']:
+            self.assertFalse(client[field])
+        self.assertEqual(client['attributes']['pkce.code.challenge.method'], 'S256')
+        self.assertNotIn('secret', client)
+        self.assertFalse(any(mapper['name'] == 'sub' for mapper in mappers))
+        for name in ['principal', 'initiator']:
+            mapper, = [mapper for mapper in mappers if mapper['name'] == name]
+            self.assertEqual(mapper['protocolMapper'], 'oidc-usermodel-property-mapper')
+            self.assertEqual(mapper['config']['user.attribute'], 'id')
+            self.assertNotIn('claim.value', mapper['config'])
+        self.assertEqual(next(mapper for mapper in mappers
+                              if mapper['name'] == 'https://veoveo.ai/claims/work-context')['config']['claim.value'],
+                         'chosen-work')
+
+    def test_wrong_context_foreign_issuer_and_conflicting_registration_are_not_replaced(self):
+        for changes in [dict(context_id='missing'), dict(members=[]),
+                        dict(redirects=['http://elsewhere.example/callback']),
+                        dict(redirects=['http://localhost:3210/callback'])]:
+            with self.assertRaises(ValueError):
+                helper.local_public_catalog(self.catalog(), **dict(self.arguments(), **changes))
+        retained = self.catalog()
+        retained['authorizationServers'][0]['issuer'] = 'https://foreign.example'
+        with self.assertRaisesRegex(ValueError, 'external Keycloak issuer'):
+            helper.local_public_catalog(retained, **self.arguments())
+        retained = helper.local_public_catalog(self.catalog(), **self.arguments())
+        retained['oauthClients'][-1]['allowedScopes'].append('admin')
+        with self.assertRaisesRegex(ValueError, 'registration differs'):
+            helper.local_public_catalog(retained, **self.arguments())
+
+    def test_native_registration_touches_only_selected_public_client_and_builtin_scopes(self):
+        prepared = helper.local_public_catalog(self.catalog(), **self.arguments())
+        calls = []
+        created = False
+
+        def request(path, method='GET', data=None, token=None):
+            nonlocal created
+            calls.append((path, method, data))
+            base = '/admin/realms/veoveo'
+            if path == base + '/clients?clientId=opencode-local':
+                return [{'id': 'fixture-client', 'publicClient': True}] if created else []
+            if path == base + '/client-scopes':
+                return [{'id': name + '-scope', 'name': name} for name in ['basic', 'mcp', 'offline_access']]
+            if path == base + '/clients' and method == 'POST':
+                created = True
+            if method == 'GET':
+                return []
+
+        helper.configure_local_public_client(request, 'fixture-operator-token', prepared, 'opencode-local')
+        self.assertFalse(any('/users' in path or '/roles' in path or 'client-secret' in path
+                             for path, _, _ in calls))
+        writes = [(path, method) for path, method, _ in calls if method != 'GET']
+        self.assertIn(('/admin/realms/veoveo/clients/fixture-client/optional-client-scopes/offline_access-scope', 'PUT'), writes)
+        self.assertIn(('/admin/realms/veoveo/clients/fixture-client/optional-client-scopes/mcp-scope', 'PUT'), writes)
+        self.assertTrue(all(path == '/admin/realms/veoveo/clients'
+                            or path.startswith('/admin/realms/veoveo/clients/fixture-client/') for path, _ in writes))
+
+
 class EntraPreparationTests(unittest.TestCase):
     TENANT = '11111111-1111-4111-8111-111111111111'
     CLIENT = '22222222-2222-4222-8222-222222222222'

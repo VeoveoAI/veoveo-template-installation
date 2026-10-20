@@ -7,6 +7,13 @@ bind_address = "127.0.0.1:17670"
 compute_driver = "docker"
 policy_validation_failure_mode = "fail_closed"
 
+# Native TCP forwarding capacity; SSH budgets remain independent.
+[openshell.gateway.tcp_forwarding]
+active_per_sandbox = 128
+active_per_replica = 1024
+pending_per_sandbox = 128
+pending_per_replica = 512
+
 [openshell.gateway.oidc]
 issuer = "https://auth.localhost:8443/realms/veoveo"
 audience = "openshell"

@@ -40,6 +40,11 @@ these are Linux reference receipts, not changes to the Mac's selected images.
 
 ## Entra and the two token relationships
 
+The forwarder-only configuration below remains intentionally restricted. For a
+Computer-enabled Hub, explicitly select the separate [native control installation](../computer/NATIVE_CONTROL.md)
+and its new dedicated service identity; do not broaden the existing forwarder or
+attach two different credential providers to the same ForwardTcp endpoint.
+
 OpenShell authenticates Entra access tokens directly. The gateway's issuer,
 audience, roles and scopes must match independently verified tokens for its own
 resource. Start from [the native gateway example](entra-gateway.example.toml).

@@ -212,6 +212,140 @@ def retained_catalog():
     return json.loads(path.read_text()) if path.exists() else None
 
 
+def local_public_catalog(retained, *, client_id, members, context_id, resource, redirects):
+    """Add explicit human authority to a fresh catalog; never regenerate its other sections."""
+    client_id = identifier(client_id)
+    members = sorted({canonical_uuid(member) for member in members})
+    redirects = list(dict.fromkeys(redirect_uri(value) for value in redirects))
+    resource = https_endpoint(resource)
+    if not members or not redirects:
+        raise ValueError('local public client requires explicit human IDs and loopback redirects')
+    if any(urlsplit(value).scheme != 'http' or urlsplit(value).hostname != '127.0.0.1'
+           or urlsplit(value).port is None for value in redirects):
+        raise ValueError('native OpenCode requires an explicit HTTP 127.0.0.1 callback port')
+    contexts = [context for context in retained['workContexts'] if context['id'] == context_id]
+    profiles = [profile for profile in retained['profiles'] if profile['protectedResource'] == resource]
+    if len(contexts) != 1 or len(profiles) != 1:
+        raise ValueError('select one existing Work Context and MCP resource')
+    context, profile = contexts[0], profiles[0]
+    servers = [server for server in retained['authorizationServers']
+               if server['id'] == profile['authorizationServer'] and server['issuer'] == ISSUER
+               and not server.get('accessTokenSigningKey')]
+    if len(servers) != 1:
+        raise ValueError('local public client requires the existing external Keycloak issuer')
+    if not any(role['name'] == 'member' for role in retained['authorization']['roles']):
+        raise ValueError('existing member authority is required')
+    client = {'id': client_id, 'authorizationServer': profile['authorizationServer'],
+        'defaultWorkContext': context_id, 'invocationMode': 'direct', 'allowedResources': [resource],
+        'grantTypes': ['authorization_code_pkce', 'refresh_token'], 'authMethods': ['none'],
+        'redirectUris': redirects, 'allowedScopes': ['mcp', 'offline_access'],
+        'tenant': context['tenant'], 'metadata': {}}
+    existing = [value for value in retained['oauthClients'] if value['id'] == client_id]
+    if existing and existing != [client]:
+        raise ValueError('existing public-client registration differs; review it before replacement')
+    result = copy.deepcopy(retained)
+    if not existing:
+        result['oauthClients'].append(client)
+    for member in members:
+        grant = {'role': 'member', 'subject': {'principal': member}, 'tenant': context['tenant']}
+        if grant not in result['authorization']['grants']:
+            result['authorization']['grants'].append(grant)
+    selected = next(value for value in result['workContexts'] if value['id'] == context_id)
+    contributors = {principal for membership in selected['memberships']
+                    if membership['level'] == 'contributor'
+                    for principal in membership.get('principals', [])}
+    missing = sorted(set(members) - contributors)
+    if missing:
+        selected['memberships'].append({'level': 'contributor', 'principals': missing})
+    return result
+
+
+def local_public_client(client, context):
+    """Native Keycloak public-client representation and built-in claim mappers."""
+    resource, = client['allowedResources']
+    representation = {'clientId': client['id'], 'protocol': 'openid-connect', 'enabled': True,
+        'publicClient': True, 'standardFlowEnabled': True, 'serviceAccountsEnabled': False,
+        'directAccessGrantsEnabled': False, 'implicitFlowEnabled': False, 'fullScopeAllowed': False,
+        'redirectUris': client['redirectUris'], 'attributes': {
+            'pkce.code.challenge.method': 'S256', 'access.token.lifespan': '300',
+            'access.token.header.type.rfc9068': 'true', 'use.refresh.tokens': 'true'}}
+    mappers = [claim('client_id', client['id']), claim('https://veoveo.ai/claims/principal-kind', 'user'),
+        claim('https://veoveo.ai/claims/tenant', context['tenant']),
+        claim('https://veoveo.ai/claims/work-context', context['id']),
+        claim('https://veoveo.ai/claims/invocation-mode', 'direct')]
+    for name in ['principal', 'initiator']:
+        mappers.append({'name': name, 'protocol': 'openid-connect',
+            'protocolMapper': 'oidc-usermodel-property-mapper', 'config': {'user.attribute': 'id',
+                'claim.name': ('https://veoveo.ai/claims/' + name).replace('.', r'\.'),
+                'jsonType.label': 'String', 'access.token.claim': 'true',
+                'id.token.claim': 'false', 'userinfo.token.claim': 'false'}})
+    mappers.append({'name': 'audience', 'protocol': 'openid-connect', 'protocolMapper': 'oidc-audience-mapper',
+        'config': {'included.custom.audience': resource, 'access.token.claim': 'true', 'id.token.claim': 'false'}})
+    return representation, mappers
+
+
+def configure_local_public_client(request, token, catalog, client_id):
+    """Configure only this public client. No user, role, secret or service-client changes."""
+    client, = [value for value in catalog['oauthClients'] if value['id'] == client_id]
+    context, = [value for value in catalog['workContexts'] if value['id'] == client['defaultWorkContext']]
+    representation, mappers = local_public_client(client, context)
+    base = '/admin/realms/veoveo'
+    matches = request(base + '/clients?clientId=' + client_id, token=token)
+    if len(matches) > 1:
+        raise ValueError('ambiguous Keycloak public client')
+    if matches and (not matches[0].get('publicClient') or matches[0].get('serviceAccountsEnabled')):
+        raise ValueError('refusing to replace a confidential or service-account client')
+    scopes = request(base + '/client-scopes', token=token)
+    scope_ids = {name: next(scope['id'] for scope in scopes if scope['name'] == name)
+                 for name in ['basic', 'mcp', 'offline_access']}
+    if matches:
+        key = matches[0]['id']
+        request(base + '/clients/' + key, 'PUT', representation, token)
+    else:
+        request(base + '/clients', 'POST', representation, token)
+        key = request(base + '/clients?clientId=' + client_id, token=token)[0]['id']
+    path = base + '/clients/' + key
+    for kind, wanted in [('default', {scope_ids['basic']}),
+                         ('optional', {scope_ids['mcp'], scope_ids['offline_access']})]:
+        link = path + '/' + kind + '-client-scopes'
+        present = {scope['id'] for scope in request(link, token=token)}
+        for value in present - wanted:
+            request(link + '/' + value, 'DELETE', token=token)
+        for value in wanted - present:
+            request(link + '/' + value, 'PUT', token=token)
+    current = request(path + '/protocol-mappers/models', token=token)
+    desired_names = {mapper['name'] for mapper in mappers}
+    for mapper in current:
+        if mapper['name'] not in desired_names:
+            request(path + '/protocol-mappers/models/' + mapper['id'], 'DELETE', token=token)
+    for mapper in mappers:
+        previous = next((value for value in current if value['name'] == mapper['name']), None)
+        if previous:
+            request(path + '/protocol-mappers/models/' + previous['id'], 'PUT', mapper, token)
+        else:
+            request(path + '/protocol-mappers/models', 'POST', mapper, token)
+
+
+def prepare_local_public(options, root=ROOT):
+    """Use trusted operator access; write a candidate for separate native Hub publication."""
+    retained = json.loads(Path(options.control_plane_file).read_text())
+    prepared = local_public_catalog(retained, client_id=options.application_client_id or 'opencode-local',
+        members=options.member_object_id, context_id=options.work_context,
+        resource=options.protected_resource, redirects=options.client_redirect_uri)
+    request = runpy.run_path(str(root / 'identity/provision'))['request']
+    identity = json.loads((root / 'state/identity/credentials.json').read_text())
+    token = request('/realms/master/protocol/openid-connect/token', 'POST', {
+        'grant_type': 'password', 'client_id': 'admin-cli', 'username': identity['adminUsername'],
+        'password': identity['adminPassword']}, form=True)['access_token']
+    for member in options.member_object_id:
+        user = request('/admin/realms/veoveo/users/' + canonical_uuid(member), token=token)
+        if user['id'] != canonical_uuid(member) or not user.get('enabled') or user.get('serviceAccountClientId'):
+            raise ValueError('selected member must be an enabled native human user')
+    configure_local_public_client(request, token, prepared, options.application_client_id or 'opencode-local')
+    private(Path(options.output_control_plane), json.dumps(prepared, indent=2) + '\n')
+    print('Prepared native public PKCE client and private catalog candidate; no Hub/runtime publication or login performed.')
+
+
 def select_services(include_artifact, include_media, retained, include_embedding=False):
     """Preserve approved selections and reject foreign placement before provisioning."""
     if retained is not None:
@@ -457,6 +591,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--hub-origin', required=True, help='explicit canonical HTTPS Hub origin')
     parser.add_argument('--identity-provider', choices=['keycloak', 'entra'], default='keycloak')
+    parser.add_argument('--local-public-client', action='store_true',
+                        help='configure only native local human PKCE/refresh and write a candidate catalog')
+    parser.add_argument('--installation-root', type=Path, default=ROOT,
+                        help='trusted local installation containing the retained Keycloak operator inputs')
+    parser.add_argument('--control-plane-file', help='fresh authoritative catalog snapshot for local public-client preparation')
+    parser.add_argument('--output-control-plane', help='private candidate path; publish separately through native Hub tooling')
+    parser.add_argument('--protected-resource', help='existing exact MCP resource for the local public client')
     parser.add_argument('--oidc-discovery-file', help='trusted standard Entra OIDC discovery JSON')
     parser.add_argument('--entra-tenant-id', default=os.environ.get('VEOVEO_IDP_OIDC_TENANT_ID'))
     parser.add_argument('--entra-client-id', default=os.environ.get('VEOVEO_IDP_OIDC_CLIENT_ID'))
@@ -477,6 +618,12 @@ def main():
     parser.add_argument('--include-embedding', action='store_true',
                         help='select private vv-services/embedding without adding roles or billed risk')
     options = parser.parse_args()
+    if options.local_public_client:
+        if (options.identity_provider != 'keycloak' or not options.control_plane_file
+                or not options.output_control_plane or not options.protected_resource):
+            raise ValueError('local public-client preparation requires Keycloak and explicit input/output/resource')
+        prepare_local_public(options, root=options.installation_root.resolve())
+        return
     os.umask(0o077)
     if options.identity_provider == 'entra':
         required = ['oidc_discovery_file', 'entra_tenant_id', 'entra_client_id', 'tenant',

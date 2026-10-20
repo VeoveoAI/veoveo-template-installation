@@ -1,0 +1,8 @@
+id: vv-computer-model
+display_name: Computer model API
+credentials:
+  - name: api_key
+    env_vars: [DEEPINFRA_API_KEY]
+    required: true
+    auth_style: bearer
+    header_name: authorization

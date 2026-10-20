@@ -1,0 +1,24 @@
+{
+  "model": "deepinfra/XiaomiMiMo/MiMo-V2.6-Pro",
+  "default_agent": "build",
+  "update": "disable",
+  "share": "disabled",
+  "warming": false,
+  "instructions": ["/etc/computer/instructions.md"],
+  "providers": {
+    "deepinfra": {
+      "settings": {"apiKey": "{env:DEEPINFRA_API_KEY}"}
+    }
+  },
+  "mcp": {
+    "servers": {
+      "hub": {
+        "type": "remote",
+        "url": "{env:COMPUTER_HUB_URL}",
+        "protocol": "2026-07-28",
+        "oauth": false,
+        "headers": {"Authorization": "Bearer {env:COMPUTER_HUB_REFERENCE}"}
+      }
+    }
+  }
+}

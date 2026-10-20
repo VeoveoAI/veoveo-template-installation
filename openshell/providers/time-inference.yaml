@@ -1,8 +1,0 @@
-id: vv-time-inference
-display_name: Bounded Time factory inference
-credentials:
-  - name: api_key
-    env_vars: [VEOVEO_INFERENCE_TOKEN]
-    required: true
-    auth_style: bearer
-    header_name: authorization

@@ -1,9 +1,11 @@
 # Build prepared Time source
 
-This is trusted installation preparation, followed by a bounded model task. Execute
-publishing and preflight only after the [execution checklist](../../veoveo-docs/OPENSHELL_HARDCUT_PLAN.md)
+This is trusted installation preparation, followed by a bounded deterministic job. Execute
+publishing and preflight only after the [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md)
 accepts deployed Hub/Time. The source, image, providers and release build must pass
-without model calls first. These instructions do not record runtime acceptance.
+their component checks first. Agents work on Computers and publish source to Lore;
+the factory clones the selected immutable revision and runs the declared commands.
+These instructions do not record runtime acceptance.
 Keep the original `factory.yaml` and disposable Lore qualification identities intact.
 
 ## Tool image
@@ -12,7 +14,8 @@ Use Time's existing Dockerfile `dev` image through a verified local tag,
 `TIME_DEV_IMAGE_REF`, and retain its approved immutable `TIME_DEV_IMAGE_ID`. A raw
 `sha256:` image ID is not a valid Docker `FROM` reference in this setup. Use the
 same Docker engine/builder that owns the verified local tag. It supplies the
-component toolchain; the shared layer supplies Lore, installation CA, pinned OpenCode 2.0.29 and the SDK's Cargo-installed conformance CLI. SDK
+component toolchain; the shared layer supplies Lore, installation CA and the SDK's
+Cargo-installed CLI. SDK
 `a1d9d653ae3d723821cdeeab92f4a67acdca39ce` is the committed installation contract;
 there is no SDK runtime image. The layer contains no prebuilt Time release binary.
 Run from this installation root after the existing Lore client image build:
@@ -33,37 +36,38 @@ Run from this installation root after the existing Lore client image build:
 
 The checks before and after the build must both match the approved base ID. Record
 the resulting factory image ID as `FACTORY_TIME_IMAGE_ID`; native sandbox `--from`
-uses that exact `sha256:` ID for publisher, preflight and model run. The reviewed
+uses that exact `sha256:` ID for publisher, preflight and build job. The reviewed
 Time commit `90eabf9d3a103075c2aff907f008cf63f341f822` is published on its Git remote
 and is the prepared source for `TIME_GIT_COMMIT`. The existing
 [component lock](../component-lock.json) records the published reviewed component
 heads. A later source change requires new component checks and a reviewed published
 commit before selecting another tree; do not add a source-sync manifest.
 
+Use [the Hub-native factory credential setup](../computer/LORE_HUB.md#explicit-factory-identity-and-native-refresh)
+and `providers/lore-time.example.yaml`. Keep the deterministic source/revision/build
+workflow, native RPC policy, branch semantics and output verification below.
+Repository assignments are live Hub records, not IdP resource/scope mappers.
+
 ## Trusted source publisher
 
 Choose and retain canonical 32-character lowercase hexadecimal `TIME_REPOSITORY_ID`
-and `TIME_BRANCH_ID`, a dedicated client ID (here `vv-lore-time`), and the exact
-prepared Git commit. Use a new ordinary repository, never the fixture repositories.
-The helper's named mode does not need a fixture file or modify fixture clients:
+and `TIME_BRANCH_ID`, the exact prepared Git commit, and a distinct Hub factory
+client/principal. Use a new ordinary repository, never a fixture repository.
+Register the exact repository and explicit tenant/principal assignment through
+[Hub's existing typed publication](../computer/LORE_HUB.md#live-publication-and-first-cutover).
+The sample client is `lore-factory`; its canonical service identity is
+`https://veoveo.example.com/oauth#lore-factory`. Replace the origin/client together
+with the selected Hub registration. `actions: []` means ordinary native access,
+including unprotected writes; it does not confer `is_service_account` or named
+privileged actions. Hub does not create repository data or grant a creator access
+automatically.
 
-```sh
-./identity/configure-lore --client-id vv-lore-time \
-  --repository-id "$TIME_REPOSITORY_ID"
-```
-
-It configures one optional `lore-repo-ID` grant, `at+jwt`, the Lore audience and
-ordinary stable subject. It preserves an existing client secret, enabled state,
-role mappings and trusted assignments; mismatched saved identity/secret fails.
-It never adds Lore's `is_service_account` bypass. Default fixture provisioning
-remains separate and preserves the Time entry. Files remain under the existing
-0700 `state/openshell/lore-direct/` directory with mode 0600:
-
-- `config.json` retains the existing clients and adds `clients.time`.
-- `time.secret` and `time.refresh.env` are private trusted bootstrap material.
-- `time.provider.yaml` is a standard native profile rendered from
-  [lore-time.example.yaml](providers/lore-time.example.yaml) with the exact repo scope.
-- `server.toml` retains all other trusted hook assignments and server settings.
+Select the standard native [profile](providers/lore-time.example.yaml), editing
+its exact target scope to match the deployment template and `TIME_REPOSITORY_ID`.
+Keep the dedicated client secret only in Hub's trusted secret source and native
+OpenShell refresh custody. There is no generated issuer/grant bookkeeping file,
+UUID-only identity normalizer or local repository-mapping helper. Preserve existing
+trusted server/TLS/storage configuration and unrelated native hook assignments.
 
 Lore's current `--access-token` and login `--token` accept literal arguments, with
 no supported environment, stdin or token-file reader. `LORE_AUTH_PATH` selects its
@@ -84,17 +88,16 @@ unrelated resources. Create the workspace through the trusted native operator:
 ```sh
 openshell workspace create vv-time-source
 (
-  set -a
-  . ./state/openshell/lore-direct/time.refresh.env
-  set +a
+  : "${VEOVEO_LORE_FACTORY_CLIENT_SECRET:?dedicated Hub client secret}"
+  export VEOVEO_LORE_FACTORY_CLIENT_SECRET
   openshell profile import --workspace vv-time-source \
-    --file state/openshell/lore-direct/time.provider.yaml
+    --file openshell/providers/lore-time.example.yaml
   openshell provider create --workspace vv-time-source --name vv-lore-time \
     --type vv-lore-time --runtime-credentials
   openshell provider refresh configure --workspace vv-time-source vv-lore-time \
     --credential-key LORE_AUTH_TOKEN --strategy oauth2-client-credentials \
-    --material "client_id=$VV_LORE_TIME_CLIENT_ID" \
-    --secret-material-env client_secret=VV_LORE_TIME_CLIENT_SECRET
+    --material client_id=lore-factory \
+    --secret-material-env client_secret=VEOVEO_LORE_FACTORY_CLIENT_SECRET
   openshell provider refresh rotate --workspace vv-time-source vv-lore-time \
     --credential-key LORE_AUTH_TOKEN
 )
@@ -104,9 +107,10 @@ openshell sandbox create --workspace vv-time-source --name publisher \
 ```
 
 This initial rotation is setup, not renewal evidence. `LORE_AUTH_TOKEN` inside the
-sandbox is an identity-bound opaque reference. Read only the nonsecret `subject`
-from `config.json.clients.time` into `TIME_SUBJECT`. No client secret/JWT is passed
-through Exec environment options, argv or output.
+sandbox is an identity-bound opaque reference. Set nonsecret `TIME_SUBJECT` to
+the exact canonical Hub factory principal from the reviewed registration/assignment
+(the sample above), not a guessed directory service-account UUID. No client
+secret/JWT is passed through Exec environment options, argv or output.
 
 Export the exact tested Git tree, not the dirty working tree. This native Lore
 path does not track symlinks or Git submodules. Reject modes `120000` and `160000`
@@ -146,7 +150,7 @@ openshell sandbox exec --workspace vv-time-source --no-tty --no-login-shell \
   mkdir /sandbox/time-source
   cd /sandbox/time-source
   lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" \
-    repository create --id "$TIME_REPOSITORY_ID" grpcs://10.231.10.10:41337/time
+    repository create --id "$TIME_REPOSITORY_ID" grpcs://host.openshell.internal:41337/time
   tar -xf /sandbox/time-source.tar
   lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" stage --scan .
   lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" \
@@ -164,32 +168,36 @@ The tracked Time `.loreignore` is already part of the source. Do not add metadat
 another ignore file or build output merely to seed Lore. Verify the remote repo ID,
 protected main, factory branch ID and immutable revision. A branch requires an
 initial committed revision; this is why assignment follows first publication.
-Then finalize trusted assignment explicitly:
+If this installation selects the existing optional native factory push guard,
+record the exact verified factory identity/repository/branch binding directly in
+the already trusted server TOML after the branch exists. For example, with all
+synthetic values replaced:
 
-```sh
-./identity/configure-lore --client-id vv-lore-time \
-  --repository-id "$TIME_REPOSITORY_ID" --assigned-branch-id "$TIME_BRANCH_ID"
+```toml
+[hooks.factory_branch.assignments."https://veoveo.example.com/oauth#lore-factory"]
+repository = "11111111111111111111111111111111"
+branch = "33333333333333333333333333333333"
 ```
 
-The helper atomically replaces `state/openshell/lore-direct/server.toml`. The
-existing Compose service **`vv-lore`** mounts that single file read-only at
-`/etc/lore/config/local.toml`; Lore constructs its hook dispatcher at startup.
-Recreate that container to bind the new file and load the finalized assignment:
+Native hook configuration accepts this verified string identity; it does not
+require a UUID. Retain `enabled = true`, other assignments, storage and TLS. If an
+empty `assignments = {}` inline table is present, replace that empty declaration
+with the normal TOML assignment table before adding entries; do not define both.
+The existing Compose service **`vv-lore`** mounts trusted
+`state/openshell/lore-direct/server.toml` read-only at `/etc/lore/config/local.toml`.
+Lore constructs the dispatcher at startup, so selecting this configuration needs
+a coordinated restart of only its owning server:
 
 ```sh
 docker compose up -d --no-deps --no-build --force-recreate vv-lore
 ```
 
-Use the existing approved Lore image. This operation preserves the external
-`vv-local_vv-lore` data volume, identity configuration and unrelated services;
-never remove the data volume as part of activation. Verify the replacement is
-ready and its mounted configuration matches the reviewed file byte-for-byte.
-Verify that `factory_branch` is enabled, the authenticated Time subject maps to
-exactly `TIME_REPOSITORY_ID` / `TIME_BRANCH_ID`, and ordinary Lore branch inspection
-still reports protected main and the selected factory branch. Complete these
-checks before creating or releasing factory credentials. A rerun without
-`--assigned-branch-id` retains the finalized assignment. The hook is an
-ordinary-push workflow guard, not comprehensive low-level branch isolation.
+Use the reviewed image and verify actual mount/config bytes and native branch
+state. Preserve the existing data volume, PostgreSQL/schema, S3 bucket, identities
+and unrelated services. Do not reset storage to change the hook or Hub assignment.
+The hook is a normal-push workflow guard, not comprehensive branch isolation or
+an authorization substitute. This preparation does not add source rules or grant
+a factory native protection bypass.
 
 Clone the selected full Lore revision into a fresh directory and compare it with
 the Git export: exact paths, file types, bytes and executable bits; confirm no
@@ -204,42 +212,27 @@ assignment and durable server data.
 ## Factory credentials and policy
 
 Only after the assignment/correspondence review, create a fresh operator-approved
-`vv-time-build` workspace. Import the rendered Time profile and repeat the native
-Lore provider create/configure/initial-rotate commands above with that workspace.
+`vv-time-build` workspace. Import the selected native Time profile and repeat the
+provider create/configure/initial-rotate commands above with that workspace.
 Keep each workspace's native custody separate. Attach the production **member**
 profile [hub-member.yaml](providers/hub-member.yaml), using its existing trusted
 client material and native refresh procedure from [Hub/Time setup](HUB_TIME.md).
 Do not attach its admin, qualification, management or registration providers.
 
-Import [time-inference.yaml](providers/time-inference.yaml) in `vv-time-build`.
-Supply the approved inference secret through the trusted shell environment or
-native secret input; disable shell tracing. This installation already keeps it as
-`DEEPINFRA_API_TOKEN` in the ignored root `.env`. Load it with the trusted
-installation environment workflow and map it to `VEOVEO_INFERENCE_TOKEN` only in
-the operator provisioning process; never print it or copy `.env` into the sandbox.
-For an already exported
-`VEOVEO_INFERENCE_TOKEN`, creation uses an environment lookup (no literal secret):
-
-```sh
-openshell profile import --workspace vv-time-build --file openshell/providers/time-inference.yaml
-openshell provider create --workspace vv-time-build --name vv-time-inference \
-  --type vv-time-inference --credential VEOVEO_INFERENCE_TOKEN
-```
-
 Inspect existing objects before reruns; do not replace foreign/conflicting state.
-The model's policy is [factory-time.yaml](factory-time.yaml). It permits only Lore
+The factory policy is [factory-time.yaml](factory-time.yaml). It permits only Lore
 read RPCs, sparse registry/download GETs, Git read protocol paths for the three
-pinned Cargo dependency repositories, scoped inference and member SDK discovery/
-`time__resolve_time`. It does not grant model MCP integrations; the SDK CLI is the
-preflight client. Git fetches use Cargo's CLI mode; no Git push endpoint, host Git
-credentials, token fetcher, rustup downloads or unbounded network rule is included.
+pinned Cargo dependency repositories and member SDK discovery/`time__resolve_time`.
+The SDK CLI is the preflight client. Git fetches use Cargo's CLI mode; no Git push
+endpoint, host Git credentials, token fetcher, rustup downloads or unbounded network
+rule is included.
 Verify actual executable paths, redirects and dependency access during preflight;
 report unsupported operations to development rather than widening the policy.
 
 ```sh
 openshell sandbox create --workspace vv-time-build --name factory-time \
   --from "$FACTORY_TIME_IMAGE_ID" --policy openshell/factory-time.yaml \
-  --provider vv-lore-time --provider vv-hub-member --provider vv-time-inference \
+  --provider vv-lore-time --provider vv-hub-member \
   --no-auto-providers --detach -- sleep infinity
 ```
 
@@ -249,30 +242,10 @@ provisioned workload CA through existing native `SSL_CERT_FILE`; never disable T
 verification or rewrite Host. The exact Hub HTTPS authority must match the actual
 native exposure; the policy's local origin is not a substitute for that check.
 
-## No-model preflight, then one bounded task
-
-Offline inspection of the installed pinned OpenCode 2.0.29 loaded
-`/etc/opencode/opencode.json` and confirmed `prepared-time` has four steps.
-`default_agent` remains the two-step `build` agent. Select the installed config
-explicitly with `OPENCODE_CONFIG=/etc/opencode/opencode.json`; the CLI has no
-`--config` flag. The no-model check is `opencode debug config` under that environment.
-Use `opencode run --agent prepared-time` followed by the prepared instructions as
-one positional message for the model invocation. Do not rely on the default agent. Keep integrations disabled and
-the provider/output limits as configured.
-
-Static inspection of the installed shell implementation confirms `timeout` is a
-nonnegative integer in milliseconds. Foreground defaults to 120000; an explicit
-900000 is accepted and passed unchanged to its timer, with no shell-specific cap.
-On expiry it terminates the command with a three-second force-kill grace. Zero
-disables the timer, and background execution defaults to no timeout. Select a
-finite foreground timeout sufficient for the measured release build. The provider
-HTTP `timeout: 300000` is a separate limit and does not bound a shell build. Do not
-use zero, background execution or the assumed default. A schema/tool failure
-returns to development before spending model tokens. Keep OpenCode version/digests
-pinned.
+## Preflight, then one bounded build job
 
 With the exact image/policy/providers, manually clone `TIME_LORE_REVISION` from
-`grpcs://10.231.10.10:41337/TIME_REPOSITORY_ID` using the same `--identity` and opaque
+`grpcs://host.openshell.internal:41337/TIME_REPOSITORY_ID` using the same `--identity` and opaque
 `--access-token` inputs, followed by `repository clone URL PATH --revision HASH`.
 Set `CARGO_HOME=/sandbox/cargo` and `CARGO_NET_GIT_FETCH_WITH_CLI=true` **after** any
 login-shell profile. Keep the installed `RUSTUP_HOME=/usr/local/rustup`. Use a fresh
@@ -290,19 +263,40 @@ veoveo-hub-sdk-cli --hub https://vv-control--hub--http.openshell.localhost:17670
 
 Check tool discovery and typed successful Time output, not only HTTP status. Verify
 writable Cargo state, dependency downloads, release binary and unchanged source.
-No model call belongs in this phase. Failure goes to development; do not create an
-environment repair loop.
+Failure returns diagnostics to the user's Computer for a source fix and a new
+published revision.
 
-Only after preflight, give `prepared-time` the exact revision, identity, clone URL,
-fresh clone/target paths and validated shell timeout. Ask it to clone that revision,
-run the same release command once, and report revision, command, exit status and
-binary path. Four agent steps bound clone/build/report; no edits, speculative
-retries, dependency changes, MCP exploration, deployment or extra agents. Use a
-fresh target directory so the output was built in this run; dependency caches may
-be reused. Verify unchanged source and retain actual command output. Build the
-runtime image outside the model from that same Lore revision using Time's existing
-Dockerfile, then deploy through native OpenShell and verify readiness plus a
-Hub-routed call. Those remain separate execution gates.
+After preflight, run the exact clone/build command through native Exec with a
+finite 900-second deadline. The trusted caller supplies the admitted immutable
+revision and identity; the sandbox receives its existing opaque Lore reference.
+Fresh source and target directories distinguish this job's output from preflight:
+
+```sh
+openshell sandbox exec --workspace vv-time-build --no-tty --no-login-shell \
+  --timeout 900 --env "TIME_REPOSITORY_ID=$TIME_REPOSITORY_ID" \
+  --env "TIME_LORE_REVISION=$TIME_LORE_REVISION" --env "TIME_SUBJECT=$TIME_SUBJECT" \
+  factory-time -- bash -euc '
+  test ! -e /sandbox/time-job
+  test ! -e /sandbox/time-job-target
+  export CARGO_HOME=/sandbox/cargo
+  export CARGO_NET_GIT_FETCH_WITH_CLI=true
+  export RUSTUP_HOME=/usr/local/rustup
+  export CARGO_TARGET_DIR=/sandbox/time-job-target
+  lore -P --identity "$TIME_SUBJECT" --access-token "$LORE_AUTH_TOKEN" \
+    repository clone "grpcs://host.openshell.internal:41337/$TIME_REPOSITORY_ID" \
+    /sandbox/time-job --revision "$TIME_LORE_REVISION"
+  cd /sandbox/time-job
+  cargo build --locked --release --bin veoveo-mcp-time
+  sha256sum /sandbox/time-job-target/release/veoveo-mcp-time
+'
+```
+
+Retain the admitted revision, image identity, command, exit status, diagnostics and
+binary digest. Verify unchanged source. The trusted publisher builds the runtime
+image from that same verified Lore revision using Time's existing Dockerfile;
+native deployment, readiness and a Hub-routed call remain separate execution gates.
+The factory receives neither deployment nor registry credentials. Model-driven
+qualification runs separately on a Computer after the deterministic gates pass.
 
 For the runtime image, export the verified Lore source into a clean temporary
 Docker build context, excluding `.lore` metadata. Time's current `.dockerignore`

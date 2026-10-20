@@ -138,6 +138,55 @@ client is not a native Hub setup instruction. Prepare application client/claims
 and catalog configuration with the Hub integration after its native origin is
 qualified. Human sign-in alone must not grant application membership.
 
+### Local OpenCode human sign-in
+
+For normal interactive use, register a public Keycloak client and explicit Hub
+membership rather than launching OpenCode with a service-account bearer token.
+The existing `configure-hub` helper has an opt-in mode that leaves the service
+clients, users, their roles and all unrelated catalog sections unchanged:
+
+```sh
+identity/configure-hub --hub-origin "$HUB_ORIGIN" --local-public-client \
+  --installation-root "$INSTALLATION" \
+  --control-plane-file "$FRESH_CATALOG" --output-control-plane "$CANDIDATE" \
+  --application-client-id opencode-local --member-object-id "$KEYCLOAK_USER_ID" \
+  --work-context "$WORK_CONTEXT" --protected-resource "$HUB_ORIGIN/mcp/local" \
+  --client-redirect-uri http://127.0.0.1:3210/callback
+```
+
+Run this only from trusted operator tooling. `$FRESH_CATALOG` must be a fresh
+authoritative Hub control-plane snapshot; validate and publish `$CANDIDATE`
+separately with existing native Hub administration. The selected Work Context
+supplies its tenant. The helper adds only a member grant and contributor
+membership for the explicitly selected, enabled Keycloak human user IDs. It
+does not grant every user of the public client access. Repeating preparation is
+idempotent; a conflicting existing registration requires operator review.
+
+Keycloak owns the public client's authorization-code/S256 and native refresh
+flow. The built-in User Property mapper copies each actual user's immutable
+`id` into Hub's `principal` and `initiator` claims; the native `sub` remains
+unchanged. The principal is this opaque user ID, not a service-account name.
+The exact MCP audience, direct invocation, tenant and Work Context claims are
+configured on this dedicated client. No client secret, user-attribute extension,
+password grant or application refresh worker is involved. Optional `mcp` and
+`offline_access` scopes use Keycloak's existing scope configuration; the human
+must remain eligible for native offline access under the realm's existing roles
+and session policy. This mode does not configure a Hub-hosted OIDC broker.
+
+Configure OpenCode's remote server with `oauth.client_id: "opencode-local"`,
+`oauth.scope: "mcp"`, `oauth.redirect_uri: "http://127.0.0.1:3210/callback"` and
+`oauth.callback_port: 3210`. Remove static Authorization headers and `oauth: false`.
+Use ordinary `opencode mcp auth <server-name>` for real browser sign-in. OpenCode
+stores the resulting grant natively and refreshes on an authenticated request
+when required; it does not need the old token-minting launcher.
+
+Start the OpenCode process with standard `NODE_EXTRA_CA_CERTS` pointing to a
+public PEM bundle containing both the native gateway CA and Keycloak's
+installation CA. `SSL_CERT_FILE` may name the same bundle. Preserve certificate
+verification; there is no per-server CA option in the reviewed MCP configuration.
+Already-running servers retain their startup environment, so qualify a separate
+native process before replacing one that owns other sessions.
+
 Envoy binds the browser listener to `127.0.0.1:8443`. PostgreSQL, Keycloak HTTP and
 its management port are unpublished. Database and Keycloak run as non-root, with
 all capabilities dropped and no-new-privileges. The database owner has no
@@ -191,16 +240,22 @@ and [authorization code flow](https://learn.microsoft.com/en-us/entra/identity-p
 documentation. Entra requires the reference tenant and app registration; this
 local setup does not create those or modify the remote deployment.
 
-## Direct Lore factory credentials
+## Lore identity and repository ownership
 
-`configure-lore` provisions ordinary optional repository scopes and confidential
-factory clients using built-in Keycloak mappers. It keeps stable subjects/secrets
-in private operator state and renders trusted hook assignments. Native OpenShell
-client-credentials refresh holds their secrets; Lore directly discovers/verifies
-this issuer's JWKS. See [native setup](../openshell/README.md).
+Entra (or the selected upstream IdP) authenticates humans into Hub. The existing
+Hub broker application remains confidential and its credential stays trusted.
+Native Lore's secretless public client and distinct factory client are registered
+with Hub, not provisioned as directory repository-role/resource mappers. Hub's
+revisioned control plane owns exact native repository registrations and explicit
+tenant/principal/action assignments. Follow [Hub-issued native Lore](../computer/LORE_HUB.md)
+for public-client, issuer, factory custody and live publication settings.
 
-The former `veoveo-lore` Desktop registration is disabled. Its adapter/ingress and
-manual signing helpers are retired. Native `openshell-cli`, `veoveo-controller`
-and `lore-cli` registrations remain separate and enabled. Preserve the private
-recovery checkpoint and durable identity database. Do not restore Desktop-specific
-bootstrap merely to implement factory token renewal.
+The retired `configure-lore` direct-issuer helper and its helper-only tests have
+been removed. Do not regenerate its local client/grant bookkeeping. Retain any
+trusted existing storage/TLS/identity state; removal of tooling does not authorize
+deleting operator data. Directory administration is not required to change a Hub
+repository assignment. Native Lore behavior remains unchanged.
+
+The former `veoveo-lore` Desktop registration remains disabled. Its adapter/ingress
+and manual signing helpers stay retired. Preserve durable identity data and the
+private recovery checkpoint; do not restore Desktop bootstrap for factory renewal.

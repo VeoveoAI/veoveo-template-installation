@@ -143,8 +143,10 @@ reviewed source. The fixture now takes a **native config directory containing
 on the private network with the selected configuration, public CA and native
 storage credential environment. It constructs the selected backend and emits
 the existing final JSON shape: `repository`, `forbidden`, `main`, `assigned`,
-`other`. Save that JSON privately for `identity/configure-lore` and the existing
-qualifier. It is not a runtime seed service. Do not run it concurrently with the
+`other`. Save that JSON privately as fixture evidence. For actual repository
+registrations/assignments use Hub's existing typed control-plane publication;
+review native hook bindings separately in trusted TOML. This is not a runtime seed
+service or a grant-provisioning helper. Do not run it concurrently with the
 owning Lore server or give its storage credentials to the qualifier factory.
 
 Keep the existing private native address, alias, static IP, TLS identity and volume

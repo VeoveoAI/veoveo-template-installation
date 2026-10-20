@@ -1,6 +1,6 @@
-# configure-lore renders only REPOSITORY_ID into private time.provider.yaml.
+# Hub-issued exact-repository factory credential; replace the synthetic ID.
 id: vv-lore-time
-display_name: Prepared Time exact-repository grant
+display_name: Hub-issued exact-repository factory grant
 credentials:
   - name: access_token
     env_vars: [LORE_AUTH_TOKEN]
@@ -9,9 +9,10 @@ credentials:
     header_name: authorization
     refresh:
       strategy: oauth2_client_credentials
-      token_url: https://auth.localhost:8443/realms/veoveo/protocol/openid-connect/token
-      scopes: [lore-repo-REPOSITORY_ID]
-      refresh_before: 180s
+      token_url: https://veoveo.example.com/oauth/token
+      # Must match deployment.scopeTemplate and the registered native repository.
+      scopes: [lore-repo-11111111111111111111111111111111]
+      refresh_before: 60s
       max_lifetime: 300s
       material:
         - name: client_id
