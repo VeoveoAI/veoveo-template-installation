@@ -22,23 +22,35 @@ deployment acceptance.
   native OIDC refresh and S3/PostgreSQL storage. Build with the existing
   [Lore Dockerfile](../factory/Lore.Dockerfile)
   and the selected source/CA named contexts. Use the resulting immutable image ID.
-- OpenCode: source commit `4bd4891e9e3d67460eb43dcfcdefb5172c1279ff`, including
+- OpenCode: source commit `ed62aad52c80ecdf4297310ce84305aff5717b7d`, including
   runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
-  online-only UI and mounted-router navigation. Use the final reviewed native
+  online-only UI, mounted-router navigation and route-relative titlebar history.
+  The Linux reference image is
+  `registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/veoveo-computer@sha256:12c2ba83bd6f3dea715d1f8ab25ee20dd81dfb8145868f9a193f73cb4ce695d4`.
+  Both fresh owner homepages render. Direct mounted Settings, Back to app,
+  New session and browser Back/Forward retain the Computer prefix. The final
+  bounded exact-model acceptance passed; see the dated
+  [qualification record](../kubernetes/README.md#reference-qualification-checkpoint--2026-10-20). Use the final reviewed native
   platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
-- Native OpenShell gateway/driver: `2c9fe478f49773998d8602f8da68fce0864343fd`,
+- Native OpenShell gateway/driver: `53e3665811a72dd1555edb18aeb4fedef4158dbd`,
   retaining Kubernetes workspace persistence, connected-target forwarding readiness,
-  destination-CA staging and running intent while an admitted supervisor Pod is
-  temporarily Pending after reboot. The selected supervisor is
+  destination-CA staging, admitted GPU allocation propagation and native recovery
+  of a terminated admitted supervisor under `always`/`on-failure`. Temporarily
+  Pending Pods and stale controller status preserve running intent; fresh runtime
+  generations replace terminal Pods while retaining supported persistent state.
+  The selected supervisor is
   `d7a990083214e8a618f05b1b471aeeac6d9aa82a`, retaining mediated HTTP/2 stream
   turnover and trusted gateway Service-DNS resolution, and renewing an expired
   native Kubernetes launch credential pair before policy discovery. Fresh bundles
   skip rebootstrap to avoid the initial runtime-binding persistence race. The
   sandbox runtime remains
   `846de5fa01234a22827915b3f4e5b9092367078b`. Select each component's reviewed
-  immutable image through native configuration. Repeat-reboot recovery and the
-  expired-credential bootstrap path remain separate qualification requirements.
+  immutable image through native configuration. Both Kubernetes Pods deliberately
+  use `Never`; host recovery uses fresh generations rather than restarting an old
+  Pod with its expired bootstrap. The third Linux host reboot restored the owned
+  `always` workloads without manual Starts; mounted browser navigation and the
+  final bounded exact-model acceptance also pass in the recorded scope.
 
 Source commits and local builds do not establish live deployment or user/model
 acceptance. The remote Lore endpoint and its owning deployment must be verified
@@ -201,6 +213,29 @@ assignments and signs native claims, and unchanged Lore enforces its own contrac
 The native `lore auth login "$VEOVEO_LORE_REMOTE" --no-browser` command uses the
 server-advertised public client/device/exchange settings; later expiry uses native
 refresh. No human token is copied to a factory or another Computer.
+
+For an operator's native exec qualification, explicitly use the image workload's
+paths rather than assuming the exec session inherits its environment:
+
+```sh
+openshell --workspace "$COMPUTER_WORKSPACE" sandbox exec --no-tty --no-login-shell \
+  "$COMPUTER_SANDBOX" -- env \
+  HOME=/sandbox/home \
+  XDG_CONFIG_HOME=/sandbox/home/.config \
+  XDG_DATA_HOME=/sandbox/home/.local/share \
+  XDG_STATE_HOME=/sandbox/home/.local/state \
+  XDG_CACHE_HOME=/sandbox/home/.cache \
+  LORE_GLOBAL_PATH=/sandbox/home/.local/share/lore \
+  LORE_AUTH_PATH=/sandbox/home/.config/lore/auth \
+  /usr/local/bin/lore auth login "$VEOVEO_LORE_REMOTE" --no-browser
+```
+
+Use the same explicit paths for subsequent native exec Lore checks. The measured
+exec defaults were `HOME=/sandbox` with no XDG or Lore path overrides, so login
+there wrote `/sandbox/.config/lore/tokenstore.toml`; OpenCode shell tools read
+`/sandbox/home/.config/lore/auth/tokenstore.toml`. A successful exec login in the
+first store does not authenticate the workload's separate store. Ordinary Lore
+commands inside the Computer's OpenCode shell already inherit the image paths.
 
 The [native OIDC fragment](lore-oidc.example.toml), Hub contribution/client records
 and exact OAuth REST paths in policy must be selected together. Native private

@@ -206,17 +206,17 @@ through the tunnel; never rewrite the public object hostname to Service DNS.
 ## Native OpenShell gateway
 
 Use maintained OpenShell source
-`2c9fe478f49773998d8602f8da68fce0864343fd` for the gateway/driver,
-including Kubernetes destination-CA and Pending-supervisor recovery fixes atop
-the native Service-DNS work and chart/runtime base
+`53e3665811a72dd1555edb18aeb4fedef4158dbd` for the gateway/driver,
+including Kubernetes destination-CA, admitted GPU propagation and terminal-runtime
+recovery fixes atop the native Service-DNS work and chart/runtime base
 `846de5fa01234a22827915b3f4e5b9092367078b`. Supply all three actual
 registry/repository/digest overrides; do not select stock images with the same
-tag. The reference gateway was built from `2c9fe478f49773998d8602f8da68fce0864343fd`,
+tag. The reference gateway was built from `53e3665811a72dd1555edb18aeb4fedef4158dbd`,
 its selected supervisor from `d7a990083214e8a618f05b1b471aeeac6d9aa82a`, and the unchanged
 sandbox runtime from the base revision. Record each component's own source and
 image identity rather than treating a shared tag as matching-source evidence.
 Its deployed gateway image is
-`registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/gateway@sha256:b36083f28400e0136521bfa72ffdf91aaddbf0b0f9a6345bd261963080692d95`.
+`registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/gateway@sha256:1bdeade25a8239b7c385924915de59f520be3c48322f79ef4be62d7ce5801564`.
 The published supervisor selected for new generations is
 `registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/supervisor@sha256:f1d8f896daa08d85f8667a595c82544d93cbe73f2d16250387ab484ee5a286d2`.
 Its Linux ELF SHA-256 is
@@ -235,15 +235,35 @@ precede persistence of the compute runtime binding required by issuance. Static
 Docker/standalone credentials keep their existing path. This changes neither
 native Lore authentication nor its Hub-issued grants.
 
-During the first host reboot, the earlier gateway reported supervisors unavailable
-and durably suspended the workloads. Its earlier classification also treated a
-same-UID/generation `Pending`/`ContainerCreating` Pod as unavailable. Revision
-`2c9fe478` preserves running intent while that Pod recovers,
-publishing readiness unavailable until it is Ready. Independent generation, fence,
-missing/terminal/deleting Pod checks and explicit Stop remain fail-closed.
-The replacement gateway is Ready at reference Helm revision 5; an expired-bundle
-bootstrap probe and the repeat host reboot remain unproved. Do not count rollout
-readiness as recovery acceptance.
+The earlier reboot attempts exposed driver-written suspension of running workloads.
+The selected gateway is deployed at reference Helm revision 9. Temporarily Pending
+Pods preserve running intent; a terminal supervisor with admitted Pod identities
+and enforcement fences intact enters native `always`/`on-failure` replacement.
+Before loss publication, stale v1beta1 `Suspended` status projects as unavailable
+readiness rather than operator Stop. Missing/deleting Pods, identity/fence failures,
+explicit Stop/Delete, `never` and canonical terminal results retain their boundaries.
+
+Both native Pods deliberately use `Never`. Host recovery creates fresh runtime
+and Pod identities, retaining PVC-backed files, sessions and durable Tasks; it is
+not a same-Pod expired-bundle bootstrap test. In a scoped deployed check, an
+unexpected supervisor SIGKILL moved `media-live-qa` from Starting at 12:03:56 UTC
+to Ready at 12:04:09 UTC (13 seconds), with restart count 1, no inferred exit code,
+a fresh runtime generation and Pods, and successful native exec. Explicit Stop
+then stayed Stopped without Pods for 30.23 seconds before an explicit QA-only
+Start returned Ready. The foreign GPU workload was unchanged.
+
+The third Linux host reboot on 2026-10-20 was issued at 12:13:32 UTC. SSH returned
+at 12:15:34; the 12:17:04 inventory found Hub, Time, Artifact, Media, its synthetic
+provider, both Computers and both owned `always` QA runners Ready with restart
+count 1, no inferred command exit and fresh runtime generations. No manual native
+Start preceded that inventory; the `never` Time QA runner stayed Stopped. All 25
+PVC identities and volume bindings matched the preboot inventory. The saved
+browser session and authoritative control revision survived; a fresh terminal
+WebSocket returned its marker in 941 ms (66 output bytes). This proves native
+host recovery and these retained-state checks, not OS PTY-process persistence or
+final model acceptance. The retained postboot inventory is
+`/home/rozgo/.config/veoveo/k3s/evidence/openshell-gateway-53e-recovery-20261020/postboot.json`,
+SHA-256 `7ff98cfe7ec82dab116615cd920fbb117e268c33f999e5858b1f7ef10212b128`.
 
 Create the standard `registry-pull` dockerconfigjson Secret in the `openshell` namespace from the private pull-only registry config. Native managed
 workspace reconciliation copies the referenced image-pull Secret. Renew registry
@@ -356,10 +376,17 @@ belong in the installation's own record. The maintained source pins are:
 | Media | `f01cdb0b772a87e20835f5b88be18910a7785e54` |
 | Synthetic Media provider fixture | `4e8504b2c9bc72b0b249a8cf122e29983634d2e8` |
 | Native Lore | `6b7a0e598b8fbbaed82c777109135ddb25873bbf` |
-| OpenCode | `4bd4891e9e3d67460eb43dcfcdefb5172c1279ff` |
-| OpenShell gateway/driver | `2c9fe478f49773998d8602f8da68fce0864343fd` |
+| OpenCode | `ed62aad52c80ecdf4297310ce84305aff5717b7d` |
+| OpenShell gateway/driver | `53e3665811a72dd1555edb18aeb4fedef4158dbd` |
 | OpenShell supervisor | `d7a990083214e8a618f05b1b471aeeac6d9aa82a` |
 | OpenShell sandbox runtime | `846de5fa01234a22827915b3f4e5b9092367078b` |
+
+The replacement Computer image is
+`registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/veoveo-computer@sha256:12c2ba83bd6f3dea715d1f8ab25ee20dd81dfb8145868f9a193f73cb4ce695d4`,
+built from OpenCode `ed62aad52c80ecdf4297310ce84305aff5717b7d`. Both fresh owner
+homepages render. Direct mounted Settings and Back to app, adding
+`/sandbox/projects`, New session, and browser Back/Forward all retain the Computer
+prefix. The final bounded exact-model acceptance also passed, as recorded below.
 
 These are maintained-fork source revisions, not upstream release versions or
 reproducible-build claims. The corrected Factory/Computer build uses the UID/GID
@@ -376,18 +403,20 @@ synthetic provider image remains `sha256:398f86bbda316b6cd40b2a88c332fadc6fcc809
 
 Deterministic/component evidence includes both Hub Docker check gates (231 passed,
 one skipped per platform), focused native CA/DNS tests and strict Clippy,
-`mise run docs` on OpenShell b849 (zero errors, three warnings, 6.291 seconds),
-and upstream chart render/lint/admission. Runtime checks separately proved Cilium
-ingress/egress denial and allowance, CNPG extension/TLS access, private/public
+upstream chart render/lint/admission, and the final OpenShell driver suite
+(306 passed), strict driver Clippy (20.04 seconds), and `mise run docs`
+(zero errors, three warnings, 8.58 seconds). Existing server infrastructure/restart
+filters also passed before the final driver-only projection correction. Runtime
+checks separately proved Cilium ingress/egress denial and allowance, CNPG extension/TLS access, private/public
 scoped S3 byte round trips and cross-bucket denial. Successful render, image pull
 or Pod Ready alone is not application acceptance.
 
 The d7 supervisor source passed 16 Core authentication tests and two existing
 server identity-rejection tests. Strict default-feature, all-target Clippy for
 Core and the supervisor passed in 26.09 seconds; the Linux release build took
-81 seconds. These are source/build gates, not an expired-bundle or host-recovery
-proof. The supervisor's `telemetry` and `defaults-without-telemetry` features are
-mutually exclusive, so its valid strict Clippy invocation does not use
+81 seconds. These are source/build gates, separate from live credential renewal
+and fresh-generation host recovery. The supervisor's `telemetry` and
+`defaults-without-telemetry` features are mutually exclusive, so its valid strict Clippy invocation does not use
 `--all-features`.
 
 Deployed Computer checks used two real owners, distinct automatic workspace PVCs,
@@ -420,10 +449,37 @@ The fixes preserve tenant isolation and reject terminal failed uploads. Media's
 policy also lacked its public signed-upload authority; that exact authority is
 now admitted with TLS passthrough. The original transfer error was not retained,
 so its historical cause is not proved. These are synthetic byte/Task checks,
-not inference or valid media encoding. Host reboot/recovery and the final bounded
-`deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` scenario remain pending at this checkpoint.
-Do not carry historical Docker or signed-provider evidence forward as proof of
-these pending Kubernetes cases.
+not inference or valid media encoding. Native host recovery now passes as
+recorded above. Postboot terminal verifiers passed for Time (0.94 seconds),
+Artifact (1.80 seconds) and Media (1.89 seconds); the synthetic Media output retained the exact byte hash
+above. The observed OpenCode Back-navigation escape from the Computer mount is
+corrected in the published source pin above: titlebar history records route-relative
+paths and lets the mounted router resolve destinations. Image publication, both
+owner homepages and actual mounted Settings/Back/New session/browser Back/Forward
+acceptance pass. A source commit alone does not replace an existing Computer's frozen
+template. Do not carry historical Docker or signed-provider evidence forward as
+proof of pending Kubernetes cases.
+
+The final Computer scenario explicitly used
+`deepinfra/XiaomiMiMo/MiMo-V2.6-Pro`, with an eight-step/240-second bound and no
+model substitution. Session `ses_ea69c1ad3ffeKqVD2BVH1CSrMt` reached terminal idle
+with succeeded status in seven recorded model steps, 81.283 seconds
+(12:58:23.007–12:59:44.290 UTC). Its actual native shell remote Lore command exited
+0 and verified repository `01a1586c89057ea3adcfc848da54077b`, published revision
+`6f6e421befee367e83606f2e0f35b2fdd09b1daab2861fce1263cab31ae11c9f`, and
+source SHA-256 `6a542b5339909414f1dbdc904b14b6e60e29cadfdf8d61e097fa35d52fd0b110`.
+Two routed `resolve_time` calls and `expand_schedule` returned the expected single
+09:00–10:00 UTC occurrence with `truncated=false`.
+
+The trace was not error-free: the model first tried `tools.shell` inside CodeMode,
+received `Unknown tool`, made two catalog searches, then used the native shell
+correctly. The earlier attempt's remote Lore exit 16 came from operator login
+using the native exec default auth path instead of the image workload's path;
+repeating the native login with the explicit image paths corrected qualification
+setup without an application or authorization change. Lore's secure-storage
+warning remained nonfatal. These observations are distinct from the deterministic
+checks, synthetic Media byte proofs and host-recovery evidence above; they do not
+qualify real Media inference, general publication or the separate CUDA work.
 
 Evidence is retained outside Git: `/tmp/k3s-foundation-20261019/` on Linux,
 `/tmp/k3s-native-factory-qualification-20261020/` on Linux and
