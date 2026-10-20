@@ -1,8 +1,16 @@
 # veoveo-template-installation
 
 A Veoveo installation records approved identity, component revisions and environment
-configuration. Lore owns source/revisions; native OpenShell executes factories and
-managed MCP workloads through its Docker driver.
+configuration. Lore owns source/revisions; native OpenShell executes Computers,
+factories and managed MCP workloads through its Kubernetes driver on Linux.
+
+For Linux, start with the [K3s foundation](kubernetes/README.md) and
+[native workload bootstrap](kubernetes/WORKLOADS.md). Kubernetes owns PostgreSQL,
+SeaweedFS, Lore, the OpenShell gateway and the tunnel. OpenShell's native APIs own
+dynamic sandboxes; Helm does not inventory them. These installation inputs are
+being qualified on Linux; see the execution record for measured results.
+Mac remains ordinary source development and component/integration testing with
+local fixtures. No Mac Kubernetes cluster is required.
 
 The selected [Lore storage backend](openshell/LORE_STORAGE.md) uses a dedicated
 schema and login in the existing `veoveo` PostgreSQL database and a dedicated
@@ -16,7 +24,7 @@ no additional issuer service, signer, refresh daemon or custom Lore authorizatio
 layer. See [the Hub-native installation](computer/LORE_HUB.md). Local Keycloak remains management/identity bootstrap. The existing pre-push hook
 is not comprehensive branch isolation.
 
-## Local bootstrap
+## Mac development bootstrap
 
 The application PostgreSQL image includes pgvector and PostGIS. Follow the
 [build, existing-database enablement and rollback-only service checks](postgres/README.md);
@@ -44,9 +52,10 @@ first smoke factory's RPC policy is read-only. Build commands select the require
 patched sources;
 the [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md) records current acceptance.
 
-For the Entra-backed reference Linux goal, follow the existing native contracts
-and [reference preparation](openshell/REFERENCE.md). It uses no local Keycloak
-stack and introduces no alternate application launcher.
+The [Entra reference](openshell/REFERENCE.md) retains identity contracts and
+historical Docker deployment receipts. Its Docker/Compose placement commands do
+not launch the replacement Linux installation; use the Kubernetes instructions
+above. Linux uses Entra and does not require local Keycloak.
 
 [Bioma's installation](https://github.com/BiomaAI/veoveo-installation) is the concrete
 Linux reference implementation derived from this template. It records the selected

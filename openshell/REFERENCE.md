@@ -1,5 +1,12 @@
 # Native reference installation with Entra
 
+**Linux placement has moved to [K3s foundation](../kubernetes/README.md) and
+[native Kubernetes workloads](../kubernetes/WORKLOADS.md).** Identity contracts,
+provider custody and qualification boundaries below remain relevant. Host-service,
+Docker-driver and Compose deployment commands describe the previous reference;
+do not use them to launch the replacement Linux stack. Current deployment and
+acceptance status are recorded in the execution plan.
+
 This prepares the reference Linux goal in the
 [execution plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md#reference-linux-deployment-and-signed-wavespeed-webhook-goal).
 It is configuration, not a qualification receipt or deployment controller. Public
