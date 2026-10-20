@@ -39,8 +39,11 @@ kubectl apply -f kubernetes/namespaces.yaml
 
 The private Cilium override supplies `k8sServiceHost`, the actual node API address.
 First prove real ingress and egress deny/allow behavior with disposable Pods.
-Install the official Agent Sandbox controller/CRDs from the reviewed `v1.0.6`
-release manifest. The Linux amd64 controller digest is
+Install the official Agent Sandbox controller/CRDs using
+`kubectl apply -k kubernetes/agent-sandbox`. This selects the reviewed `v1.0.6`
+core `sandbox.yaml` release manifest (SHA-256
+`b995db5839f2bdca3a24b8bbefdec405df662d6dd223eec8f5dc74098c974231`),
+not the separate extensions release. The Linux amd64 controller digest is
 `sha256:876f9621e0f0e168bcff13aa377880b75fd37e1c8712f2f249e8878c22d06ffd`;
 do not substitute the ARM64 manifest. Wait for controller readiness before native
 sandbox creation. Install CloudNativePG from its official pinned operator chart:
@@ -133,9 +136,15 @@ same tag. Create the standard `registry-pull` dockerconfigjson Secret in the
 `openshell` namespace from the private pull-only registry config. Native managed
 workspace reconciliation copies the referenced image-pull Secret. Renew registry
 credentials through that registry's existing operator mechanism, not a new worker.
+Create the same pull-only `registry-pull` Secret in `veoveo-system` for private
+PostgreSQL and Lore images. Do not copy push/admin credentials into either namespace.
 
 Create `openshell-gateway-db` in `openshell`, key `uri`, with the gateway-only
-PostgreSQL TLS URI. This is separate from CNPG's role-password Secret. Private
+PostgreSQL URI using `sslmode=verify-full` and
+`sslrootcert=/etc/openshell/database-ca/postgres-ca.crt`. Copy only the public
+CNPG CA certificate into `postgres-client-ca` ConfigMap key `postgres-ca.crt` in
+`openshell`; native chart extraVolumes mount it read-only. This is separate from
+CNPG's role-password Secret. Private
 values select the actual management OIDC issuer/audience/claim mappings. Keep
 TLS and mTLS enabled; the chart's idempotent native PKI hook owns gateway/client
 certificates and sandbox signing keys. Keep the gateway ID stable across restarts.
@@ -160,9 +169,12 @@ do not infer complete healing from a Ready Pod.
 Create workspaces and versioned templates through the existing authenticated
 OpenShell CLI/API, then create Hub/MCP/Computer/factory workloads through those
 APIs. No per-workspace Helm release or static workload inventory belongs here.
-For each trusted service config PVC, **first create the native workspace**, obtain
-its actual managed namespace, then create the operator-approved PVC and bootstrap
-Job in that namespace. PVCs cannot be mounted across namespaces. The Job copies
+For each trusted service config PVC, **first create the native workspace**, then
+prepare its required provider custody. Native credential mint/store invokes
+`ensure_workspace`, creating its managed namespace; `CreateWorkspace` alone only
+persists the workspace object. Verify that actual namespace before creating the
+operator-approved PVC and bootstrap Job there. Do not create the namespace yourself
+or add a dummy provider. PVCs cannot be mounted across namespaces. The Job copies
 only approved private config from a temporary native Secret, sets the actual
 sandbox UID/GID ownership, and exits. Mount that admitted PVC read-only outside
 `/sandbox`; remove the temporary Secret/Job after successful copy. Do not mount
@@ -176,6 +188,9 @@ references. Live Hub publication changes future provisioning without replacing
 existing Computers. MCP request destinations and repository assignments remain
 live typed Hub control-plane data; installation files seed only an empty catalog.
 Restarting infrastructure must never overwrite the authoritative active catalog.
+
+Continue with [native workload/bootstrap inputs](WORKLOADS.md) for Lore, tunnel,
+workspace-local config/public-CA PVCs and Kubernetes Computer defaults.
 
 ## Validation boundary
 

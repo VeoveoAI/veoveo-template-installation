@@ -1,0 +1,162 @@
+# Kubernetes Service and unchanged public issuer inputs; preserve exact native rules.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /bin
+  - /usr
+  - /lib
+  - /lib64
+  - /etc
+  - /proc
+  - /dev/urandom
+  - /var/log
+  read_write:
+  - /tmp
+  - /dev/null
+  - /var/lib/veoveo/media
+network_policies:
+  registration:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/register
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: vv-media-registration
+      rules:
+      - allow:
+          method: POST
+          path: /oauth/register
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-media
+  hub_metadata:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /.well-known/oauth-authorization-server
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /.well-known/oauth-authorization-server
+    - host: veoveo.example.com
+      port: 443
+      path: /jwks.json
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /jwks.json
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/register/*
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /oauth/register/*
+      - allow:
+          method: DELETE
+          path: /oauth/register/*
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-media
+  hub_token_exchange:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /oauth/token
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-media
+  artifact_calls:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /mcp/local
+      protocol: mcp
+      enforcement: enforce
+      mcp:
+        versions:
+        - '2026-07-28'
+        allow_all_known_mcp_methods: false
+      rules:
+      - allow:
+          method: server/discover
+      - allow:
+          method: ping
+      - allow:
+          method: tools/list
+      - allow:
+          method: tools/call
+          tool: artifact__create_upload
+      - allow:
+          method: tools/call
+          tool: artifact__sign_upload_parts
+      - allow:
+          method: tools/call
+          tool: artifact__complete_upload
+      - allow:
+          method: tools/call
+          tool: artifact__abort_upload
+      - allow:
+          method: resources/read
+      - allow:
+          method: subscriptions/listen
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-media
+  generation:
+    endpoints:
+    - host: vv-services--media-provider--http.openshell.localhost
+      port: 8080
+      path: /api/v3/**
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: vv-media-generation
+      rules:
+      - allow:
+          method: GET
+          path: /api/v3/models
+      - allow:
+          method: GET
+          path: /api/v3/predictions/*/result
+      - allow:
+          method: POST
+          path: /api/v3/**
+    - host: vv-services--media-provider--http.openshell.localhost
+      port: 8080
+      path: /outputs/**
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /outputs/*/*
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-media
+  database:
+    endpoints:
+    - host: veoveo-postgres-rw.veoveo-system.svc.cluster.local
+      port: 5432
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-media
+  object_storage:
+    endpoints:
+    - host: seaweedfs-s3.veoveo-system.svc.cluster.local
+      port: 9000
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-media

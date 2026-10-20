@@ -1,0 +1,80 @@
+# Operator bootstrap only, AFTER native vv-services provider custody creates its namespace.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: time-state-v1
+  namespace: openshell-veoveo-k3s-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: artifact-state-v1
+  namespace: openshell-veoveo-k3s-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: artifact-config-v1
+  namespace: openshell-veoveo-k3s-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-state-v1
+  namespace: openshell-veoveo-k3s-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-config-v1
+  namespace: openshell-veoveo-k3s-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

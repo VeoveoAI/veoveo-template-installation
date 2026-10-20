@@ -1,0 +1,163 @@
+# Kubernetes Service and unchanged public Hub authority inputs; preserve exact native rules.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /bin
+  - /usr
+  - /lib
+  - /lib64
+  - /etc
+  - /proc
+  - /dev/urandom
+  - /var/log
+  read_write:
+  - /sandbox
+  - /tmp
+  - /dev/null
+network_policies:
+  lore:
+    endpoints:
+    - host: lore.veoveo-system.svc.cluster.local
+      port: 41337
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: vv-lore-time
+      rules:
+      - allow:
+          method: POST
+          path: /lore.environment.v1.EnvironmentService/EnvironmentGet
+      - allow:
+          method: POST
+          path: /urc.rpc.EnvironmentService/Get
+      - allow:
+          method: POST
+          path: /lore.repository.v1.RepositoryService/RepositoryGet
+      - allow:
+          method: POST
+          path: /lore.repository.v1.RepositoryService/RepositoryMetadataGet
+      - allow:
+          method: POST
+          path: /lore.storage.v1.StorageService/Get
+      - allow:
+          method: POST
+          path: /lore.storage.v1.StorageService/GetMetadata
+      - allow:
+          method: POST
+          path: /lore.storage.v1.StorageService/GetResolved
+      - allow:
+          method: POST
+          path: /lore.storage.v1.StorageService/Query
+      - allow:
+          method: POST
+          path: /lore.storage.v1.StorageService/MutableLoad
+      - allow:
+          method: POST
+          path: /urc.rpc.RepositoryService/Info
+      - allow:
+          method: POST
+          path: /lore.revision.v1.RevisionService/BranchGet
+      - allow:
+          method: POST
+          path: /lore.revision.v1.RevisionService/BranchList
+      - allow:
+          method: POST
+          path: /lore.revision.v1.RevisionService/BranchMetadataGet
+      - allow:
+          method: POST
+          path: /lore.revision.v1.RevisionService/RevisionList
+    binaries:
+    - path: /usr/local/bin/lore
+  cargo_index:
+    endpoints:
+    - host: index.crates.io
+      port: 443
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /**
+    - host: static.crates.io
+      port: 443
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /crates/**
+    binaries:
+    - path: /usr/local/cargo/bin/cargo
+    - path: /usr/local/rustup/toolchains/1.99.0-aarch64-unknown-linux-gnu/bin/cargo
+    - path: /usr/local/rustup/toolchains/1.99.0-x86_64-unknown-linux-gnu/bin/cargo
+  pinned_git_dependencies:
+    endpoints:
+    - host: github.com
+      port: 443
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /VeoveoAI/veoveo-core/info/refs
+      - allow:
+          method: POST
+          path: /VeoveoAI/veoveo-core/git-upload-pack
+      - allow:
+          method: GET
+          path: /VeoveoAI/veoveo-core.git/info/refs
+      - allow:
+          method: POST
+          path: /VeoveoAI/veoveo-core.git/git-upload-pack
+      - allow:
+          method: GET
+          path: /VeoveoAI/veoveo-hub-sdk/info/refs
+      - allow:
+          method: POST
+          path: /VeoveoAI/veoveo-hub-sdk/git-upload-pack
+      - allow:
+          method: GET
+          path: /VeoveoAI/veoveo-hub-sdk.git/info/refs
+      - allow:
+          method: POST
+          path: /VeoveoAI/veoveo-hub-sdk.git/git-upload-pack
+      - allow:
+          method: GET
+          path: /VeoveoAI/rust-sdk/info/refs
+      - allow:
+          method: POST
+          path: /VeoveoAI/rust-sdk/git-upload-pack
+      - allow:
+          method: GET
+          path: /VeoveoAI/rust-sdk.git/info/refs
+      - allow:
+          method: POST
+          path: /VeoveoAI/rust-sdk.git/git-upload-pack
+    binaries:
+    - path: /usr/bin/git
+    - path: /usr/lib/git-core/git-remote-http
+    - path: /usr/lib/git-core/git-remote-https
+  hub_member:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /mcp/local
+      protocol: mcp
+      enforcement: enforce
+      credential_binding:
+        provider: vv-hub-member
+      mcp:
+        versions:
+        - '2026-07-28'
+        allow_all_known_mcp_methods: false
+      rules:
+      - allow:
+          method: server/discover
+      - allow:
+          method: tools/list
+      - allow:
+          method: tools/call
+          tool: time__resolve_time
+    binaries:
+    - path: /usr/local/bin/veoveo-hub-sdk-cli

@@ -19,8 +19,9 @@ this with host aliases, path aliases or disabled mediation.
 
 An IdP operator must provision a separate confidential client for this service.
 Use the native gateway's actual issuer/audience and its configured admin role
-(`openshell-admin` in the examples), plus exactly these six native permissions:
+(`openshell-admin` in the examples), plus exactly these seven native permissions:
 
+- `config:read` (selected native backend discovery)
 - `workspace:read`, `workspace:write`
 - `sandbox:read`, `sandbox:write`
 - `provider:read`, `provider:write`
@@ -34,13 +35,13 @@ exact RPC egress further limits this service, but does not turn its native role
 into workspace-only authority. Neither its reference nor its refresh material is
 attached to user Computers.
 
-For local Keycloak, assign only the configured admin role and exact six scopes to
+For local Keycloak, assign only the configured admin role and exact seven scopes to
 the new service account; remove unrelated inherited/default grants. The existing
 `identity/configure-hub` helper prepares the forwarder-only identity, not this
 client. Use the selected IdP's ordinary administration interface for the new
 client and independently verify its native token claims before enabling Hub.
 
-For Entra, assign the configured admin application role and the six permission
+For Entra, assign the configured admin application role and the seven permission
 application roles on the native OpenShell resource. The resource must emit its
 verified audience and v2 issuer. With `roles_claim = "roles"` and
 `scopes_claim = "roles"`, native authorization reads app-only permissions from
@@ -143,12 +144,13 @@ Both policies allow only the Hub binary to POST these native RPC paths beneath
 |---|---|
 | Existing upstreams and Computer browser bytes | ForwardTcp |
 | Preinstalled global profiles and trusted template | GetProviderProfile, GetSandboxTemplate |
+| Backend discovery | GetGatewayInfo (`config:read`, platform admin) |
 | Per-owner workspace/template | GetWorkspace, CreateWorkspace, CreateSandboxTemplate |
 | Workspace-local user/model custody | GetProvider, CreateProvider, ConfigureProviderRefresh, RotateProviderCredential |
 | Native Computer lifecycle | GetSandbox, CreateSandbox, StartSandbox, StopSandbox |
 
 One enforced REST endpoint selects `/openshell.v1.OpenShell/**` at the native
-gateway authority, with the same provider binding and exactly the fourteen POST
+gateway authority, with the same provider binding and exactly the fifteen POST
 rules above. The service-root selector chooses the HTTP route; it does not grant
 additional RPCs. There is no wildcard allow rule, Exec, Delete, UpdateProvider,
 profile import or operator-only credential export. Profiles are installed separately
@@ -157,7 +159,7 @@ by the trusted operator.
 Keep these RPC rules in one endpoint configuration. The native
 [HTTP/2 eligibility predicate](https://github.com/VeoveoAI/OpenShell/blob/9724fb1834dec157b4482a1da97338fd8ca1e50c/crates/openshell-supervisor-network/src/proxy/relay.rs#L45)
 requires one supported REST inspection configuration before advertising `h2`.
-Splitting the same authority into fourteen endpoints forces HTTP/1.1-only ALPN,
+Splitting the same authority into fifteen endpoints forces HTTP/1.1-only ALPN,
 which tonic rejects with `NoApplicationProtocol`. Native
 [per-stream admission](https://github.com/VeoveoAI/OpenShell/blob/9724fb1834dec157b4482a1da97338fd8ca1e50c/crates/openshell-supervisor-network/src/l7/http2.rs#L290)
 still evaluates each actual method/path and resolves the bound credential; this
@@ -171,7 +173,7 @@ locally; no extra public JWKS egress is required for that path.
 
 Before rollout, use native policy parsing/ambiguity admission and profile linting.
 Confirm native policy construction produces one REST endpoint configuration, with
-exactly the fourteen POST allow rules and unchanged provider/binary bindings;
+exactly the fifteen POST allow rules and unchanged provider/binary bindings;
 there must be no wildcard allow rule. These structural checks and the reviewed
 per-stream evaluator do not establish successful live RPCs or an observed denial.
 

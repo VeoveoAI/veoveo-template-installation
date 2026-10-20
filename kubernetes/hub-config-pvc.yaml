@@ -1,0 +1,75 @@
+# Apply only AFTER native `workspace create vv-control`. This namespace is the
+# native managed-mode result for gateway ID veoveo-k3s and workspace vv-control.
+# If either changes, use the actual native namespace; do not create another one.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hub-config-v1
+  namespace: openshell-veoveo-k3s-vv-control
+  labels:
+    openshell.ai/sandbox-attachable: "true"
+    openshell.ai/sandbox-attachable-workspace: vv-control
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-hub-config-v1
+  namespace: openshell-veoveo-k3s-vv-control
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+        - name: registry-pull
+      containers:
+        - name: copy
+          image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
+          command: [/bin/sh, -ec]
+          args:
+            - |
+              umask 077
+              test ! -e /output/hub.json
+              cp /input/hub.json /input/hub.env /input/computer-policy-v1.yaml /input/authorization-server.jwks.json /output/
+              chmod 0600 /output/hub.json /output/hub.env /output/computer-policy-v1.yaml /output/authorization-server.jwks.json
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: source
+              mountPath: /input
+              readOnly: true
+            - name: output
+              mountPath: /output
+      volumes:
+        - name: source
+          secret:
+            secretName: hub-config-bootstrap
+            defaultMode: 0440
+            items:
+              - key: hub.json
+                path: hub.json
+              - key: hub.env
+                path: hub.env
+              - key: computer-policy-v1.yaml
+                path: computer-policy-v1.yaml
+              - key: authorization-server.jwks.json
+                path: authorization-server.jwks.json
+        - name: output
+          persistentVolumeClaim:
+            claimName: hub-config-v1

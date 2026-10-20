@@ -1,0 +1,104 @@
+# Trusted one-time file copy. Render the immutable utility image before admission.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-artifact-config-v1
+  namespace: openshell-veoveo-k3s-vv-services
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+      - name: registry-pull
+      containers:
+      - name: copy
+        image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - umask 077; test ! -e /output/storage.env; cp /input/storage.env /output/storage.env;
+          chmod 0600 /output/storage.env
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: input
+          mountPath: /input
+          readOnly: true
+        - name: output
+          mountPath: /output
+      volumes:
+      - name: input
+        secret:
+          secretName: artifact-config-bootstrap
+          defaultMode: 288
+          items:
+          - key: storage.env
+            path: storage.env
+      - name: output
+        persistentVolumeClaim:
+          claimName: artifact-config-v1
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-media-config-v1
+  namespace: openshell-veoveo-k3s-vv-services
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+      - name: registry-pull
+      containers:
+      - name: copy
+        image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - umask 077; test ! -e /output/provider.env; cp /input/provider.env /output/provider.env;
+          chmod 0600 /output/provider.env
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: input
+          mountPath: /input
+          readOnly: true
+        - name: output
+          mountPath: /output
+      volumes:
+      - name: input
+        secret:
+          secretName: media-config-bootstrap
+          defaultMode: 288
+          items:
+          - key: provider.env
+            path: provider.env
+      - name: output
+        persistentVolumeClaim:
+          claimName: media-config-v1

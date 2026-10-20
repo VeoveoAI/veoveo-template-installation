@@ -1,0 +1,166 @@
+{
+  "computers": {
+    "gateway": {
+      "endpoint": "https://openshell.openshell.svc.cluster.local:8080",
+      "certificateAuthority": "/run/openshell-supervisor-ca/material/ca.crt",
+      "bearerEnvironment": "HUB_NATIVE_CONTROL_REFERENCE"
+    },
+    "template": {
+      "workspace": "installation",
+      "name": "computer-v1"
+    },
+    "policyFile": "/etc/veoveo/hub/computer-policy-v1.yaml",
+    "command": [
+      "/bin/sh",
+      "-ec",
+      "umask 077; exec /usr/local/bin/opencode serve --trusted-local-proxy --hostname 127.0.0.1 --port 4096 --base-path \"${PUBLIC_BASE_PATH:?trusted PUBLIC_BASE_PATH is required}\""
+    ],
+    "oauthClient": "computer-browser",
+    "profile": "computer",
+    "workContext": "default",
+    "port": 4096,
+    "forwardingConnectionLimit": 512,
+    "hubProvider": {
+      "profile": "vv-computer-hub",
+      "credentialKey": "COMPUTER_HUB_REFERENCE"
+    },
+    "modelProvider": {
+      "profile": "vv-computer-model",
+      "credentialKey": "DEEPINFRA_API_KEY",
+      "secret": "computer-model-api-key"
+    }
+  },
+  "secrets": [
+    {
+      "id": "computer-model-api-key",
+      "source": "env",
+      "purpose": "provider_api_key",
+      "locator": "VEOVEO_COMPUTER_MODEL_API_KEY",
+      "owner": {
+        "kind": "hub"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "lore-factory-client-secret",
+      "source": "env",
+      "purpose": "oauth_client_secret",
+      "locator": "VEOVEO_LORE_FACTORY_CLIENT_SECRET",
+      "owner": {
+        "kind": "hub"
+      },
+      "metadata": {}
+    }
+  ],
+  "nativeUpstreams": {
+    "gateway": "https://openshell.openshell.svc.cluster.local:8080",
+    "certificateAuthority": "/run/openshell-supervisor-ca/material/ca.crt",
+    "bearerEnvironment": "HUB_NATIVE_CONTROL_REFERENCE",
+    "bindings": [
+      {
+        "endpoint": "http://time.internal:8800/time/mcp",
+        "workspace": "vv-services",
+        "sandbox": "time",
+        "port": 8800
+      },
+      {
+        "endpoint": "http://artifact.internal:8801/artifact/mcp",
+        "workspace": "vv-services",
+        "sandbox": "artifact",
+        "port": 8801
+      },
+      {
+        "endpoint": "http://media.internal:8802/media/mcp",
+        "workspace": "vv-services",
+        "sandbox": "media",
+        "port": 8802
+      }
+    ]
+  },
+  "lore": {
+    "deployments": [
+      {
+        "id": "primary",
+        "resourceName": "lore",
+        "audience": "https://veoveo.example.com/resources/lore",
+        "endpoint": "grpcs://lore.veoveo-system.svc.cluster.local:41337",
+        "authorizationServer": "hub",
+        "policyVersion": "installation",
+        "loginScopes": [
+          "lore:login",
+          "offline_access"
+        ],
+        "scopeTemplate": "lore-repo-{id}",
+        "resourceIdTemplate": "urc-{id}",
+        "tokenLifetimeSeconds": 300
+      }
+    ],
+    "repositories": [],
+    "assignments": []
+  },
+  "oauthClients": [
+    {
+      "id": "lore-computer",
+      "authorizationServer": "hub",
+      "defaultWorkContext": "default",
+      "invocationMode": "direct",
+      "displayName": "Native Lore public client",
+      "allowedResources": [
+        "https://veoveo.example.com/resources/lore"
+      ],
+      "grantTypes": [
+        "device_authorization",
+        "refresh_token",
+        "token_exchange"
+      ],
+      "authMethods": [
+        "none"
+      ],
+      "allowedScopes": [
+        "lore:login",
+        "offline_access"
+      ]
+    },
+    {
+      "id": "lore-factory",
+      "authorizationServer": "hub",
+      "defaultWorkContext": "default",
+      "invocationMode": "automated",
+      "displayName": "Exact-repository deterministic factory",
+      "allowedResources": [
+        "https://veoveo.example.com/resources/lore"
+      ],
+      "grantTypes": [
+        "client_credentials"
+      ],
+      "authMethods": [
+        "client_secret_post"
+      ],
+      "allowedScopes": [
+        "lore:login",
+        "offline_access"
+      ],
+      "credentialSecret": "lore-factory-client-secret",
+      "tenant": "example"
+    }
+  ],
+  "oidcClients": [
+    {
+      "id": "hub-entra",
+      "identityProvider": "entra",
+      "authorizationServer": "hub",
+      "allowedResources": [
+        "https://veoveo.example.com/mcp/computer",
+        "https://veoveo.example.com/resources/lore"
+      ],
+      "clientId": "33333333-3333-4333-8333-333333333333",
+      "redirectUri": "https://veoveo.example.com/oauth/callback",
+      "authMethod": "client_secret_post",
+      "credentialSecret": "hub-entra-client-secret",
+      "scopes": [
+        "openid",
+        "profile"
+      ]
+    }
+  ]
+}

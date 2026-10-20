@@ -1,0 +1,104 @@
+# Kubernetes Service inputs; preserve exact native rules and provider bindings.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /bin
+  - /usr
+  - /lib
+  - /lib64
+  - /etc
+  - /proc
+  - /dev/urandom
+  - /var/log
+  read_write:
+  - /sandbox
+  - /tmp
+  - /dev/null
+network_policies:
+  hub:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /mcp/computer
+      protocol: mcp
+      enforcement: enforce
+      credential_binding:
+        provider: computer-hub
+      mcp:
+        versions:
+        - '2026-07-28'
+        allow_all_known_mcp_methods: true
+    binaries:
+    - path: /usr/local/bin/opencode
+  model:
+    endpoints:
+    - host: api.deepinfra.com
+      port: 443
+      path: /v1/openai/chat/completions
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: computer-model
+      rules:
+      - allow:
+          method: POST
+          path: /v1/openai/chat/completions
+    binaries:
+    - path: /usr/local/bin/opencode
+  artifact_bytes:
+    endpoints:
+    - host: objects.veoveo.example.com
+      port: 443
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/bin/curl
+  lore:
+    endpoints:
+    - host: lore.veoveo-system.svc.cluster.local
+      port: 41337
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/lore
+  lore_identity:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/.well-known/openid-configuration
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /oauth/.well-known/openid-configuration
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/device_authorization
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /oauth/device_authorization
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /oauth/token
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/jwks.json
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /oauth/jwks.json
+    binaries:
+    - path: /usr/local/bin/lore

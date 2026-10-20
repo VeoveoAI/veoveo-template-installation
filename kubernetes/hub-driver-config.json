@@ -1,0 +1,36 @@
+{
+  "kubernetes": {
+    "volumes": [
+      {
+        "name": "trusted-config",
+        "persistent_volume_claim": {
+          "claim_name": "hub-config-v1",
+          "read_only": true
+        }
+      },
+      {
+        "name": "postgres-ca",
+        "persistent_volume_claim": {
+          "claim_name": "postgres-client-ca-v1",
+          "read_only": true
+        }
+      }
+    ],
+    "containers": {
+      "agent": {
+        "volume_mounts": [
+          {
+            "name": "trusted-config",
+            "mount_path": "/etc/veoveo/hub",
+            "read_only": true
+          },
+          {
+            "name": "postgres-ca",
+            "mount_path": "/etc/veoveo/tls",
+            "read_only": true
+          }
+        ]
+      }
+    }
+  }
+}

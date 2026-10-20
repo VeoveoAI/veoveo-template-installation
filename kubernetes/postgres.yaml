@@ -8,6 +8,8 @@ metadata:
 spec:
   instances: 1
   imageName: REPLACE_WITH_EXTENSION_IMAGE_AT_SHA256
+  imagePullSecrets:
+    - name: registry-pull
   postgresUID: 999
   postgresGID: 999
   storage:

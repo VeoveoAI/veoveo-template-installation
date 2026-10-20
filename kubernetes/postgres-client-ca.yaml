@@ -1,0 +1,138 @@
+# Public PostgreSQL and storage trust only, in each actual native workspace namespace.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-client-ca-v1
+  namespace: openshell-veoveo-k3s-vv-control
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-control
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-postgres-client-ca-v1
+  namespace: openshell-veoveo-k3s-vv-control
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+      - name: registry-pull
+      containers:
+      - name: copy
+        image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - umask 022; test ! -e /output/postgres-ca.crt; cp /input/postgres-ca.crt
+          /input/storage-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: input
+          mountPath: /input
+          readOnly: true
+        - name: output
+          mountPath: /output
+      volumes:
+      - name: input
+        configMap:
+          name: postgres-client-ca
+          items:
+          - key: postgres-ca.crt
+            path: postgres-ca.crt
+          - key: storage-ca.crt
+            path: storage-ca.crt
+      - name: output
+        persistentVolumeClaim:
+          claimName: postgres-client-ca-v1
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-client-ca-v1
+  namespace: openshell-veoveo-k3s-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-postgres-client-ca-v1
+  namespace: openshell-veoveo-k3s-vv-services
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+      - name: registry-pull
+      containers:
+      - name: copy
+        image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - umask 022; test ! -e /output/postgres-ca.crt; cp /input/postgres-ca.crt
+          /input/storage-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: input
+          mountPath: /input
+          readOnly: true
+        - name: output
+          mountPath: /output
+      volumes:
+      - name: input
+        configMap:
+          name: postgres-client-ca
+          items:
+          - key: postgres-ca.crt
+            path: postgres-ca.crt
+          - key: storage-ca.crt
+            path: storage-ca.crt
+      - name: output
+        persistentVolumeClaim:
+          claimName: postgres-client-ca-v1

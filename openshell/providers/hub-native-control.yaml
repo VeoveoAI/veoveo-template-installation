@@ -10,7 +10,7 @@ credentials:
     refresh:
       strategy: oauth2_client_credentials
       token_url: https://auth.localhost:8443/realms/veoveo/protocol/openid-connect/token
-      scopes: [workspace:read, workspace:write, sandbox:read, sandbox:write, provider:read, provider:write]
+      scopes: [config:read, workspace:read, workspace:write, sandbox:read, sandbox:write, provider:read, provider:write]
       refresh_before: 180s
       max_lifetime: 300s
       material:

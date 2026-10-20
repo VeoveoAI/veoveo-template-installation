@@ -2,9 +2,12 @@
 
 - This repository holds installation choices and trusted bootstrap configuration.
   Planning belongs in `veoveo-docs`. Components own their build and check logic.
-- All coding factories and managed MCP workloads use OpenShell's native Docker
-  driver. Use its existing APIs, lifecycle, credential store, policy and diagnostics.
-  Do not add Compose author/application profiles, a token worker or a second launcher.
+- Linux deployment uses K3s foundation controllers and OpenShell's native Kubernetes
+  driver for Hub/MCP, Computer and factory workloads. Mac remains ordinary source
+  development/testing with local fixtures; do not provision a Mac cluster. Use native
+  APIs, lifecycle, credential store, policy and diagnostics. Do not add an orchestrator,
+  Helm sandbox inventory, token worker or second launcher. The undeployed native-Docker
+  infrastructure candidate is superseded; preserve Mac test/identity bootstrap tooling.
 - Use permanent Keycloak locally and provider-agnostic OIDC configuration elsewhere.
   Generic installation must not require Keycloak administration credentials.
 - Real provider tokens, signing keys, operator state, bootstrap volumes and Docker

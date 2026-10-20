@@ -1,0 +1,157 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lore-local
+  namespace: veoveo-system
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lore
+  namespace: veoveo-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lore
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lore
+    spec:
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: registry-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: lore
+          image: REPLACE_WITH_NATIVE_LORE_IMAGE_AT_SHA256
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: HOME
+              value: /data
+            - name: TMPDIR
+              value: /data/tmp
+          envFrom:
+            - secretRef:
+                name: lore-storage
+          # Native Lore config-directory layering retains image default.toml.
+          command: [/bin/sh, -ec]
+          args: ['mkdir -p "$TMPDIR"; exec /usr/local/bin/loreserver']
+          ports:
+            - name: grpc
+              containerPort: 41337
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/lore/config/local.toml
+              subPath: local.toml
+              readOnly: true
+            - name: tls
+              mountPath: /etc/lore/tls
+              readOnly: true
+            - name: postgres-ca
+              mountPath: /etc/lore/postgres-ca
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: lore-local
+        - name: config
+          configMap:
+            name: lore-settings
+        - name: tls
+          secret:
+            secretName: lore-server-tls
+            defaultMode: 0440
+        - name: postgres-ca
+          configMap:
+            name: postgres-client-ca
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lore
+  namespace: veoveo-system
+spec:
+  selector:
+    app.kubernetes.io/name: lore
+  ports:
+    - name: grpc
+      port: 41337
+      targetPort: grpc
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lore
+  namespace: veoveo-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: lore
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              openshell.ai/boundary-role: supervisor
+      ports:
+        - protocol: TCP
+          port: 41337
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: veoveo-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: seaweedfs
+              app.kubernetes.io/component: s3
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Lore's native OIDC discovery/JWKS uses the unchanged public Hub issuer.
+    # No inbound public Lore endpoint or additional token service is introduced.
+    - ports:
+        - protocol: TCP
+          port: 443

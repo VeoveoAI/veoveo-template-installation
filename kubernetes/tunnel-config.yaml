@@ -1,0 +1,18 @@
+# Native cloudflared configuration. Render only actual public origins/tunnel ID.
+tunnel: REPLACE_WITH_EXISTING_TUNNEL_ID
+credentials-file: /etc/cloudflared-credentials/credentials.json
+ingress:
+  - hostname: veoveo.example.com
+    service: https://openshell.openshell.svc.cluster.local:8080
+    originRequest:
+      # Native exposure routing selects vv-control/hub service http from Host.
+      httpHostHeader: vv-control--hub--http.openshell.localhost
+      originServerName: openshell.openshell.svc.cluster.local
+      caPool: /etc/cloudflared-ca/gateway.crt
+  - hostname: objects.veoveo.example.com
+    service: https://seaweedfs-s3.veoveo-system.svc.cluster.local:9000
+    originRequest:
+      # Preserve public Host and all signed request bytes; only TLS SNI changes.
+      originServerName: seaweedfs-s3.veoveo-system.svc.cluster.local
+      caPool: /etc/cloudflared-ca/storage.crt
+  - service: http_status:404

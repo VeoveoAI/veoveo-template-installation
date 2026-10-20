@@ -1,0 +1,118 @@
+# Kubernetes Service inputs; preserve exact native rules and provider bindings.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /bin
+  - /usr
+  - /lib
+  - /lib64
+  - /etc
+  - /proc
+  - /dev/urandom
+  - /var/log
+  - /var/lib/veoveo
+  read_write:
+  - /tmp
+  - /dev/null
+network_policies:
+  native_control:
+    endpoints:
+    - host: openshell.openshell.svc.cluster.local
+      port: 8080
+      path: /openshell.v1.OpenShell/**
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: vv-hub-native-control
+      rules:
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetGatewayInfo
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/ForwardTcp
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetProviderProfile
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetWorkspace
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateWorkspace
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetSandboxTemplate
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateSandboxTemplate
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetProvider
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateProvider
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/StartSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/StopSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/ConfigureProviderRefresh
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/RotateProviderCredential
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+  browser_code_exchange:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /oauth/token
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+  entra:
+    endpoints:
+    - host: login.microsoftonline.com
+      port: 443
+      path: /11111111-1111-4111-8111-111111111111/discovery/v2.0/keys
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /11111111-1111-4111-8111-111111111111/discovery/v2.0/keys
+    - host: login.microsoftonline.com
+      port: 443
+      path: /11111111-1111-4111-8111-111111111111/oauth2/v2.0/token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /11111111-1111-4111-8111-111111111111/oauth2/v2.0/token
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+  database:
+    endpoints:
+    - host: veoveo-postgres-rw.veoveo-system.svc.cluster.local
+      port: 5432
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/veoveo-hub

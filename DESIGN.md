@@ -1,42 +1,48 @@
 # Installation Design
 
-Lore is source/revision authority. OpenShell owns author/check/service execution,
-credential custody, policy, lifecycle and forwarding. Veoveo owns application
-permissions, context composition/routing and Task authority. The accepted design is
-in [veoveo-docs](../veoveo-docs/LORE_OPENSHELL_INTEGRATION.md).
+Linux uses K3s for foundation services and OpenShell's native Kubernetes driver
+for Hub/MCP, Computer and factory workloads. The accepted architecture and
+qualification status live in [veoveo-docs](../veoveo-docs/LORE_OPENSHELL_INTEGRATION.md).
+The ordinary [Kubernetes inputs](kubernetes/README.md) bootstrap CloudNativePG,
+SeaweedFS, single-replica Lore, OpenShell gateway and the existing public tunnel.
+K3s has an independent embedded datastore. Gateway and application PostgreSQL
+roles/databases are distinct; they may initially share a CNPG cluster. This is a
+single-node recovery target, not qualified multi-host HA.
 
-The local Compose file starts trusted bootstrap/data services. The former Lore
-Desktop adapter and ingress are retired. Move compatible Lore, database and storage services
-onto native OpenShell workloads after their persistence and protocol checks. Local
-Keycloak, its dedicated database and HTTPS endpoint stay in Compose to avoid an
-OIDC cold-start dependency loop. All managed author and MCP workloads use OpenShell's native
-Docker driver. There is no Kubernetes, Helm, Flux or legacy runtime profile.
+Mac remains normal native source development and component/integration testing,
+including Docker fixtures. Local Keycloak and its database may remain external.
+No Mac Lima/K3s deployment is required. Existing Compose recipes are historical
+Linux inputs or local test/identity fixtures; replacement Linux placement must
+qualify before obsolete Linux launch paths are removed. The undeployed native
+Docker infrastructure candidate is superseded and must not be executed.
 
-Desktop acceptance is withdrawn as of 2026-10-17. Follow the
-[direct Lore credential cutover](../veoveo-docs/LORE_DIRECT_OIDC_PLAN.md): the IdP
-issues ordinary repo grants, OpenShell renews/injects them, and native Lore validates
-them. The qualified direct path has replaced the Desktop adapter/ingress. No replacement
-Veoveo signer, token endpoint or refresh worker is part of the design.
+Lore owns source/revision semantics and enforces its unchanged native signed-token
+contract. Entra authenticates humans; Hub's existing issuer and revisioned control
+plane own explicit repository assignments/native token issuance. There is no
+Desktop adapter, standalone signer, automatic creator/admin grant, custom Lore
+permission layer or token worker. Factory renewal/injection belongs to native
+OpenShell. Human native Lore grants remain in each private Computer.
 
-Durable bootstrap data volumes are external to Compose cleanup. Ignored operator
-state includes identity credentials, TLS keys and the hard-cut recovery bundle.
-Factory workloads receive native credential placeholders and cannot mount operator
-state, bootstrap volumes or Docker access.
+Kubernetes/Helm owns foundation resources only. OpenShell owns dynamic workspace
+namespaces, sandbox resources, policies, providers, templates, lifecycle and
+persistent workspace PVCs. Existing APIs create/remove workloads; Helm values
+must not inventory runtime sandboxes or force unrelated rollouts. Hub catalogs
+are database-authoritative: initial files seed only an empty installation. Live
+MCP request destinations, Computer defaults and explicit repository grants adopt
+through the admitted control-plane path, preserving active state on rejection.
+New versioned defaults affect future or explicitly replaced instances; existing
+Computers retain their admitted provisioning snapshot.
 
-OpenShell's native macOS service runs with a pinned release and qualified supervisor
-image. Its external issuer and native workspace permissions authenticate management
-calls. Private service traffic uses authenticated native forwarding; application
-requests retain Veoveo permission checks and narrowed tokens.
+Trusted server configuration lives in operator-populated, admitted, workspace-local
+PVCs mounted read-only outside `/sandbox`. No caller Secret/ConfigMap/hostPath or
+protected `/run` bypass is introduced. Computer `/sandbox` uses native automatic
+per-sandbox persistence, never a shared explicit claim. Actual credentials,
+private TLS/signing material and operator state are never tracked or included in
+agent-controlled images. Only reviewed public CAs enter application build contexts.
 
-The first implementation slice is local only. Linux replacement, general builds,
-environment composition and application migration are subsequent work through the
-same selected runtime path; their completion requires recorded evidence.
-
-Private user Computers use Hub browser admission and native OpenShell owner
-workspaces, provider custody, ForwardTcp and persistent Docker workspaces. The
-[installation inputs](computer/README.md) keep mutable HOME/XDG/source state under
-`/sandbox` and trusted agent configuration under `/etc/computer`. Human Lore grants
-remain in native Lore's own store; Hub user grants and the installation model key
-are mediated by native workspace-local providers. No agent or model credential is
-restored to deterministic factories. Image/template preparation does not claim
-live user, persistence, revocation or model acceptance.
+Services/DNS provide private PostgreSQL, S3 and Lore addressing. Public origins
+stay installation data. The tunnel preserves public signed S3 bytes and uses
+verified TLS to native Services. Native controllers, readiness/restarts and
+application retry/reconnect handle recovery; there is no custom startup DAG or
+proxy. Dependency interruption and dynamic lifecycle behavior require deployed
+qualification, separate from component tests and final exact MiMo acceptance.

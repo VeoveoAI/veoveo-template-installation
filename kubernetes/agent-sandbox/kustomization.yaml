@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/kubernetes-sigs/agent-sandbox/releases/download/v1.0.6/sandbox.yaml
+images:
+  - name: registry.k8s.io/agent-sandbox/agent-sandbox-controller
+    digest: sha256:876f9621e0f0e168bcff13aa377880b75fd37e1c8712f2f249e8878c22d06ffd
+# Official selective core manifest SHA-256:
+# b995db5839f2bdca3a24b8bbefdec405df662d6dd223eec8f5dc74098c974231
+# Linux amd64 only. No extension controller or template ownership is added.

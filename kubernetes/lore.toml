@@ -1,0 +1,46 @@
+# Native server settings layered over the maintained image's default.toml.
+# Render the actual public issuer/audience and trusted hook assignments privately.
+[hooks.factory_branch]
+enabled = true
+assignments = {}
+
+[server.auth]
+jwt_issuer = ["https://veoveo.example.com/oauth"]
+jwt_audience = ["https://veoveo.example.com/resources/lore"]
+jwt_typ = "at+jwt"
+resource_claim = "resources"
+resource_id_claim = "resource_id"
+permission_claim = "permission"
+resource_id_template = "urc-{id}"
+baseline_access = "denied"
+repository_catalog = "baseline"
+
+[server.auth.oidc]
+client_id = "lore-computer"
+scopes = ["lore:login"]
+preferred = true
+scope_template = "lore-repo-{id}"
+
+[server.quic]
+enabled = false
+
+[server.grpc.certificate]
+cert_file = "/etc/lore/tls/tls.crt"
+pkey_file = "/etc/lore/tls/tls.key"
+
+[immutable_store]
+mode = "s3_postgres"
+
+[mutable_store]
+mode = "s3_postgres"
+
+[lock_store]
+mode = "local"
+
+[plugins.s3_postgres]
+postgres_url_env = "LORE_POSTGRES_URL"
+schema = "lore"
+s3_bucket = "lore"
+s3_endpoint_url = "https://seaweedfs-s3.veoveo-system.svc.cluster.local:9000"
+s3_region = "us-east-1"
+s3_force_path_style = true

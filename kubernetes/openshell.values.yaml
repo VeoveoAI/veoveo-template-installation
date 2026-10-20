@@ -18,6 +18,14 @@ sandboxRuntime:
     digest: REPLACE_WITH_SANDBOX_RUNTIME_SHA256
 server:
   externalDbSecret: openshell-gateway-db
+  extraVolumes:
+    - name: database-ca
+      configMap:
+        name: postgres-client-ca
+  extraVolumeMounts:
+    - name: database-ca
+      mountPath: /etc/openshell/database-ca
+      readOnly: true
   disableTls: false
   workspaceStorageClass: local-path
   workspaceDefaultStorageSize: 10Gi

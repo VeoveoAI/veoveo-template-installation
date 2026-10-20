@@ -17,6 +17,7 @@ network_policies:
         enforcement: enforce
         credential_binding: {provider: vv-hub-native-control}
         rules:
+          - allow: {method: POST, path: /openshell.v1.OpenShell/GetGatewayInfo}
           - allow: {method: POST, path: /openshell.v1.OpenShell/ForwardTcp}
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetProviderProfile}
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetWorkspace}
