@@ -1,0 +1,49 @@
+# Initial trusted bootstrap only, after native vv-services custody creates this
+# managed namespace. Render it to the actual gateway ID before admission.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: embedding-state-v1
+  namespace: openshell-openshell-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: embedding-runtime-config-v1
+  namespace: openshell-openshell-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: embedding-model-cache-v1
+  namespace: openshell-openshell-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 32Gi

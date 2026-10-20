@@ -1,0 +1,52 @@
+# Trusted one-time token copy, not an application workload or reconciler.
+# The existing inference provider and this file must refer to the same secret.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-embedding-runtime-config-v1
+  namespace: openshell-openshell-vv-services
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: copy
+        image: docker.io/library/python@sha256:b921fe7e7522f828d45197a47656ec465a9b15689b27fa8e1fba2864fca5b967
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - umask 077; test -s /input/runtime.token; test ! -e /output/runtime.token;
+          cp /input/runtime.token /output/runtime.token; chmod 0600 /output/runtime.token
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: input
+          mountPath: /input
+          readOnly: true
+        - name: output
+          mountPath: /output
+      volumes:
+      - name: input
+        secret:
+          secretName: embedding-runtime-config-bootstrap
+          defaultMode: 288
+          items:
+          - key: runtime.token
+            path: runtime.token
+      - name: output
+        persistentVolumeClaim:
+          claimName: embedding-runtime-config-v1

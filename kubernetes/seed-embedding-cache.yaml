@@ -1,0 +1,49 @@
+# Trusted one-time standard tar stream; exact snapshot/referenced blobs only.
+# Not a downloader, application workload, polling server or reconciler.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-embedding-model-cache-v1
+  namespace: openshell-openshell-vv-services
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: cache
+        image: docker.io/library/python@sha256:b921fe7e7522f828d45197a47656ec465a9b15689b27fa8e1fba2864fca5b967
+        stdin: true
+        stdinOnce: true
+        tty: false
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - |-
+          umask 077
+          entries="$(find /output -mindepth 1 -maxdepth 1 -print -quit)"
+          test -z "$entries"
+          exec tar --extract --file=- --directory=/output --no-same-owner --no-same-permissions
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: cache
+          mountPath: /output
+      volumes:
+      - name: cache
+        persistentVolumeClaim:
+          claimName: embedding-model-cache-v1

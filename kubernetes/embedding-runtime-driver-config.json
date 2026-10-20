@@ -1,0 +1,43 @@
+{
+  "kubernetes": {
+    "pod": {
+      "runtime_class_name": "nvidia",
+      "node_selector": {
+        "kubernetes.io/os": "linux",
+        "kubernetes.io/arch": "amd64"
+      }
+    },
+    "volumes": [
+      {
+        "name": "model-cache",
+        "persistent_volume_claim": {
+          "claim_name": "embedding-model-cache-v1",
+          "read_only": true
+        }
+      },
+      {
+        "name": "runtime-config",
+        "persistent_volume_claim": {
+          "claim_name": "embedding-runtime-config-v1",
+          "read_only": true
+        }
+      }
+    ],
+    "containers": {
+      "agent": {
+        "volume_mounts": [
+          {
+            "name": "model-cache",
+            "mount_path": "/var/cache/huggingface",
+            "read_only": true
+          },
+          {
+            "name": "runtime-config",
+            "mount_path": "/etc/veoveo/embedding",
+            "read_only": true
+          }
+        ]
+      }
+    }
+  }
+}

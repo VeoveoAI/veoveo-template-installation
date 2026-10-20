@@ -1,0 +1,28 @@
+# Full-model CUDA runtime. --gpu 1 supplies native GPU filesystem admission.
+# Only the exact public signed-object origin is reachable; TLS stays end-to-end.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /bin
+  - /usr
+  - /lib
+  - /lib64
+  - /etc
+  - /proc
+  - /dev/urandom
+  - /var/log
+  - /opt/embedding
+  - /var/cache/huggingface
+  read_write:
+  - /tmp
+  - /dev/null
+network_policies:
+  artifact_bytes:
+    endpoints:
+    - host: objects.veoveo.example.com
+      port: 443
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/python3.14
