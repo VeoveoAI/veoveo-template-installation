@@ -205,11 +205,15 @@ through the tunnel; never rewrite the public object hostname to Service DNS.
 
 ## Native OpenShell gateway
 
-Use the maintained chart source at OpenShell
-`846de5fa01234a22827915b3f4e5b9092367078b`, together with gateway, supervisor
-and sandbox-runtime Linux images built from that same revision. Supply all three
-actual registry/repository/digest overrides; do not select stock images with the
-same tag. Create the standard `registry-pull` dockerconfigjson Secret in the
+Use maintained OpenShell source
+`b849a25c79177e9306c52a93de82d9dfc879cb92`, including the Kubernetes destination-CA
+and native Service-DNS fixes atop chart/runtime base
+`846de5fa01234a22827915b3f4e5b9092367078b`. Supply all three actual
+registry/repository/digest overrides; do not select stock images with the same
+tag. The reference gateway was built from `0299a1ec1e9f8305ebfe967c2b033f36ecc7ba18`,
+its supervisor from `b849a25c79177e9306c52a93de82d9dfc879cb92`, and the unchanged
+sandbox runtime from the base revision. Record each component's own source and
+image identity rather than treating a shared tag as matching-source evidence. Create the standard `registry-pull` dockerconfigjson Secret in the
 `openshell` namespace from the private pull-only registry config. Native managed
 workspace reconciliation copies the referenced image-pull Secret. Renew registry
 credentials through that registry's existing operator mechanism, not a new worker.
@@ -227,8 +231,9 @@ TLS and mTLS enabled; the chart's idempotent native PKI hook owns gateway/client
 certificates and sandbox signing keys. Keep the gateway ID stable across restarts.
 Do not export private gateway/bootstrap keys into application workloads.
 
-The selected gateway must include the native Kubernetes `additional_ca_bundle`
-fix `f39b1fee81891646b57441d15d0d6e3a0c890385`. Create the public-only
+The selected gateway must include the complete native Kubernetes
+`additional_ca_bundle` plumbing through `0299a1ec1e9f8305ebfe967c2b033f36ecc7ba18`;
+the supervisor also requires the Service-DNS fix through `b849a25c`. Create the public-only
 `platform-destination-roots-v1` ConfigMap in `openshell`, key `ca.crt`, from a
 reviewed PEM bundle containing the retained chart gateway CA and current Lore/
 Seaweed destination roots. Do not include private keys or unrelated certificates.
@@ -304,3 +309,65 @@ compatibility, Seaweed TLS/IAM, signed bytes, service recovery or a Kubernetes
 Computer. Keep deterministic checks, deployed checks and final exact MiMo
 acceptance separate. Remove obsolete Linux platform Compose launch paths only
 after replacement acceptance; preserve Mac test fixtures and external identity.
+
+
+## Reference qualification checkpoint — 2026-10-20
+
+This dated checkpoint records the Linux reference installation, not an automatic
+acceptance claim for these generic inputs. Exact selected registry image digests
+belong in the installation's own record. The maintained source pins are:
+
+| Component | Reviewed source revision |
+| --- | --- |
+| Hub | `9b83c26e9bdc926b054d089fd87ca26e3cba6f31` |
+| Time | `d70ac8e2f9bdfb1c012ee744e5cd119ce4bca1dd` |
+| Artifact | `00c8e93f5ca3ffe9137773754a4945c6d349b3bf` |
+| Media / synthetic provider fixture | `4e8504b2c9bc72b0b249a8cf122e29983634d2e8` |
+| Native Lore | `6b7a0e598b8fbbaed82c777109135ddb25873bbf` |
+| OpenCode | `4bd4891e9e3d67460eb43dcfcdefb5172c1279ff` |
+| OpenShell integration | `b849a25c79177e9306c52a93de82d9dfc879cb92` |
+
+These are maintained-fork source revisions, not upstream release versions or
+reproducible-build claims. The corrected Factory/Computer build uses the UID/GID
+10001 installation inputs; an earlier UID-1000 image is not accepted.
+
+Deterministic/component evidence includes both Hub Docker check gates (231 passed,
+one skipped per platform), focused native CA/DNS tests and strict Clippy,
+`mise run docs` on OpenShell b849 (zero errors, three warnings, 6.291 seconds),
+and upstream chart render/lint/admission. Runtime checks separately proved Cilium
+ingress/egress denial and allowance, CNPG extension/TLS access, private/public
+scoped S3 byte round trips and cross-bucket denial. Successful render, image pull
+or Pod Ready alone is not application acceptance.
+
+Deployed Computer checks used two real owners, distinct automatic workspace PVCs,
+web navigation, owner isolation and native Stop/Start persistence. Live template
+selection affected a new Computer while the existing Computer retained its admitted
+specification. Invalid configuration preserved the active revision; an interrupted
+replica notification listener reconciled the missed revision without process
+replacement. A real Time event subscription delivered its later notification
+across a live publication (9.75-second case; 12.381-second operator sequence).
+These are measured cases, not a general zero-downtime or arbitrary hot-reload claim.
+
+Native Lore checks used real user login, explicit repository assignments,
+allowed/denied clones, withdrawal beyond token expiry and ordinary refresh. An
+isolated Factory cloned the immutable published revision and built a dependency-free
+synthetic Rust fixture with Cargo `--offline --frozen --release` in 387 ms. Its
+native provider renewed automatically; a fresh clone beyond the original expiry
+plus JWT leeway passed in 107 ms. The factory had no OpenCode/model provider;
+its sandbox, template, provider/profile and workspace were deleted natively while
+pre-existing unrelated Pod identities remained unchanged. This proves the stated
+synthetic fixture scenario, not model inference or general reproducible builds.
+
+Time's seven routed cases passed in 10.21 seconds; Artifact's six passed in
+223.15 seconds, including the 1-GiB multipart/range/release case. Media registered
+and completed native provider startup status checks at 09:02 UTC; completed
+Kubernetes Task acceptance remains pending. Host reboot/recovery and the final bounded
+`deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` scenario remain pending at this checkpoint.
+Do not carry historical Docker or signed-provider evidence forward as proof of
+these pending Kubernetes cases.
+
+Evidence is retained outside Git: `/tmp/k3s-foundation-20261019/` on Linux,
+`/tmp/k3s-native-factory-qualification-20261020/` on Linux and
+`/tmp/k3s-live-admin-20261020/` on the operator Mac. These paths identify receipts,
+not portable bootstrap inputs; private artifacts must not be copied into source.
+The canonical execution plan owns subsequent acceptance and closeout status.
