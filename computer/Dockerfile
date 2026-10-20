@@ -17,10 +17,11 @@ ENV HOME=/sandbox/home \
     OPENCODE_CONFIG=/etc/computer/opencode.json \
     OPENCODE_DISABLE_MODELS_FETCH=1
 # Native Docker copy-up or Kubernetes automatic workspace-PVC seeding preserves
-# these image defaults and private UID-1000 paths; no extra copy-up Job is needed.
+# these image defaults and private UID/GID-10001 paths; no extra copy-up Job is needed.
 # Trusted configuration stays outside the persistent workdir and is not writable.
-RUN test "$(id -u sandbox)" = 1000 \
-    && install -d -o 1000 -g 1000 -m 0700 /sandbox /sandbox/home /sandbox/projects \
+RUN test "$(id -u sandbox)" = 10001 \
+    && test "$(id -g sandbox)" = 10001 \
+    && install -d -o 10001 -g 10001 -m 0700 /sandbox /sandbox/home /sandbox/projects \
        /sandbox/home/.config /sandbox/home/.local /sandbox/home/.local/share \
        /sandbox/home/.local/state /sandbox/home/.cache \
        /sandbox/home/.local/share/lore /sandbox/home/.config/lore /sandbox/home/.config/lore/auth \

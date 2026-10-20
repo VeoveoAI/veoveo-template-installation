@@ -236,9 +236,10 @@ openshell sandbox create --workspace vv-time-build --name factory-time \
   --no-auto-providers --detach -- sleep infinity
 ```
 
-Use UID 1000 and `/sandbox` for writable state, with no service UID-10001 volume or
-operator mounts. Installed toolchains and CLI binaries remain read-only. Use the
-provisioned workload CA through existing native `SSL_CERT_FILE`; never disable TLS
+Use UID/GID 10001 and the factory's own `/sandbox` for writable state, matching
+the selected native runtime. Do not attach service-state volumes or operator
+mounts. Installed toolchains and CLI binaries remain read-only. Use the provisioned
+workload CA through existing native `SSL_CERT_FILE`; never disable TLS
 verification or rewrite Host. The exact Hub HTTPS authority must match the actual
 native exposure; the policy's local origin is not a substitute for that check.
 

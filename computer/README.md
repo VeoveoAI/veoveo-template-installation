@@ -65,8 +65,9 @@ private key. Supervisor's separate build recipe is unchanged by this input seam.
 `WORKDIR=/sandbox` is the native persistent-workspace target. `/sandbox/home`
 contains HOME, XDG config/data/state/cache, OpenCode databases and native Lore's
 credential/config/data directories. `/sandbox/projects` holds working trees. The
-image seeds private UID/GID 1000 paths. Docker preserves them through its configured
-persistent workspace volume and native copy-up. Kubernetes uses OpenShell's
+image seeds private UID/GID 10001 paths, matching the selected native runtime.
+Docker preserves them through its configured persistent workspace volume and native
+copy-up. Kubernetes uses OpenShell's
 automatic per-sandbox workspace PVC and native image-workdir seeding with sandbox
 UID/fsGroup ownership; do not add a shared explicit `/sandbox` claim or another
 copy-up Job. `/etc/computer` is immutable installation
@@ -210,7 +211,7 @@ schema after substituting synthetic opaque references; parse the policy through
 native `openshell_policy::parse_sandbox_policy_file` and lint both native profiles.
 Also admit the selected Hub control policy/profile using the exact RPC/binding
 boundary in [NATIVE_CONTROL.md](NATIVE_CONTROL.md).
-Build the image from the reviewed local contexts without inference. Under UID1000,
+Build the image from the reviewed local contexts without inference. Under UID/GID 10001,
 check exact binary versions/digests, seeded ownership, writable HOME/XDG paths,
 non-writable `/etc/computer`, and absence of a factory token. A native test-owned
 Computer must then prove persisted OpenCode/Lore state across Stop/Start, runtime

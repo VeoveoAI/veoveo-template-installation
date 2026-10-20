@@ -39,8 +39,9 @@ server:
   disableTls: false
   workspaceStorageClass: local-path
   workspaceDefaultStorageSize: 10Gi
-  sandboxUid: 1000
-  sandboxGid: 1000
+  # Match Factory/Computer seed ownership and trusted application runtimes.
+  sandboxUid: 10001
+  sandboxGid: 10001
   sandboxJwt:
     # Selects the default managed namespace ID; render matching PVC/Job namespaces.
     gatewayId: openshell

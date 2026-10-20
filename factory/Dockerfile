@@ -11,7 +11,10 @@ RUN cargo install --locked --git https://github.com/VeoveoAI/veoveo-hub-sdk \
 COPY --from=lore --chmod=0755 /usr/local/bin/lore /usr/local/bin/lore
 # The trusted named context contains reviewed public CA certificates only, one per file.
 COPY --from=ca --chmod=0644 /*.crt /usr/local/share/ca-certificates/
-RUN (id sandbox >/dev/null 2>&1 || useradd --create-home --uid 1000 --shell /bin/bash sandbox) \
+# Match the native Kubernetes runtime identity, including image-workspace seeding.
+RUN groupadd --gid 10001 sandbox \
+    && useradd --create-home --uid 10001 --gid 10001 --shell /bin/bash sandbox \
+    && test "$(id -u sandbox)" = 10001 && test "$(id -g sandbox)" = 10001 \
     && find / -xdev -type f -perm /6000 -exec chmod ug-s {} + \
     && update-ca-certificates >/dev/null \
     && mkdir -p /sandbox && chown sandbox:sandbox /sandbox

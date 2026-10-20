@@ -121,9 +121,11 @@ Linux utility image. Hub and MCP runtime images use UID `10001`; the config
 seed Job uses that UID so mode `0600` files remain readable to the component.
 The Job's group `10001` does not require the image's primary GID to match: Time
 and Artifact images can use GID `999`, while the measured native Hub uses GID
-`10001`. Owner UID controls these private files. This is not the Computer image's
-`1000:1000` owner. Confirm actual identities against the selected runtime. The Job copies only those files without output and refuses an
-existing target. The PVC labels
+`10001`. Owner UID controls these private files. Factory and Computer images also
+use UID/GID `10001`, matching `server.sandboxUid`/`sandboxGid`. Native workspace
+seeding runs as that identity and must be able to read the image's private
+`/sandbox` directories. Confirm actual identities against the selected runtime.
+The Job copies only those files without output and refuses an existing target. The PVC labels
 match native default resource admission for workspace `vv-control`.
 
 ```sh
