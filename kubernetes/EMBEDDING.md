@@ -40,6 +40,30 @@ The application requests one GPU through native `--gpu 1`; its driver config
 selects `pod.runtime_class_name: nvidia`. MCP requests no GPU. No gateway-wide
 default RuntimeClass change is required.
 
+Before runtime creation, verify the effective gateway/driver external-resource
+admission policy and inspect the existing `nvidia` RuntimeClass, including its
+UID, resource version, handler and labels. The native default requires the fixed
+approval label `openshell.ai/sandbox-attachable=true`; its workspace placeholder
+is ignored for shared resources such as RuntimeClass. Class existence and GPU
+allocatable capacity do not satisfy this separate admission check. With the
+actual policy confirmed to use that fixed label, the trusted operator approves
+only the reviewed existing class:
+
+```sh
+: "${NVIDIA_RUNTIMECLASS_UID:?set the reviewed existing RuntimeClass UID}"
+: "${NVIDIA_RUNTIMECLASS_RESOURCE_VERSION:?set the resource version from that same reviewed object}"
+test "$(kubectl get runtimeclass nvidia -o jsonpath='{.metadata.uid}')" = "$NVIDIA_RUNTIMECLASS_UID" || exit 1
+test "$(kubectl get runtimeclass nvidia -o jsonpath='{.handler}')" = nvidia || exit 1
+kubectl label runtimeclass nvidia openshell.ai/sandbox-attachable=true \
+  --resource-version="$NVIDIA_RUNTIMECLASS_RESOURCE_VERSION" --overwrite
+```
+
+The resource-version guard refuses a concurrent object change. Preserve the
+existing class and all other metadata; add no workspace approval label to this
+shared RuntimeClass. Do not recreate it, disable resource admission or change
+gateway defaults. Native admission records the actual class UID. This trusted
+bootstrap label requires no source/image rebuild.
+
 The official chart uses host device/kubelet mounts as a trusted foundation
 component. Application configs add no hostPath. Chart 0.20.1 also renders an
 MPS-control DaemonSet unconditionally with the plugin; it requires the additional
@@ -62,6 +86,12 @@ competing namespace, copy the old Docker gateway selector or add a dummy provide
 | `embedding-state-v1` | MCP read/write | Native registration signing keys/state |
 | `embedding-runtime-config-v1` | GPU runtime read-only | Existing private `runtime.token` |
 | `embedding-model-cache-v1` | GPU runtime read-only | Canonical prefetched model cache |
+
+With the selected `local-path` StorageClass using `WaitForFirstConsumer`,
+`embedding-state-v1` may remain Pending until the actual MCP consumer is created.
+That is expected; do not add a dummy Pod, seed the state claim or recreate it to
+force binding. Check the selected StorageClass and PVC events before treating
+Pending as a failure.
 
 The 1 GiB state/config and 32 GiB cache requests are installation allocations,
 not Google model limits. Keep the existing approved `postgres-client-ca-v1` claim
@@ -188,12 +218,20 @@ Render only installation authorities/profile selectors in private policy copies:
 | MCP → Core DB | Private PostgreSQL Service; native TLS passthrough plus granted URI `verify-full` and mounted public CA |
 | Runtime → media bytes | Exact Artifact **signed object origin**, TCP/443 passthrough, ordinary public TLS trust |
 
-The sample native runtime exposure uses port 8080, matching the current foundation
-gateway convention. Verify the actual returned exposure authority and render the
-runtime URL and policy together. Select `bearer-passthrough`; stripping the native
-inference Authorization header breaks authentication. Runtime holds no Hub
-identity, provider API key or storage credential. Native CPU decoding is
-preprocessing; inference remains full-model CUDA FP32 without CPU fallback.
+Verify the actual Kubernetes gateway Service port and native alias reachability
+from the MCP workload before selecting its runtime URL. The current foundation
+uses `https://vv-services--embedding-runtime--http.openshell.localhost:8080`;
+render the URL and exact policy port together if the Service differs. The native
+CLI formats displayed exposure URLs using its operator connection port, so an
+operator port-forward at `18443` can produce a displayed `:18443` URL. That is
+not the in-sandbox origin; neither operator-forward `18443` nor retired Docker
+`17670` belongs in this workload URL. See the
+[gateway Service distinction](WORKLOADS.md#isolated-synthetic-media-provider).
+Retain the native alias, HTTPS certificate verification and
+`bearer-passthrough`; stripping the native inference Authorization header breaks
+authentication. No helper or proxy is required. Runtime holds no Hub identity,
+provider API key or storage credential. Native CPU decoding is preprocessing;
+inference remains full-model CUDA FP32 without CPU fallback.
 
 Set `VEOVEO_EMBEDDING_STORAGE_ORIGIN` to the exact signed URL origin **with an
 explicit port**, for example `https://objects.veoveo.example.com:443`. This is not
