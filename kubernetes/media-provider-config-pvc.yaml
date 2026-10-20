@@ -1,0 +1,68 @@
+# Optional synthetic fixture only; seed one exact private fake-HMAC file.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-provider-config-v1
+  namespace: openshell-openshell-vv-services
+  labels:
+    openshell.ai/sandbox-attachable: 'true'
+    openshell.ai/sandbox-attachable-workspace: vv-services
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-media-provider-config-v1
+  namespace: openshell-openshell-vv-services
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      imagePullSecrets:
+      - name: registry-pull
+      containers:
+      - name: copy
+        image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - umask 077; test ! -e /output/provider.env; cp /input/provider.env /output/provider.env;
+          chmod 0600 /output/provider.env
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: input
+          mountPath: /input
+          readOnly: true
+        - name: output
+          mountPath: /output
+      volumes:
+      - name: input
+        secret:
+          secretName: media-provider-config-bootstrap
+          defaultMode: 288
+          items:
+          - key: provider.env
+            path: provider.env
+      - name: output
+        persistentVolumeClaim:
+          claimName: media-provider-config-v1

@@ -1,0 +1,24 @@
+{
+  "kubernetes": {
+    "volumes": [
+      {
+        "name": "config",
+        "persistent_volume_claim": {
+          "claim_name": "media-provider-config-v1",
+          "read_only": true
+        }
+      }
+    ],
+    "containers": {
+      "agent": {
+        "volume_mounts": [
+          {
+            "name": "config",
+            "mount_path": "/etc/veoveo/media",
+            "read_only": true
+          }
+        ]
+      }
+    }
+  }
+}

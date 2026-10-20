@@ -297,3 +297,67 @@ publication. Existing Computers keep admitted snapshots unless explicitly replac
 adding/removing/registering services or changing grants does not restart Hub or
 unrelated workloads. Drain/reconnect active operations explicitly. Never replay a
 non-idempotent mutation automatically or promise zero downtime.
+
+## Isolated synthetic Media provider
+
+The existing testing-only fixture image needs `MEDIA_PROVIDER_WEBHOOK_SECRET`
+even for status-check operation. Its native CLI accepts an environment value,
+not a config-file flag. Do not put that secret in native `--env` arguments or
+mount Media's service configuration into the fixture. Prepare a separate private
+shell env file `$PRIVATE/media-provider.env` containing only the fake webhook
+HMAC value agreed with the synthetic Media service. Never copy real provider
+credentials or real webhook keys into this fixture.
+
+Create `media-provider-config-bootstrap` from that exact file in the actual
+`vv-services` namespace, then use the fixture's separate claim and one-time seed
+Job in `media-provider-config-pvc.yaml`. The Job runs as UID 10001
+and copies only `provider.env` as mode 0600. Replace only its copy-image marker with the
+reviewed utility digest. Remove the completed Job and bootstrap Secret after
+seeding. `media-provider-driver-config.json` mounts only that claim, read-only at
+`/etc/veoveo/media`; no service state, database/storage credentials, or service
+configuration are shared.
+
+```sh
+kubectl -n openshell-openshell-vv-services create secret generic media-provider-config-bootstrap \
+  --from-file=provider.env="$PRIVATE/media-provider.env"
+kubectl apply -f "$PRIVATE/media-provider-config-pvc.yaml"
+kubectl -n openshell-openshell-vv-services wait job/seed-media-provider-config-v1 \
+  --for=condition=Complete --timeout=120s
+kubectl -n openshell-openshell-vv-services delete job seed-media-provider-config-v1
+kubectl -n openshell-openshell-vv-services delete secret media-provider-config-bootstrap
+openshell sandbox create --workspace vv-services --name media-provider \
+  --from "$MEDIA_PROVIDER_IMAGE_AT_DIGEST" --policy kubernetes/policies/media-provider.yaml \
+  --driver-config-json "$(cat kubernetes/media-provider-driver-config.json)" \
+  --no-auto-providers --restart-policy always --detach \
+  --env MEDIA_FAKE_PROVIDER_LISTEN=127.0.0.1:8803 \
+  --env MEDIA_FAKE_PROVIDER_API_BEARER=fake-generation-key \
+  --env MEDIA_FAKE_PROVIDER_ADVERTISED_BASE=https://vv-services--media-provider--http.openshell.localhost:8080 -- \
+  /bin/sh -ec 'set -a; . /etc/veoveo/media/provider.env; set +a; exec /usr/local/bin/veoveo-mcp-media-fake-provider'
+openshell service expose --workspace vv-services media-provider 8803 http \
+  --authorization-mode bearer-passthrough
+```
+
+Render the advertised HTTPS origin to the actual native gateway/exposure and
+require exact equality with the returned exposure. Media's `MEDIA_PROVIDER_URL`
+must use that origin too. The fixture's workload policy grants no outgoing
+callbacks; use status-check operation with Media's `VEOVEO_PUBLIC_ORIGIN` unset.
+This fixture produces synthetic data, not model inference or valid media proof.
+Its native process readiness does not prove Media registration or a Task result.
+No fixture image rebuild is required for these configuration inputs.
+
+With an existing native Hub bearer/reference, verify registration and actual MCP
+routing without invoking a model:
+
+```sh
+veoveo-hub-sdk-cli --hub "$HUB_ORIGIN" --profile local \
+  --bearer-env HUB_MEMBER_REFERENCE --json tools
+veoveo-hub-sdk-cli --hub "$HUB_ORIGIN" --profile local \
+  --bearer-env HUB_MEMBER_REFERENCE --json resources
+```
+
+The CLI owns discovery and MCP requests; keep its credential in the named env or
+native provider, never an argv token. Inspect both items and reported per-server
+degradation: an empty/partial listing is not all-server readiness. For registration
+health, the existing authenticated `GET /admin/local/server-health` reports the
+registered slug and live kernel-instance state. It requires the existing Hub
+`admin_read` policy; the non-MCP fixture does not register as an MCP server.

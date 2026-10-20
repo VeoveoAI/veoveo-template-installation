@@ -1,0 +1,7 @@
+# Private fake-provider fixture; no outgoing callbacks in the status-check slice.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log]
+  read_write: [/tmp, /dev/null]
+network_policies: {}
