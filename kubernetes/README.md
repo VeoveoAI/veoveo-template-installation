@@ -212,13 +212,28 @@ the native Service-DNS work and chart/runtime base
 `846de5fa01234a22827915b3f4e5b9092367078b`. Supply all three actual
 registry/repository/digest overrides; do not select stock images with the same
 tag. The reference gateway was built from `2c9fe478f49773998d8602f8da68fce0864343fd`,
-its supervisor from `b849a25c79177e9306c52a93de82d9dfc879cb92`, and the unchanged
+its selected supervisor from `d7a990083214e8a618f05b1b471aeeac6d9aa82a`, and the unchanged
 sandbox runtime from the base revision. Record each component's own source and
 image identity rather than treating a shared tag as matching-source evidence.
 Its deployed gateway image is
 `registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/gateway@sha256:b36083f28400e0136521bfa72ffdf91aaddbf0b0f9a6345bd261963080692d95`.
-The supervisor remains at the reviewed b849 artifact; a newer source commit alone
-does not replace that selected image.
+The published supervisor selected for new generations is
+`registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/supervisor@sha256:f1d8f896daa08d85f8667a595c82544d93cbe73f2d16250387ab484ee5a286d2`.
+Its Linux ELF SHA-256 is
+`b3e6ce5adb6915d62743d7d933dd192b42cdec254e9e1a37cf91321793c6a7bd`.
+The sandbox runtime remains source `846de5fa` and image
+`registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/openshell/sandbox@sha256:5177d0c76e2119a09a3af290ebc1da625a1e9fdf3ddcad7485bc973585f1e9bf`.
+Source selection or publication does not prove that every existing generation
+has adopted the selected supervisor.
+
+The supervisor retains the Kubernetes driver's declared ServiceAccount source.
+When either credential in the immutable launch bundle has expired, it uses native
+`IssueSandboxToken` followed by `RefreshSandboxToken`, validates the paired
+credentials and matching runtime generation, then installs them before log clients
+or policy discovery. Fresh bundles skip this exchange: their first launch can
+precede persistence of the compute runtime binding required by issuance. Static
+Docker/standalone credentials keep their existing path. This changes neither
+native Lore authentication nor its Hub-issued grants.
 
 During the first host reboot, the earlier gateway reported supervisors unavailable
 and durably suspended the workloads. Its earlier classification also treated a
@@ -229,6 +244,7 @@ missing/terminal/deleting Pod checks and explicit Stop remain fail-closed.
 The replacement gateway is Ready at reference Helm revision 5; an expired-bundle
 bootstrap probe and the repeat host reboot remain unproved. Do not count rollout
 readiness as recovery acceptance.
+
 Create the standard `registry-pull` dockerconfigjson Secret in the `openshell` namespace from the private pull-only registry config. Native managed
 workspace reconciliation copies the referenced image-pull Secret. Renew registry
 credentials through that registry's existing operator mechanism, not a new worker.
@@ -342,7 +358,7 @@ belong in the installation's own record. The maintained source pins are:
 | Native Lore | `6b7a0e598b8fbbaed82c777109135ddb25873bbf` |
 | OpenCode | `4bd4891e9e3d67460eb43dcfcdefb5172c1279ff` |
 | OpenShell gateway/driver | `2c9fe478f49773998d8602f8da68fce0864343fd` |
-| OpenShell supervisor | `b849a25c79177e9306c52a93de82d9dfc879cb92` |
+| OpenShell supervisor | `d7a990083214e8a618f05b1b471aeeac6d9aa82a` |
 | OpenShell sandbox runtime | `846de5fa01234a22827915b3f4e5b9092367078b` |
 
 These are maintained-fork source revisions, not upstream release versions or
@@ -365,6 +381,14 @@ and upstream chart render/lint/admission. Runtime checks separately proved Ciliu
 ingress/egress denial and allowance, CNPG extension/TLS access, private/public
 scoped S3 byte round trips and cross-bucket denial. Successful render, image pull
 or Pod Ready alone is not application acceptance.
+
+The d7 supervisor source passed 16 Core authentication tests and two existing
+server identity-rejection tests. Strict default-feature, all-target Clippy for
+Core and the supervisor passed in 26.09 seconds; the Linux release build took
+81 seconds. These are source/build gates, not an expired-bundle or host-recovery
+proof. The supervisor's `telemetry` and `defaults-without-telemetry` features are
+mutually exclusive, so its valid strict Clippy invocation does not use
+`--all-features`.
 
 Deployed Computer checks used two real owners, distinct automatic workspace PVCs,
 web navigation, owner isolation and native Stop/Start persistence. Live template
