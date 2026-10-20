@@ -57,8 +57,14 @@ requirement. If Artifact's `cors_origins` is nonempty, add only
 `s3:PutBucketCors` to the bucket statement in the reviewed installation copy;
 SeaweedFS 4.48 uses that exact spelling. The default policy omits it.
 
-No bare `Admin`, IAM administration, bucket deletion, unrelated bucket access or
-blanket action grant is required. Read back the applied policy, then verify startup,
+The attached-policy form above needs no bare `Admin`, IAM administration,
+bucket deletion, unrelated bucket access or blanket action grant. The Kubernetes
+reference's alternative native `actions` JSON requires exact `Admin:artifacts`
+because Seaweed4.48 gates CreateBucket on `ACTION_ADMIN` before checking whether
+the bucket exists. That native bucket-scoped action includes bucket administration;
+it is not equivalent to the finer AWS-policy action list. It grants neither global
+administration nor access to unrelated buckets. Keep the selected native format
+and its documented scope explicit. Read back the applied policy, then verify startup,
 small signed PUT/GET, multipart completion/abort, unrelated-bucket refusal and
 administrative identity-API refusal using the service credential. Inspect protocol
 status/error codes; a generic CLI error alone does not prove access was denied.

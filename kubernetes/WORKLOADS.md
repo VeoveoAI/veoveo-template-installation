@@ -49,7 +49,9 @@ files sourced by their shell entrypoints retain ordinary shell quoting.
 Use `server_lore`, schema/bucket `lore`, and the dedicated native S3 identity.
 Create that bucket once with its existing IAM identity name using the
 [native TLS operator bootstrap](README.md#seaweedfs) before application use; do
-not grant the Lore or Artifact application storage identity `Admin` permission.
+not grant global `Admin` permission. With Seaweed's native actions format,
+Artifact alone needs exact `Admin:artifacts` for its startup CreateBucket and
+bucket configuration; Lore does not. See the [scoped identity inputs](README.md#seaweedfs).
 Its PostgreSQL URI uses the Service DNS with `sslmode=verify-full` and
 `sslrootcert=/etc/lore/postgres-ca/postgres-ca.crt`. Create `postgres-client-ca`
 ConfigMap key `postgres-ca.crt` in `veoveo-system` from only the CNPG public CA;

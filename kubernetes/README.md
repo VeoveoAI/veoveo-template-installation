@@ -150,7 +150,7 @@ examples include bucket-root read as well as object operations:
 
 ```text
 Lore:     ["Read:lore", "Read:lore/*", "Write:lore/*", "List:lore"]
-Artifact: ["Read:artifacts", "Read:artifacts/*", "Write:artifacts/*", "List:artifacts", "Tagging:artifacts/*"]
+Artifact: ["Admin:artifacts", "Read:artifacts", "Read:artifacts/*", "Write:artifacts/*", "List:artifacts", "Tagging:artifacts/*"]
 ```
 
 Seaweed `4.48` routes authenticated `HEAD /<bucket>` through
@@ -159,8 +159,16 @@ Object-only `Read:<bucket>/*` does not match that bucket-root request, and
 `List:<bucket>` is a different action. Lore and Artifact check bucket availability
 with HeadBucket; successful object PUT/GET/DELETE alone does not prove this check.
 Keep the exact own-bucket read action in the existing identity, without global
-`Read` or `Admin`. These are native action examples, not AWS IAM statement syntax;
-retain the separate reviewed policies when using the attached-policy path.
+`Read` or `Admin`. Artifact also unconditionally calls CreateBucket at startup,
+then configures CORS/lifecycle. Seaweed4.48 routes CreateBucket through
+[native `ACTION_ADMIN`](https://github.com/seaweedfs/seaweedfs/blob/4.48/weed/s3api/s3api_server.go#L1047-L1048)
+before checking bucket existence. The native actions format therefore requires
+exact `Admin:artifacts`; an already-created bucket or object-scoped Write alone
+is insufficient. This permits administration of that bucket, including its bucket
+operations, not IAM administration or access to other buckets. Do not add global
+`Admin` or give this action to Lore. These are native action examples, not AWS IAM
+statement syntax; retain the separate reviewed fine-grained policies when using
+the attached-policy path.
 
 After creating those existing IAM identities and before application use, bootstrap
 each bucket once through the native TLS-enabled operator shell. Run inside the
@@ -183,7 +191,8 @@ s3.bucket.create -name lore -owner <existing_lore_identity_name>
 ```
 
 The owner must match the identity name in native S3 IAM configuration. This is
-trusted installation bootstrap, not an application `Admin` grant or startup Job.
+trusted installation bootstrap, not a startup Job or global application `Admin`
+grant. It does not replace Artifact's own scoped startup authorization above.
 The command leaves an already-existing bucket unchanged; rerunning it does not
 reassign ownership. Keep the existing separate bucket policies and credentials.
 
