@@ -10,19 +10,25 @@ The image has no independent browser login, issuer, factory identity or Docker a
 
 ## Reviewed source inputs
 
-Build for one explicit target platform; all three contexts must match it.
+Build for one explicit target platform; all three contexts must match it. The
+component pins below identify verified source revisions in the maintained VeoveoAI
+forks, not upstream release versions. Source selection alone is not build or
+deployment acceptance.
 
 - Factory toolchain: installation commit `71e2c0b` or a reviewed descendant retaining
   the deterministic factory boundary. Select its inspected immutable image ID.
-- Native Lore: source commit `821da21710a9085797dc8a9d98955c1f3af1c389` (native OIDC refresh over storage base
-  `7785408e`). Build with the existing [Lore Dockerfile](../factory/Lore.Dockerfile)
+- Native Lore: source commit `6b7a0e598b8fbbaed82c777109135ddb25873bbf`, retaining
+  native OIDC refresh and S3/PostgreSQL storage. Build with the existing
+  [Lore Dockerfile](../factory/Lore.Dockerfile)
   and the selected source/CA named contexts. Use the resulting immutable image ID.
-- OpenCode: source commit `376324a9fe6870e6e9825e97bcd96d4948d84d5a`, including
+- OpenCode: source commit `4bd4891e9e3d67460eb43dcfcdefb5172c1279ff`, including
   runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
-  online-only UI. Use the final reviewed native platform package directory, with
+  online-only UI and mounted-router navigation. Use the final reviewed native
+  platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
-- Native OpenShell gateway/driver: `ea9b680dc780c1f24fd0cbf703cbfaf9b04f2d40`,
-  including persistent working storage and connected-target forwarding readiness.
+- Native OpenShell gateway/driver: `846de5fa01234a22827915b3f4e5b9092367078b`,
+  including native Kubernetes workspace persistence, connected-target forwarding
+  readiness and mediated HTTP/2 stream turnover.
   Select matching reviewed runtime/supervisor images through native configuration.
 
 Source commits and local builds do not establish live deployment or user/model
@@ -68,7 +74,7 @@ configuration outside the persistent mount. No secret is copied into the image.
 
 The operator imports the global, nonsecret native provider profiles and creates the
 trusted workload template using the existing authenticated native CLI. The example
-below selects the Docker development fixture; Linux Kubernetes uses the
+below selects the **Mac Docker development fixture**; Linux Kubernetes uses the
 [automatic-PVC template command](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
 without the Docker driver-config flag:
 
@@ -90,11 +96,19 @@ gateway when changing them; SSH limits remain unchanged. Warm HTTP requests open
 their native tunnel immediately and fail at an actual configured limit, with no
 fixed retry delay. Current browser-owner/session admission remains mandatory.
 
-The trusted Compose Lore service publishes only host loopback port 41337; native
-OpenShell's backend host-gateway pin supplies this hostname without a host DNS
-edit. Require the matching Lore leaf DNS SAN and existing CA trust before use;
-see [the endpoint requirements](LORE_HUB.md). Replace the endpoint only as a
-consistent installation input. The Computer's exact Lore TCP rule uses `tls: skip`
+The supported Linux path uses the private Kubernetes Lore Service at
+`grpcs://lore.veoveo-system.svc.cluster.local:41337`. Select that same endpoint in
+the versioned Computer template, Hub deployment data and
+[Kubernetes Computer policy](../kubernetes/policies/computer.yaml). The leaf must
+cover that Service DNS name and the image must trust its installation public CA;
+see [the Kubernetes trust inputs](../kubernetes/WORKLOADS.md#private-service-names-and-trust).
+No Compose-published port or host alias is needed for this Linux path.
+
+The Mac Docker development fixture above instead uses `host.openshell.internal`
+with its native backend host-gateway pin and a trusted Lore fixture published only
+on host loopback port 41337. Its leaf must cover that hostname, with the same
+end-to-end TLS verification; no host DNS edit is needed. Replace an endpoint only
+as a consistent installation input. The Computer's exact Lore TCP rule uses `tls: skip`
 to pass through the immediate gRPC TLS handshake; Lore still verifies the server
 certificate and hostname. `SSL_CERT_DIR` adds the image's installed public CA
 roots alongside OpenShell's injected `SSL_CERT_FILE`; keep both so native Lore
