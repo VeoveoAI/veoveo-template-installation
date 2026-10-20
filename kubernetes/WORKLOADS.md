@@ -148,7 +148,10 @@ TLS certificate. Never substitute the private Service authority into a signed UR
 
 Create `postgres-client-ca` ConfigMap in each actual native workspace namespace
 with `postgres-ca.crt` (CNPG public CA) and `storage-ca.crt` (Seaweed public CA),
-never their keys. Render the utility image in
+never their keys. Use the public Seaweed CA certificate from the
+`seaweedfs-ca-cert` Secret's **`tls.crt`** key. That chart input key is distinct
+from the copied `storage-ca.crt` filename; a Secret containing only `ca.crt` does
+not satisfy the chart's native `[grpc].ca` path. Render the utility image in
 `postgres-client-ca.yaml`, apply its workspace-local PVCs/one-time Jobs, wait for
 completion, then delete those Jobs and temporary source ConfigMaps. The native
 driver-config examples mount these approved CA-only claims read-only at

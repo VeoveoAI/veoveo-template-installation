@@ -103,8 +103,17 @@ helm upgrade --install seaweedfs seaweedfs/seaweedfs --namespace veoveo-system \
 Before installation provide the chart's native external certificate Secrets in
 `veoveo-system`: `seaweedfs-ca-cert`, `seaweedfs-master-cert`,
 `seaweedfs-volume-cert`, `seaweedfs-filer-cert`, `seaweedfs-client-cert`, and
-`seaweedfs-s3-cert`. The chart mounts its native `tls.crt`, `tls.key`/`ca.crt`
-paths. Issue the component/service SANs required by the selected chart from the
+`seaweedfs-s3-cert`. The CA Secret **must contain the public certificate under
+`tls.crt`, not `ca.crt`**: the chart's `[grpc].ca` is
+`/usr/local/share/ca-certificates/ca/tls.crt`. Do not include the CA private key.
+The leaf Secrets contain `tls.crt` and `tls.key`. For example:
+
+```sh
+kubectl -n veoveo-system create secret generic seaweedfs-ca-cert \
+  --from-file=tls.crt="$PRIVATE/storage-ca.crt"
+```
+
+Issue the component/service SANs required by the selected chart from the
 trusted installation CA using the existing TLS recipe; inspect the rendered
 commands/volumes before selection. The S3 leaf additionally covers its private
 Service DNS name and the unchanged public object hostname. No cert-manager is
