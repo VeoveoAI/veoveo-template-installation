@@ -2,7 +2,8 @@ version: 1
 filesystem_policy:
   include_workdir: true
   read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log]
-  read_write: [/sandbox, /tmp, /dev/null]
+  # Native terminal PTYs use the multiplexer and dynamic slaves under devpts.
+  read_write: [/sandbox, /tmp, /dev/null, /dev/pts]
 network_policies:
   hub:
     endpoints:

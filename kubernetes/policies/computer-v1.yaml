@@ -15,6 +15,8 @@ filesystem_policy:
   - /sandbox
   - /tmp
   - /dev/null
+  # Native terminal PTYs use the multiplexer and dynamic slaves under devpts.
+  - /dev/pts
 network_policies:
   hub:
     endpoints:
