@@ -41,7 +41,9 @@ factory protected-branch scenario. Create `lore-settings` from the native TOML,
 `lore-server-tls` as a TLS Secret, and `lore-storage` from a private env file with
 exact keys `LORE_POSTGRES_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
 This `--from-env-file` input uses raw `KEY=value` lines without shell quotes;
-URL-encode the PostgreSQL password inside the single-line URI. Hub/Artifact env
+URL-encode the PostgreSQL password inside the single-line URI, using the
+[no-whitespace managed-role credential](README.md#postgresql-and-native-storage-identities).
+Do not preserve an accidental terminal LF that CNPG trims. Hub/Artifact env
 files sourced by their shell entrypoints retain ordinary shell quoting.
 Use `server_lore`, schema/bucket `lore`, and the dedicated native S3 identity.
 Create that bucket once with its existing IAM identity name using the
@@ -180,7 +182,8 @@ sslrootcert=/etc/veoveo/tls/postgres-ca.crt
 ```
 
 Set `VEOVEO_DATABASE_URL` with the actual owner username but **no password**;
-supply that exact password separately through shell-sourced `VEOVEO_DATABASE_PASSWORD`.
+supply the matching [no-whitespace managed-role password](README.md#postgresql-and-native-storage-identities)
+separately through shell-sourced `VEOVEO_DATABASE_PASSWORD`.
 Set `VEOVEO_SERVER_DATABASE_URL` with **neither username nor password**. Hub supplies
 the narrowed application role and password through its existing registration grant
 contract. Keep secrets in private configuration, not argv. Both configured URLs

@@ -77,6 +77,23 @@ Create `kubernetes.io/basic-auth` Secrets in `veoveo-system`, each with native
 | `openshell-gateway-role` | `openshell_gateway` | Gateway database only |
 | `lore-db` | `server_lore` | Lore schema only |
 
+Generate the initial password files without leading/trailing whitespace or a
+terminal newline. For example, before creating the corresponding Secret:
+
+```sh
+python3 -c 'import pathlib, secrets, sys; pathlib.Path(sys.argv[1]).write_bytes(secrets.token_urlsafe(48).encode("ascii"))' \
+  "$PRIVATE/lore-db.password"
+```
+
+Apply the same file convention to all managed roles. CNPG `1.30.1` explicitly
+calls `strings.TrimSpace(passwordFromSecret)` during
+[native managed-role reconciliation](https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.1/internal/management/controller/roles/runnable.go#L340-L375),
+before applying the password to PostgreSQL. Kubernetes Secret bytes can therefore
+contain a terminal LF while the actual database password does not. Do not use
+`echo` to write these password files; use a no-newline write and use that same
+credential in the Secret and application input. URI-encode the credential when
+building a database URL; encoding a stray LF as `%0A` does not remove the mismatch.
+
 The native CNPG Cluster/Database resources own these roles/databases/schema.
 Application migrations remain component-owned. No application shares the gateway
 role. `veoveo_owner` retains the existing trusted `CREATEROLE` bootstrap contract;
