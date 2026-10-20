@@ -1,7 +1,0 @@
-# Private Linux CUDA runtime; native --gpu resource claim supplies GPU filesystem admission.
-version: 1
-filesystem_policy:
-  include_workdir: true
-  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log, /opt/embedding, /var/cache/huggingface]
-  read_write: [/tmp, /dev/null]
-network_policies: {}

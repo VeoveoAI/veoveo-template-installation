@@ -54,6 +54,25 @@ network_policies:
           - allow: {method: POST, path: /oauth/token}
     binaries:
       - path: /usr/local/bin/veoveo-mcp-embedding
+  artifact_calls:
+    # Native ServerCalls carries the caller-bound delegated JWT; no static provider.
+    # Only download metadata/grants; media bytes are fetched by the runtime.
+    endpoints:
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /mcp/local
+        protocol: mcp
+        enforcement: enforce
+        mcp:
+          versions: ["2026-07-28"]
+          allow_all_known_mcp_methods: false
+        rules:
+          - allow: {method: server/discover}
+          - allow: {method: ping}
+          - allow: {method: tools/list}
+          - allow: {method: tools/call, tool: artifact__create_download}
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-embedding
   embedding_runtime:
     endpoints:
       - host: host.openshell.internal
