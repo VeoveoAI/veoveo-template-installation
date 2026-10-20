@@ -206,15 +206,16 @@ through the tunnel; never rewrite the public object hostname to Service DNS.
 ## Native OpenShell gateway
 
 Use maintained OpenShell source
-`b849a25c79177e9306c52a93de82d9dfc879cb92`, including the Kubernetes destination-CA
+`b849a25c79177e9306c52a93de82d9dfc879cb92`, published on the fork's `main`,
+including the Kubernetes destination-CA
 and native Service-DNS fixes atop chart/runtime base
 `846de5fa01234a22827915b3f4e5b9092367078b`. Supply all three actual
 registry/repository/digest overrides; do not select stock images with the same
 tag. The reference gateway was built from `0299a1ec1e9f8305ebfe967c2b033f36ecc7ba18`,
 its supervisor from `b849a25c79177e9306c52a93de82d9dfc879cb92`, and the unchanged
 sandbox runtime from the base revision. Record each component's own source and
-image identity rather than treating a shared tag as matching-source evidence. Create the standard `registry-pull` dockerconfigjson Secret in the
-`openshell` namespace from the private pull-only registry config. Native managed
+image identity rather than treating a shared tag as matching-source evidence.
+Create the standard `registry-pull` dockerconfigjson Secret in the `openshell` namespace from the private pull-only registry config. Native managed
 workspace reconciliation copies the referenced image-pull Secret. Renew registry
 credentials through that registry's existing operator mechanism, not a new worker.
 Create the same pull-only `registry-pull` Secret in `veoveo-system` for private
@@ -361,7 +362,8 @@ synthetic fixture scenario, not model inference or general reproducible builds.
 Time's seven routed cases passed in 10.21 seconds; Artifact's six passed in
 223.15 seconds, including the 1-GiB multipart/range/release case. Media registered
 and completed native provider startup status checks at 09:02 UTC; completed
-Kubernetes Task acceptance remains pending. Host reboot/recovery and the final bounded
+Kubernetes Task acceptance and Computer terminal/WebSocket qualification remain
+pending. Host reboot/recovery and the final bounded
 `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` scenario remain pending at this checkpoint.
 Do not carry historical Docker or signed-provider evidence forward as proof of
 these pending Kubernetes cases.

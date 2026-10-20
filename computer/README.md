@@ -28,7 +28,7 @@ deployment acceptance.
   platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
 - Native OpenShell gateway/driver: `b849a25c79177e9306c52a93de82d9dfc879cb92`,
-  retaining base `846de5fa` Kubernetes workspace persistence, connected-target
+  published on the maintained fork's `main`, retaining base `846de5fa` Kubernetes workspace persistence, connected-target
   forwarding readiness and mediated HTTP/2 stream turnover, and adding native
   destination-CA staging and trusted gateway Service-DNS resolution.
   Select matching reviewed runtime/supervisor images through native configuration.
