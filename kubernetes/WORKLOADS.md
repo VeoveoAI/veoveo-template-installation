@@ -339,9 +339,12 @@ openshell service expose --workspace vv-services media-provider 8803 http \
   --authorization-mode bearer-passthrough
 ```
 
-Render the advertised HTTPS origin to the actual native gateway/exposure and
-require exact equality with the returned exposure. Media's `MEDIA_PROVIDER_URL`
-must use that origin too. The fixture's workload policy grants no outgoing
+Use the native workload alias with the configured gateway Service port (`8080`
+in this example) for both the fixture's advertised HTTPS origin and Media's
+`MEDIA_PROVIDER_URL`. The CLI formats exposure URLs using its operator gateway
+connection port: an operator port-forward at `https://localhost:18443` therefore
+prints `:18443`. That operator-local display port is not the in-sandbox origin;
+keep the workload alias and exact policy port aligned with the gateway Service. The fixture's workload policy grants no outgoing
 callbacks; use status-check operation with Media's `VEOVEO_PUBLIC_ORIGIN` unset.
 This fixture produces synthetic data, not model inference or valid media proof.
 Its native process readiness does not prove Media registration or a Task result.
