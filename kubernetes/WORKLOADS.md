@@ -14,7 +14,8 @@ placement does not add a new authentication or Lore permission system.
 | PostgreSQL | `veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432` |
 | Private S3 | `https://seaweedfs-s3.veoveo-system.svc.cluster.local:9000` |
 | Native Lore | `grpcs://lore.veoveo-system.svc.cluster.local:41337` |
-| Hub public origin/issuer | `https://veoveo.example.com`, `/oauth` |
+| Hub public origin / registered-server issuer | `https://veoveo.example.com` |
+| Browser and native Lore authorization-server issuer | `https://veoveo.example.com/oauth` |
 | Public signed objects | `https://objects.veoveo.example.com` |
 
 Render public origins to the actual installation. Service DNS replaces old host
@@ -261,17 +262,26 @@ openshell sandbox create --workspace vv-services --name time --from "$TIME_IMAGE
   --policy kubernetes/policies/time.yaml --provider vv-time-registration --no-auto-providers \
   --driver-config-json "$(cat kubernetes/time-driver-config.json)" \
   --restart-policy always --detach \
-  --env VEOVEO_HUB_ISSUER="$HUB_ISSUER" \
+  --env VEOVEO_HUB_ISSUER="$HUB_ORIGIN" \
   --env VEOVEO_PUBLIC_BASE_URL=http://time.internal:8800 --env VEOVEO_PORT=8800 -- \
   /usr/local/bin/veoveo-mcp-time
 ```
 
-Render the actual selected issuer/registration transport together with the exact
-native policy authority; the Kubernetes policies select the unchanged example public authority on HTTPS.
-`HUB_ISSUER` is the actual existing public issuer, including its configured path;
-it is not a new native exposure alias issuer. Verify discovered issuer equality, registration and JWKS before claiming
-MCP readiness. Artifact/Media use their corresponding policies/driver-config files
-and existing native trusted shell commands loading only their own config file.
+Set `HUB_ORIGIN` to the Hub's actual public origin, such as
+`https://veoveo.example.com`. Time, Artifact and Media use that origin for
+`VEOVEO_HUB_ISSUER`: the native registered-server/forwarded-token issuer publishes
+`/.well-known/oauth-authorization-server`, `/jwks.json` and `/oauth/register`.
+The SDK verifies that discovery returns the same issuer before registration.
+The Kubernetes policies admit those exact public-origin routes.
+
+Do not append `/oauth` to this service setting. The separate browser/native Lore
+authorization-server issuer is `https://veoveo.example.com/oauth`; its metadata
+at `/.well-known/oauth-authorization-server/oauth` does not advertise server
+registration. Preserve that issuer for human/Lore clients. Do not replace either
+issuer with a native exposure alias. Artifact/Media use their corresponding
+policies/driver-config files and existing native trusted shell commands loading
+only their own config file. Verify discovery, registration and JWKS before
+claiming MCP readiness.
 
 Computer creation remains browser admission → native per-owner clone/providers →
 ForwardTcp. Hub injects `COMPUTER_HUB_URL` from the selected profile's protected
