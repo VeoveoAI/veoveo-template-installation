@@ -464,15 +464,17 @@ The final Computer scenario explicitly used
 `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro`, with an eight-step/240-second bound and no
 model substitution. Session `ses_ea69c1ad3ffeKqVD2BVH1CSrMt` reached terminal idle
 with succeeded status in seven recorded model steps, 81.283 seconds
-(12:58:23.007–12:59:44.290 UTC). Its actual native shell remote Lore command exited
-0 and verified repository `01a1586c89057ea3adcfc848da54077b`, published revision
-`6f6e421befee367e83606f2e0f35b2fdd09b1daab2861fce1263cab31ae11c9f`, and
-source SHA-256 `6a542b5339909414f1dbdc904b14b6e60e29cadfdf8d61e097fa35d52fd0b110`.
+(12:58:23.007–12:59:44.290 UTC). Its authenticated native shell remote repository
+metadata command exited 0 and verified repository
+`01a1586c89057ea3adcfc848da54077b`. Reads of the existing local checkout matched
+published revision `6f6e421befee367e83606f2e0f35b2fdd09b1daab2861fce1263cab31ae11c9f`
+and source SHA-256 `6a542b5339909414f1dbdc904b14b6e60e29cadfdf8d61e097fa35d52fd0b110`;
+this was not a fresh model-driven remote fetch.
 Two routed `resolve_time` calls and `expand_schedule` returned the expected single
 09:00–10:00 UTC occurrence with `truncated=false`.
 
 The trace was not error-free: the model first tried `tools.shell` inside CodeMode,
-received `Unknown tool`, made two catalog searches, then used the native shell
+received `Unknown tool`, made two discovery turns, then used the native shell
 correctly. The earlier attempt's remote Lore exit 16 came from operator login
 using the native exec default auth path instead of the image workload's path;
 repeating the native login with the explicit image paths corrected qualification
