@@ -20,9 +20,13 @@ GPU provisioning requires the combined OpenShell gateway source
 both `2c9fe478` Pending-supervisor recovery and the `7878752f` GPU-boundary fix.
 Select separately reviewed compatible supervisor and sandbox-runtime image pins
 from the current foundation; this gateway change does not require replacing them.
-The combined gateway's deployment and native CUDA startup/restart validation are
-pending. A source commit or successful image build is not that acceptance. After
-rollout, confirm a fresh native GPU runtime generation and actual CUDA access;
+The `f70a959` gateway is deployed at Helm revision 8 with manifest
+`sha256:174df861c65503874a6713f5d8b682ef54a06e2a9c6bd16647f715efc886b202`.
+Native CUDA initialization passes with one device. The first actual Linux MCP
+batch returns two 768-dimensional vectors with token counts `[6,6]` in 713 ms.
+These are startup and basic-call results; complete Linux media, real ACL denial,
+composition, restart recovery and final-client qualification remain pending.
+When changing gateway/runtime generations, verify actual CUDA access afresh;
 existing immutable bootstrap material is not rewritten in place.
 
 ## GPU prerequisite

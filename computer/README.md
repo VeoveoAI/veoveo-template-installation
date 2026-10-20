@@ -30,9 +30,12 @@ deployment acceptance.
 - Native OpenShell gateway/driver: `2c9fe478f49773998d8602f8da68fce0864343fd`,
   retaining Kubernetes workspace persistence, connected-target forwarding readiness,
   destination-CA staging and running intent while an admitted supervisor Pod is
-  temporarily Pending after reboot. The selected supervisor remains
-  `b849a25c79177e9306c52a93de82d9dfc879cb92`, including mediated HTTP/2 stream
-  turnover and trusted gateway Service-DNS resolution; the sandbox runtime remains
+  temporarily Pending after reboot. The selected supervisor is
+  `d7a990083214e8a618f05b1b471aeeac6d9aa82a`, retaining mediated HTTP/2 stream
+  turnover and trusted gateway Service-DNS resolution, and renewing an expired
+  native Kubernetes launch credential pair before policy discovery. Fresh bundles
+  skip rebootstrap to avoid the initial runtime-binding persistence race. The
+  sandbox runtime remains
   `846de5fa01234a22827915b3f4e5b9092367078b`. Select each component's reviewed
   immutable image through native configuration. Repeat-reboot recovery and the
   expired-credential bootstrap path remain separate qualification requirements.
