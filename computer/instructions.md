@@ -20,6 +20,8 @@ automatic commit/push or automatic output upload is performed.
 Hub may prepare an optional personal repository default and write public
 coordinates to `/sandbox/home/.config/computer/workspace.env`. It does not log in
 or clone. The user or agent chooses repository, branch and destination when wanted.
+Read that public file when offering the personal repository. An empty Lore
+repository list does not determine whether a known assigned repository can be cloned.
 `VEOVEO_LORE_REMOTE` is the installation's private Lore URI, not a native setting.
 When a chosen operation needs first login, use native Lore:
 
