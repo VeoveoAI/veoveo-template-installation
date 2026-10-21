@@ -96,8 +96,9 @@ Docker preserves them through its configured persistent workspace volume and nat
 copy-up. Kubernetes uses OpenShell's
 automatic per-sandbox workspace PVC and native image-workdir seeding with sandbox
 UID/fsGroup ownership; do not add a shared explicit `/sandbox` claim or another
-copy-up Job. `/etc/computer` is immutable installation
-configuration outside the persistent mount. No secret is copied into the image.
+copy-up Job. `/etc/computer` is immutable connection configuration outside the
+persistent mount; public managed instructions live in the private home.
+No secret is copied into the image.
 
 The operator imports the global, nonsecret native provider profiles and creates the
 trusted workload template using the existing authenticated native CLI. The example
@@ -263,6 +264,45 @@ workspace layout, explicit Lore/Artifact publication and environment apply/selec
 Without explicit environment selection, MCP uses the Hub profile's configured
 default environment. A checkout alone never selects or applies an environment.
 
+The image seeds `/sandbox/home/.config/computer/instructions.md` before OpenCode's
+first instruction discovery, and its config loads only that path. Installation
+supplies the shared Markdown as plain `computers.handbook` text in the trusted Hub
+control document; [hub.example.json](hub.example.json) includes it. This is not a
+template language. Guidance references the Computer's current native inputs and
+optional public descriptor; it does not copy credentials, grants or project
+environment selections into a global prompt.
+
+Each admitted `/computer` entry or completed login schedules best-effort delivery
+from the **current** live catalog through the existing owner-scoped native Exec.
+Hub atomically replaces the file; OpenCode's existing watcher refreshes subsequent
+model steps. Delivery is independent of personal repository preparation and never
+blocks entry or invokes login/clone. Omitting `handbook` skips replacement;
+`"handbook":""` explicitly clears the managed text. A live config update reaches
+the Computer on its next entry, not through immediate fleet-wide push.
+
+To update guidance, read the fresh full control response using the existing admin
+API, then prepare the ordinary publication candidate with the selected Markdown:
+
+```sh
+python3 - "$PRIVATE/control-read.json" computer/instructions.md "$PRIVATE/control-candidate.json" <<'PY'
+import json
+from pathlib import Path
+import sys
+control = json.loads(Path(sys.argv[1]).read_text())["controlPlane"]
+control["computers"]["handbook"] = Path(sys.argv[2]).read_text()
+output = Path(sys.argv[3])
+output.write_text(json.dumps(control, indent=2) + "\n")
+output.chmod(0o600)
+PY
+```
+
+Publish that full candidate through the same live admin control-plane API, preserving
+unrelated settings. For initial trusted import, include the same Markdown field in
+the complete seed before `veoveo-hub validate` / `import-control-plane`. Install the
+Hub binary that understands this field before publishing it. Existing snapshots do
+not need rewriting because guidance is optional. Initial Computer packaging must
+select this managed instruction path; later text updates need no image rebuild.
+
 The [native OIDC fragment](lore-oidc.example.toml), Hub contribution/client records
 and exact OAuth REST paths in policy must be selected together. Native private
 gRPC remains direct TLS. The OAuth paths share Hub's authority but are disjoint
@@ -272,9 +312,10 @@ receipts. Existing source/image pins remain unchanged until coordinated review.
 
 ## Validation boundary
 
-Changes to `instructions.md` require rebuilding the Computer image because the
-Dockerfile copies it into `/etc/computer`; changing policy alone requires no
-binary rebuild. The signed-transfer instructions in this slice need a new image.
+Changing the image's initial handbook seed or configured instruction path requires
+a Computer image rebuild. Once that path is installed, publish text changes through
+`computers.handbook` and enter the Computer again; no image or OpenCode restart is
+needed. Policy changes alone require no binary rebuild.
 
 Before promotion, validate the JSON with this fork's native OpenCode Config.Info
 schema after substituting synthetic opaque references; parse the policy through
@@ -282,8 +323,8 @@ native `openshell_policy::parse_sandbox_policy_file` and lint both native profil
 Also admit the selected Hub control policy/profile using the exact RPC/binding
 boundary in [NATIVE_CONTROL.md](NATIVE_CONTROL.md).
 Build the image from the reviewed local contexts without inference. Under UID/GID 10001,
-check exact binary versions/digests, seeded ownership, writable HOME/XDG paths,
-non-writable `/etc/computer`, and absence of a factory token. A native test-owned
+check exact binary versions/digests, seeded managed-instruction ownership, writable
+HOME/XDG paths, non-writable `/etc/computer`, and absence of a factory token. A native test-owned
 Computer must then prove persisted OpenCode/Lore state across Stop/Start, runtime
 loss and gateway restart, followed by exactly owned Delete cleanup. Only later
 qualify real user login, Hub revocation/owner isolation and explicit MiMo tool use
