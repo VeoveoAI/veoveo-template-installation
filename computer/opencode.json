@@ -4,6 +4,8 @@
   "update": "disable",
   "share": "disabled",
   "warming": false,
+  "snapshots": false,
+  "plugins": ["-opencode.vcs.git", "-opencode.vcs.hg"],
   "instructions": ["/etc/computer/instructions.md"],
   "providers": {
     "deepinfra": {

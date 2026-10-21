@@ -192,7 +192,8 @@ Hub resolves the trusted Env `ProviderApiKey` reference to seed the workspace-lo
 model provider; OpenCode sees only its native `DEEPINFRA_API_KEY` placeholder.
 The explicit model is `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro`, present in the selected
 OpenCode bundled catalog. Catalog fetch, warming, self-update and sharing are
-disabled. The native policy admits its exact chat-completion endpoint and the
+disabled. The built-in Git/Mercurial providers and turn snapshots are disabled;
+the agent uses native Lore for source history and undo. The native policy admits its exact chat-completion endpoint and the
 configured Hub MCP path; unsupported egress fails closed. MCP methods still face
 Hub's current route authorization. Installing configuration is not a model call
 or evidence of real inference. Run paid acceptance only after deterministic,
