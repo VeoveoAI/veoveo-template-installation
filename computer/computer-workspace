@@ -43,20 +43,24 @@ fi
 
 destination=/sandbox/projects/workspace
 verify_checkout() {
+  checkout=$1
   # Native config and native repository metadata decide identity. Do not infer it
   # from the directory name or replace a user's unrelated/modified checkout.
-  [ ! -L "$destination" ] && [ -d "$destination/.lore" ] || return 73
-  remote=$(/usr/local/bin/lore -P --repository "$destination" repository config get remote_url) || return "$?"
+  [ ! -L "$checkout" ] && [ -d "$checkout/.lore" ] || return 73
+  remote=$(/usr/local/bin/lore -P --repository "$checkout" repository config get remote_url) || return "$?"
   [ "$remote/$COMPUTER_WORKSPACE_REPOSITORY" = "$COMPUTER_WORKSPACE_REMOTE" ] || return 73
-  info=$(/usr/local/bin/lore -P --repository "$destination" --local repository info) || return "$?"
+  info=$(/usr/local/bin/lore -P --repository "$checkout" --local repository info) || return "$?"
   first=$(printf '%s\n' "$info" | sed -n '1p')
   case "$first" in *" ($COMPUTER_WORKSPACE_REPOSITORY)") ;; *) return 73 ;; esac
+  branch=$(/usr/local/bin/lore -P --repository "$checkout" --local branch info) || return "$?"
+  branch_id=$(printf '%s\n' "$branch" | sed -n 's/^  ID: \([0-9a-f]\{32\}\)$/\1/p')
+  [ "$branch_id" = "$COMPUTER_WORKSPACE_BRANCH" ] || return 73
   # Remote metadata checks the current native user grant; local files alone are
   # never reported as authenticated. This also uses native refresh when needed.
-  /usr/local/bin/lore -P --repository "$destination" repository info >/dev/null
+  /usr/local/bin/lore -P --repository "$checkout" repository info >/dev/null
 }
 if [ -e "$destination" ] || [ -L "$destination" ]; then
-  if verify_checkout; then
+  if verify_checkout "$destination"; then
     printf 'Personal workspace ready: %s (%s)\n' "$destination" "$COMPUTER_WORKSPACE_REPOSITORY"
     exit 0
   else
@@ -69,12 +73,21 @@ fi
 mkdir -p /sandbox/projects
 staging=$(mktemp -d /sandbox/projects/.computer-workspace.XXXXXX)
 trap 'rm -rf "$staging"' EXIT HUP INT TERM
-# Native --branch is exactly <branch-id>@latest. The source repository and branch
-# identities come from the verified native response, never a display-name lookup.
-/usr/local/bin/lore clone "$COMPUTER_WORKSPACE_REMOTE" "$staging/checkout" --branch "$COMPUTER_WORKSPACE_BRANCH"
+# Native --branch selects <id>@latest, which has no revision in an empty repo.
+# Ordinary clone supports an empty default branch. Check the resulting anchor
+# before publication so a concurrent default change cannot select another branch.
+info=$(/usr/local/bin/lore -P repository info "$COMPUTER_WORKSPACE_REMOTE")
+default_branch=$(printf '%s\n' "$info" | sed -n 's/^Default branch: .* (\([0-9a-f]\{32\}\))$/\1/p')
+case "$default_branch" in *[!0-9a-f]*|'') exit 73 ;; esac
+[ "${#default_branch}" -eq 32 ] || exit 73
+if [ "$default_branch" = "$COMPUTER_WORKSPACE_BRANCH" ]; then
+  /usr/local/bin/lore clone "$COMPUTER_WORKSPACE_REMOTE" "$staging/checkout"
+else
+  /usr/local/bin/lore clone "$COMPUTER_WORKSPACE_REMOTE" "$staging/checkout" --branch "$COMPUTER_WORKSPACE_BRANCH"
+fi
+verify_checkout "$staging/checkout"
 # GNU coreutils in the Computer image: do not replace even an empty directory
 # created by a competing invocation or by the user.
 mv -T --no-clobber "$staging/checkout" "$destination"
 [ ! -e "$staging/checkout" ] || exit 75
-verify_checkout
 printf 'Personal workspace ready: %s (%s)\n' "$destination" "$COMPUTER_WORKSPACE_REPOSITORY"
