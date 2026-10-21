@@ -68,6 +68,19 @@ and must match the selected artifact. This image supplies PostgreSQL `18.6`,
 vector `0.8.7` and PostGIS `3.6.4`. Do not replace it with a plain image that omits
 the application extensions. Qualify CNPG init/start/restart with this image.
 
+The Cluster sets the [native CNPG parameter](https://cloudnative-pg.io/docs/devel/postgresql_conf/)
+`postgresql.parameters.max_connections` to the string `"512"`. PostgreSQL's
+default of 100 was insufficient for the base services together with simultaneously
+retained development worker pools. This is database capacity, not a workload
+admission limit. Budget each Core-backed process for its default pool of up to
+10 connections plus its dedicated instance connection; listeners and singletons
+also use dedicated connections. The current OpenShell gateway defaults to a
+10-connection data pool plus a separate 4-connection mutation-lock pool per
+replica. Include Lore, retained workers, overlapping rollouts, operator and
+reserved connections, and headroom when sizing the installation. Retained workers
+can continue using their pools after a newer worker becomes serving, so count
+them alongside current selections rather than only counting active components.
+
 Create `kubernetes.io/basic-auth` Secrets in `veoveo-system`, each with native
 `username` and `password` keys, from private files:
 

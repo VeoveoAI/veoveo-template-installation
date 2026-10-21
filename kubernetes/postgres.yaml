@@ -12,6 +12,9 @@ spec:
     - name: registry-pull
   postgresUID: 999
   postgresGID: 999
+  postgresql:
+    parameters:
+      max_connections: "512"
   storage:
     storageClass: local-path
     size: 50Gi
