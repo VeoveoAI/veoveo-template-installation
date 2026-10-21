@@ -20,6 +20,26 @@ network_policies:
           allow_all_known_mcp_methods: true
     binaries:
       - path: /usr/local/bin/opencode
+      - path: /usr/local/bin/veoveo-environment
+  environment_control:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /environments/computer/**
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: computer-hub}
+        rules:
+          - allow: {method: GET, path: /environments/computer/*}
+          - allow: {method: PUT, path: /environments/computer/*}
+          - allow: {method: GET, path: /environments/computer/*/source}
+          - allow: {method: POST, path: /environments/computer/*/source}
+          - allow: {method: GET, path: /environments/computer/applies/*}
+          - allow: {method: GET, path: /environments/computer/applies/*/diagnostics}
+          - allow: {method: POST, path: /environments/computer/applies/*/retry}
+          - allow: {method: POST, path: /environments/computer/applies/*/complete-local}
+    binaries:
+      - path: /usr/local/bin/veoveo-environment
   model:
     endpoints:
       - host: api.deepinfra.com
@@ -42,6 +62,7 @@ network_policies:
         tls: skip
     binaries:
       - path: /usr/bin/curl
+      - path: /usr/local/bin/veoveo-environment
   lore:
     # Native host-gateway pin reaches Lore's host-loopback publication only.
     # Keep the exact port and binary; do not add an obsolete container allowed_ips.

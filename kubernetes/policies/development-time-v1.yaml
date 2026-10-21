@@ -1,0 +1,89 @@
+# Trusted Linux source-runtime example for Time only. Replace public origins and
+# approve each build dependency, provider attachment and data binding explicitly.
+# No shared Lore provider: native source credentials arrive on private Exec stdin.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log]
+  read_write: [/sandbox, /tmp, /dev/null]
+network_policies:
+  helper_registration:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /oauth/register
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: POST, path: /oauth/register}
+      - host: veoveo.example.com
+        port: 443
+        path: /oauth/register/*
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /oauth/register/*}
+    binaries:
+      - path: /usr/local/bin/veoveo-environment
+  hub_metadata:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /.well-known/oauth-authorization-server
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /.well-known/oauth-authorization-server}
+      - host: veoveo.example.com
+        port: 443
+        path: /jwks.json
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /jwks.json}
+      - host: veoveo.example.com
+        port: 443
+        path: /oauth/register/*
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /oauth/register/*}
+    binaries:
+      - path: /usr/local/bin/veoveo-environment
+      # Every build has a distinct actual executable path/pin. These children
+      # retain only the explicitly approved Time network surface below.
+      - path: /sandbox/builds/*/service
+  source_bytes:
+    endpoints:
+      - host: objects.veoveo.example.com
+        port: 443
+        protocol: tcp
+        tls: skip
+    binaries:
+      - path: /usr/local/bin/veoveo-environment
+  native_source:
+    endpoints:
+      - host: lore.veoveo-system.svc.cluster.local
+        port: 41337
+        protocol: tcp
+        tls: skip
+    binaries:
+      - path: /usr/local/bin/lore
+  build_dependencies:
+    endpoints:
+      - {host: index.crates.io, port: 443, protocol: tcp, tls: skip}
+      - {host: static.crates.io, port: 443, protocol: tcp, tls: skip}
+      - {host: github.com, port: 443, protocol: tcp, tls: skip}
+    binaries:
+      - path: /usr/local/rustup/toolchains/*/bin/cargo
+      - path: /usr/bin/git
+      - path: /usr/lib/git-core/git-remote-http
+      - path: /usr/lib/git-core/git-remote-https
+  database:
+    endpoints:
+      - host: veoveo-postgres-rw.veoveo-system.svc.cluster.local
+        port: 5432
+        protocol: tcp
+        tls: skip
+    binaries:
+      - path: /sandbox/builds/*/service

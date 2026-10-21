@@ -148,18 +148,19 @@ Both policies allow only the Hub binary to POST these native RPC paths beneath
 | Per-owner workspace/template | GetWorkspace, CreateWorkspace, CreateSandboxTemplate |
 | Workspace-local user/model custody | GetProvider, CreateProvider, ConfigureProviderRefresh, RotateProviderCredential |
 | Native Computer lifecycle | GetSandbox, CreateSandbox, StartSandbox, StopSandbox |
+| Optional owner-bound onboarding | ExecSandbox (existing `sandbox:write`, workspace user role) |
 
 One enforced REST endpoint selects `/openshell.v1.OpenShell/**` at the native
-gateway authority, with the same provider binding and exactly the fifteen POST
+gateway authority, with the same provider binding and exactly the sixteen POST
 rules above. The service-root selector chooses the HTTP route; it does not grant
-additional RPCs. There is no wildcard allow rule, Exec, Delete, UpdateProvider,
+additional RPCs. There is no wildcard allow rule, arbitrary browser-facing Exec, Delete, UpdateProvider,
 profile import or operator-only credential export. Profiles are installed separately
 by the trusted operator.
 
 Keep these RPC rules in one endpoint configuration. The native
 [HTTP/2 eligibility predicate](https://github.com/VeoveoAI/OpenShell/blob/9724fb1834dec157b4482a1da97338fd8ca1e50c/crates/openshell-supervisor-network/src/proxy/relay.rs#L45)
 requires one supported REST inspection configuration before advertising `h2`.
-Splitting the same authority into fifteen endpoints forces HTTP/1.1-only ALPN,
+Splitting the same authority into separate endpoints forces HTTP/1.1-only ALPN,
 which tonic rejects with `NoApplicationProtocol`. Native
 [per-stream admission](https://github.com/VeoveoAI/OpenShell/blob/9724fb1834dec157b4482a1da97338fd8ca1e50c/crates/openshell-supervisor-network/src/l7/http2.rs#L290)
 still evaluates each actual method/path and resolves the bound credential; this
@@ -173,7 +174,7 @@ locally; no extra public JWKS egress is required for that path.
 
 Before rollout, use native policy parsing/ambiguity admission and profile linting.
 Confirm native policy construction produces one REST endpoint configuration, with
-exactly the fifteen POST allow rules and unchanged provider/binary bindings;
+exactly the sixteen POST allow rules and unchanged provider/binary bindings;
 there must be no wildcard allow rule. These structural checks and the reviewed
 per-stream evaluator do not establish successful live RPCs or an observed denial.
 
@@ -183,3 +184,11 @@ RPC such as `/openshell.v1.OpenShell/DeleteSandbox`. Also prove ordinary user
 data-plane identity separation, self PKCE exchange and native control renewal.
 These examples do not claim that an IdP client, provider, endpoint or deployed
 Computer exists, or that an unavailable CLI evaluator/prover was executed.
+
+The current Kubernetes Hub policy admits exactly `ExecSandbox` for the trusted
+onboarding hook. It validates the recorded owner workspace/sandbox and governance
+before writing the public checkout descriptor or running the fixed helper. This
+uses existing `sandbox:write`; no `sandbox:exec` scope is defined. It exposes no
+external shell endpoint and transfers no operator credential into the Computer.
+Historical Mac forwarder/provisioner fixtures without onboarding retain their
+original RPC list; select the actual native endpoint/policy together.

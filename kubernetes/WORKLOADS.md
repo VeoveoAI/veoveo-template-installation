@@ -180,7 +180,8 @@ Service authority into a signed URL.
 ### PostgreSQL client trust shared within each workspace
 
 Create `postgres-client-ca` ConfigMap in each actual native workspace namespace
-with `postgres-ca.crt` (CNPG public CA) and `storage-ca.crt` (Seaweed public CA),
+with `postgres-ca.crt` (CNPG public CA), `storage-ca.crt` (Seaweed public CA)
+and `lore-ca.crt` (the selected native Lore service public CA),
 never their keys. Use the public Seaweed CA certificate from the
 `seaweedfs-ca-cert` Secret's **`tls.crt`** key. That chart input key is distinct
 from the copied `storage-ca.crt` filename; a Secret containing only `ca.crt` does
@@ -211,8 +212,9 @@ insufficient. The application mount path must match the grant URI. The `database
 passes PostgreSQL's native TLS through; the PostgreSQL client still verifies the
 chain **and Service hostname** with `verify-full`. It does not disable TLS checks.
 
-For Artifact, set native nonsecret `--env SSL_CERT_DIR=/etc/veoveo/tls`. Its existing
-AWS rustls client loads that public CA directory **alongside** the injected
+For Hub native workspace provisioning and Artifact, set native nonsecret
+`--env SSL_CERT_DIR=/etc/veoveo/tls` (or the same literal in Hub's trusted shell-sourced env). The native gRPC and existing
+AWS rustls clients load that public CA directory **alongside** the injected
 `SSL_CERT_FILE` system/supervisor bundle. Keep the injected file intact. The
 CA-only claim therefore supplies Seaweed trust without a derivative image or
 weaker certificate validation. Prove the deployed S3 handshake/operations; the
@@ -228,6 +230,15 @@ bootstrap sample. Run the Hub binary's native validate/import commands against
 the **actual complete private input**, not a partial JSON subtree. Initial files
 seed only an empty installation; routine updates use the authenticated live
 `GET`/`PUT /admin/{profile}/control-plane` path and its current revision.
+
+For a clean application database, keep the explicit default environment but seed
+its `components` as `{}` (or explicit unavailable selections). Concrete deployment
+selections must reference IDs already admitted by registration. The 2026-10-20
+reset exposed this ordering: preselecting unregistered deployment IDs caused Hub
+to exit with `selected deployment has not been admitted`, leaving the active
+revision unset. Start Hub from the trusted config claim, register the services,
+then enroll their actual admitted deployment IDs through the existing live
+control-plane revision/CAS path. This requires no Hub restart.
 
 ```sh
 openshell profile lint --global --from computer/providers
@@ -262,7 +273,7 @@ openshell sandbox create --workspace vv-control --name hub --from "$HUB_IMAGE_AT
   --policy kubernetes/policies/hub-computer-entra.example.yaml \
   --provider vv-hub-native-control --no-auto-providers \
   --driver-config-json "$(cat kubernetes/hub-driver-config.json)" \
-  --restart-policy always --detach -- \
+  --restart-policy always --detach --env SSL_CERT_DIR=/etc/veoveo/tls -- \
   /bin/sh -ec 'set -a; . /etc/veoveo/hub/hub.env; set +a; exec /usr/local/bin/veoveo-hub serve --allow-loopback-hosts'
 openshell service expose --workspace vv-control hub 8080 http \
   --authorization-mode bearer-passthrough
@@ -310,7 +321,15 @@ non-idempotent mutation automatically or promise zero downtime.
 
 The current native API has no in-place sandbox image update. Stop/Start reuses
 the admitted image. To replace Media's image, first drain or explicitly qualify
-its active Tasks, retain its complete native creation inputs privately, then run:
+its active Tasks and retain its complete native creation inputs privately.
+
+Export the authored policy with `openshell --workspace vv-services policy get media
+--base` for round-tripping. Effective `sandbox get --policy-only` output includes
+reserved provider overlays and is not the authored replacement input. Preserve
+the exact provider attachments separately; exporting a base policy does not
+transfer their custody or replace their attachment configuration.
+
+Then run:
 
 ```sh
 openshell --workspace vv-services sandbox stop media

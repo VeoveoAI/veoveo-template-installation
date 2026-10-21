@@ -10,7 +10,7 @@ The image has no independent browser login, issuer, factory identity or Docker a
 
 ## Reviewed source inputs
 
-Build for one explicit target platform; all three contexts must match it. The
+Build for one explicit target platform; all named contexts must match it. The
 component pins below identify verified source revisions in the maintained VeoveoAI
 forks, not upstream release versions. Source selection alone is not build or
 deployment acceptance.
@@ -33,6 +33,10 @@ deployment acceptance.
   [qualification record](../kubernetes/README.md#reference-qualification-checkpoint--2026-10-20). Use the final reviewed native
   platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
+- Environment helper: build Hub's `environment-artifact` target from the same
+  checked Hub source revision used by activation. This exports only the
+  `/usr/local/bin/veoveo-environment` artifact; it is an initial image input, not
+  a per-edit image publication requirement. Select the inspected immutable digest.
 - Native OpenShell gateway/driver: `53e3665811a72dd1555edb18aeb4fedef4158dbd`,
   retaining Kubernetes workspace persistence, connected-target forwarding readiness,
   destination-CA staging, admitted GPU allocation propagation and native recovery
@@ -62,6 +66,7 @@ With the reviewed IDs and package directory supplied in the operator environment
 docker buildx build --platform "$COMPUTER_PLATFORM" --load \
   --build-context "factory=docker-image://$COMPUTER_FACTORY_IMAGE" \
   --build-context "lore=docker-image://$COMPUTER_LORE_IMAGE" \
+  --build-context "environment=docker-image://$COMPUTER_ENVIRONMENT_IMAGE" \
   --build-context "opencode=$COMPUTER_OPENCODE_PACKAGE" \
   -f computer/Dockerfile -t veoveo/computer:reviewed .
 docker image inspect --format '{{.Id}}' veoveo/computer:reviewed
@@ -237,6 +242,22 @@ there wrote `/sandbox/.config/lore/tokenstore.toml`; OpenCode shell tools read
 first store does not authenticate the workload's separate store. Ordinary Lore
 commands inside the Computer's OpenCode shell already inherit the image paths.
 
+Optional personal-workspace onboarding is selected by the Hub contribution's
+`personalWorkspace.deployment`, an explicit registered native deployment ID.
+Computer entry starts preparation outside browser custody; `GET /computer/onboarding`
+reads the last typed result without starting work. Lore unavailability or missing
+user auth leaves Computer access usable. The owner's repository association survives
+Computer replacement, and changing the installation default does not replace it.
+
+After Hub delivers the public exact-ID descriptor through native owner-scoped Exec,
+run `computer-workspace` inside the Computer. It runs unchanged native login under
+the image's HOME/XDG/Lore paths, then clones the selected native repository/branch
+into `/sandbox/projects/workspace`. Existing matching checkouts are verified, never
+reset or synced; a different checkout is refused. `--retry` is noninteractive and
+is also attempted on admitted Computer entry. The read-only Hub status reports the
+last Hub attempt; after an independent helper login/checkout, entry retries and
+refreshes that observation. Neither the descriptor nor the helper contains tokens.
+
 The [native OIDC fragment](lore-oidc.example.toml), Hub contribution/client records
 and exact OAuth REST paths in policy must be selected together. Native private
 gRPC remains direct TLS. The OAuth paths share Hub's authority but are disjoint
@@ -263,3 +284,21 @@ loss and gateway restart, followed by exactly owned Delete cleanup. Only later
 qualify real user login, Hub revocation/owner isolation and explicit MiMo tool use
 on the coordinated Linux deployment. The component retention E2E receipt does not
 prove this image, Hub browser ingress, real Lore login or model inference.
+
+## Explicit environment source apply
+
+The packaged `veoveo-environment apply --definition FILE --local COMPONENT=DIRECTORY`
+uses the existing `COMPUTER_HUB_URL` and opaque `COMPUTER_HUB_REFERENCE` supplied by
+native custody. `watch` accepts the same arguments and submits only changed selected
+content/definitions; neither command synchronizes the Computer home. The definition
+is Hub's one typed environment definition, not a second source inventory. Do not
+copy browser tokens or service-client credentials into the project.
+
+The Computer native policies admit the helper's platform MCP operations and exact
+owner environment REST paths through the existing `computer-hub` provider. Signed
+Artifact byte transfers use the configured object authority without HTTP inspection,
+credential injection or URL rewriting. Source transfer uses the configured platform
+profile, independently of the application environment being prepared. Ordinary
+application MCP connections select their environment separately. These source and
+packaging changes do not extend the historical qualification above; the complete
+apply/watch and retained-worker path needs deployed qualification.

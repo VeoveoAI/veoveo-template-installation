@@ -16,6 +16,23 @@ filesystem_policy:
   - /tmp
   - /dev/null
 network_policies:
+  source_artifact:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      # Render the actual caller profile's protected MCP resource. The SDK
+      # carries the admitted user bearer; do not inject a service credential.
+      path: /mcp/computer
+      protocol: mcp
+      enforcement: enforce
+      mcp:
+        versions: ['2026-07-28']
+        allow_all_known_mcp_methods: false
+      rules:
+      - allow: {method: server/discover}
+      - allow: {method: tools/call, tool: artifact__create_download}
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
   native_control:
     endpoints:
     - host: openshell.openshell.svc.cluster.local
@@ -29,6 +46,9 @@ network_policies:
       - allow:
           method: POST
           path: /openshell.v1.OpenShell/GetGatewayInfo
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/ExecSandbox
       - allow:
           method: POST
           path: /openshell.v1.OpenShell/ForwardTcp
@@ -73,6 +93,15 @@ network_policies:
           path: /openshell.v1.OpenShell/RotateProviderCredential
     binaries:
     - path: /usr/local/bin/veoveo-hub
+  native_workspace:
+    endpoints:
+    - host: lore.veoveo-system.svc.cluster.local
+      port: 41337
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+    - path: /usr/local/bin/lore
   browser_code_exchange:
     endpoints:
     - host: veoveo.example.com

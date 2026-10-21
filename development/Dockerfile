@@ -2,6 +2,8 @@
 # Supply the reviewed immutable factory image as the named `factory` build context.
 FROM factory
 USER root
+# Same checked Hub helper artifact, built once for this target platform.
+COPY --from=environment --chmod=0755 /usr/local/bin/veoveo-environment /usr/local/bin/veoveo-environment
 RUN apt-get update \
     && apt-get install -y --no-install-recommends s6=2.13.1.0-1 \
     && rm -rf /var/lib/apt/lists/* /var/log/apt /var/log/dpkg.log \

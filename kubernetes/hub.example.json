@@ -96,7 +96,10 @@
       }
     ],
     "repositories": [],
-    "assignments": []
+    "assignments": [],
+    "personalWorkspace": {
+      "deployment": "primary"
+    }
   },
   "oauthClients": [
     {
@@ -142,6 +145,32 @@
       ],
       "credentialSecret": "lore-factory-client-secret",
       "tenant": "example"
+    },
+    {
+      "id": "computer-browser",
+      "authorizationServer": "hub",
+      "defaultWorkContext": "default",
+      "invocationMode": "direct",
+      "displayName": "Private Computer browser",
+      "allowedResources": [
+        "https://veoveo.example.com/mcp/computer",
+        "https://veoveo.example.com/resources/lore"
+      ],
+      "grantTypes": [
+        "authorization_code_pkce",
+        "refresh_token"
+      ],
+      "authMethods": [
+        "none"
+      ],
+      "redirectUris": [
+        "https://veoveo.example.com/computer/callback"
+      ],
+      "allowedScopes": [
+        "mcp",
+        "lore:login",
+        "offline_access"
+      ]
     }
   ],
   "oidcClients": [

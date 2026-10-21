@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     && rm -rf /var/lib/apt/lists/* /var/log/apt /var/log/dpkg.log
 # Native SDK client for deterministic platform operations; SDK has no runtime image.
 RUN cargo install --locked --git https://github.com/VeoveoAI/veoveo-hub-sdk \
-    --rev b0b8d868cf91c50706b8bfe7edc8c1eec937d7ea --root /usr/local veoveo-hub-sdk-cli
+    --rev cc23dc97bbe60f83e95d6e9d0c8fdcc35742d5a2 --root /usr/local veoveo-hub-sdk-cli
 COPY --from=lore --chmod=0755 /usr/local/bin/lore /usr/local/bin/lore
 # The trusted named context contains reviewed public CA certificates only, one per file.
 COPY --from=ca --chmod=0644 /*.crt /usr/local/share/ca-certificates/

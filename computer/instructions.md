@@ -44,3 +44,13 @@ Use the URI explicitly in ordinary native clone commands, then use the repositor
 configured remote for subsequent operations. Keep source under `/sandbox/projects`.
 Do not claim a build, remote write or model inference succeeded without its actual
 recorded tool result.
+
+When Hub has prepared a personal workspace, `/usr/local/bin/computer-workspace`
+composes the same native Lore login and exact-repository checkout in
+`/sandbox/projects/workspace`. Use that helper for first-use onboarding; the user
+completes Lore's ordinary authorization prompt and checkout continues automatically.
+`computer-workspace --retry` only retries using existing native authentication.
+A missing descriptor means Hub preparation is pending; reopening `/computer`
+retries it. The helper refuses an unrelated existing checkout and never resets,
+syncs or publishes user changes. No automatic home/cache/history synchronization
+is performed. An authenticated checkout is not a commit/push or a build proof.

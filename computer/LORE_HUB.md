@@ -31,7 +31,10 @@ The fragment assumes these existing installation identities:
   client and does not own repository assignments.
 - The Computer's existing public PKCE+refresh client `computer-browser` and exact
   callback `https://veoveo.example.com/computer/callback`, with the current MCP
-  profile/Work Context eligibility. Preserve its registration and memberships.
+  profile/Work Context eligibility. Merge the example client by its typed ID and
+  preserve existing memberships/identity settings; do not append a duplicate. Its
+  allowed resources/scopes explicitly include the selected native Lore audience
+  and login scope set for personal workspace creation.
 
 Replace these names consistently when the installation uses different admitted
 IDs. Keep `computers.gateway` and `nativeUpstreams` on the same dedicated native
@@ -41,7 +44,7 @@ management identity is independent of all Lore users and factory grants.
 | Native input | Matching Hub data |
 |---|---|
 | `jwt_issuer = ["https://veoveo.example.com/oauth"]` | Hosted server `hub` issuer and normal discovery/JWKS |
-| `jwt_audience = ["https://veoveo.example.com/resources/lore"]` | Deployment `audience`; each native client's one `allowedResources` entry |
+| `jwt_audience = ["https://veoveo.example.com/resources/lore"]` | Deployment `audience`; native CLI resource and initiating Computer/OpenCode client allowlist |
 | `resource_claim = "resources"`, `resource_id_claim = "resource_id"`, `permission_claim = "permission"` | Fixed native typed claim encoding; not arbitrary JWT templates |
 | `resource_id_template = "urc-{id}"` | Deployment `resourceIdTemplate` |
 | OIDC `client_id = "lore-computer"` | Dedicated secretless public registration with device, refresh and public exchange grants |
@@ -49,7 +52,13 @@ management identity is independent of all Lore users and factory grants.
 | OIDC `scope_template = "lore-repo-{id}"` | Deployment `scopeTemplate`; factory profile's exact target scope |
 | Private `grpcs://host.openshell.internal:41337` | Deployment `endpoint`, native server certificate SAN, policy hostname and `VEOVEO_LORE_REMOTE` |
 
-The trusted Compose Lore service publishes only `127.0.0.1:41337:41337`.
+For Linux, the selected private native endpoint is
+`grpcs://lore.veoveo-system.svc.cluster.local:41337`, managed by Kubernetes with
+end-to-end TLS. Select that Service DNS, certificate SAN/root and the exact
+`/usr/local/bin/veoveo-hub`/Lore binary policy entries together. Hub's native E0
+client trusts the public Lore root through its existing CA-only mount.
+
+**Mac Docker fixture only:** the trusted Compose Lore service publishes only `127.0.0.1:41337:41337`.
 Native OpenShell policy DNS maps `host.openshell.internal` to the backend-provided
 host-gateway address; the trusted Docker supervisor reaches the host loopback
 publication. No host `/etc/hosts` edit, workload Docker network attachment or
@@ -260,3 +269,38 @@ promotion. No Dockerfile, binary pin or copied Computer instruction changes are
 made in this configuration slice. Full native CLI/Entra exchange, refresh,
 per-user isolation, grant withdrawal/expiry and Linux proxy behavior remain later
 acceptance, not conclusions from JSON/TOML parsing.
+
+## Personal workspace first use
+
+`lore.personalWorkspace.deployment` is an optional explicit first-use deployment
+ID. It never selects the first deployment by name or replaces an existing owner's
+association. The Computer fragments include the matching `computer-browser` public
+client. For an existing `opencode` OAuth client used to request personal workspace
+selection, merge the same native audience into its `allowedResources` and all
+selected deployment `loginScopes` into `allowedScopes`, preserving its existing
+MCP audience, redirect URIs, Work Context and grants. Do this only when merging the
+matching registered Lore contribution; adding an unknown audience to the standalone
+identity example would be invalid. Broker `oidcClients.allowedResources` is separate
+and cannot substitute for initiating OAuth-client admission.
+
+A direct authenticated user can POST `{"deployment":"primary"}` (or the selected
+registered ID) to `/personal-workspace/{profile}` before first-use binding. To reuse
+an already authorized repository, also provide `repository` with its exact native
+ID. Reuse checks the existing native resource grant and Get; it adds no Owner
+privilege. A conflicting existing personal association is not replaced.
+
+After native creation, Hub verifies the actual repository/default-branch IDs and
+creator before publishing only that actual repository and caller Owner assignment
+through the existing control revision CAS. A reserved publication ID prevents a
+crash retry from regranting an assignment after its committed publication was later
+revoked. No Computer/session deletion cascades into this owner association.
+
+Computer access remains usable while optional onboarding is preparing, auth-needed,
+denied or unavailable. `GET /computer/onboarding` is a read-only browser-session
+status; admitted entry schedules a bounded retry. The prepared public descriptor
+lets `computer-workspace` continue checkout immediately after unchanged native
+user login succeeds. Credentials remain in the user's native persistent store,
+separate from the Computer's platform refresh family and factory custody.
+
+This source path requires component/deployed qualification; configuration alone
+is not a successful native creation, auth, checkout or isolation receipt.

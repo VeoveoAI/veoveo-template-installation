@@ -1,4 +1,4 @@
-# Public PostgreSQL and storage trust only, in each actual native workspace namespace.
+# Public PostgreSQL, storage and native repository trust only, in each actual native workspace namespace.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -43,7 +43,7 @@ spec:
         - -ec
         args:
         - umask 022; test ! -e /output/postgres-ca.crt; cp /input/postgres-ca.crt
-          /input/storage-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt
+          /input/storage-ca.crt /input/lore-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt /output/lore-ca.crt
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -64,6 +64,8 @@ spec:
             path: postgres-ca.crt
           - key: storage-ca.crt
             path: storage-ca.crt
+          - key: lore-ca.crt
+            path: lore-ca.crt
       - name: output
         persistentVolumeClaim:
           claimName: postgres-client-ca-v1
@@ -112,7 +114,7 @@ spec:
         - -ec
         args:
         - umask 022; test ! -e /output/postgres-ca.crt; cp /input/postgres-ca.crt
-          /input/storage-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt
+          /input/storage-ca.crt /input/lore-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt /output/lore-ca.crt
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -133,6 +135,8 @@ spec:
             path: postgres-ca.crt
           - key: storage-ca.crt
             path: storage-ca.crt
+          - key: lore-ca.crt
+            path: lore-ca.crt
       - name: output
         persistentVolumeClaim:
           claimName: postgres-client-ca-v1
