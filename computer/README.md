@@ -22,10 +22,10 @@ deployment acceptance.
   native OIDC refresh and S3/PostgreSQL storage. Build with the existing
   [Lore Dockerfile](../factory/Lore.Dockerfile)
   and the selected source/CA named contexts. Use the resulting immutable image ID.
-- OpenCode: source commit `ed62aad52c80ecdf4297310ce84305aff5717b7d`, including
+- OpenCode: source commit `c5fb62662c9c6fcb5064ef191956ca0da14e1af9`, including
   runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
   online-only UI, mounted-router navigation and route-relative titlebar history.
-  The Linux reference image is
+  The earlier Linux reference image was
   `registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/veoveo-computer@sha256:12c2ba83bd6f3dea715d1f8ab25ee20dd81dfb8145868f9a193f73cb4ce695d4`.
   Both fresh owner homepages render. Direct mounted Settings, Back to app,
   New session and browser Back/Forward retain the Computer prefix. The final
@@ -193,8 +193,9 @@ Hub resolves the trusted Env `ProviderApiKey` reference to seed the workspace-lo
 model provider; OpenCode sees only its native `DEEPINFRA_API_KEY` placeholder.
 The explicit model is `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro`, present in the selected
 OpenCode bundled catalog. Catalog fetch, warming, self-update and sharing are
-disabled. The built-in Git/Mercurial providers and turn snapshots are disabled;
-the agent uses native Lore for source history and undo. The native policy admits its exact chat-completion endpoint and the
+disabled. Computer configuration sets `snapshots: false` and disables the built-in
+`opencode.vcs.git` and `opencode.vcs.hg` plugins. Native Lore supplies source history
+and undo. The native policy admits its exact chat-completion endpoint and the
 configured Hub MCP path; unsupported egress fails closed. MCP methods still face
 Hub's current route authorization. Installing configuration is not a model call
 or evidence of real inference. Run paid acceptance only after deterministic,
