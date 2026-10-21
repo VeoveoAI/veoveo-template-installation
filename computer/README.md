@@ -249,14 +249,18 @@ reads the last typed result without starting work. Lore unavailability or missin
 user auth leaves Computer access usable. The owner's repository association survives
 Computer replacement, and changing the installation default does not replace it.
 
-After Hub delivers the public exact-ID descriptor through native owner-scoped Exec,
-run `computer-workspace` inside the Computer. It runs unchanged native login under
-the image's HOME/XDG/Lore paths, then clones the selected native repository/branch
-into `/sandbox/projects/workspace`. Existing matching checkouts are verified, never
-reset or synced; a different checkout is refused. `--retry` is noninteractive and
-is also attempted on admitted Computer entry. The read-only Hub status reports the
-last Hub attempt; after an independent helper login/checkout, entry retries and
-refreshes that observation. Neither the descriptor nor the helper contains tokens.
+Hub delivers public repository coordinates to
+`/sandbox/home/.config/computer/workspace.env` through native owner-scoped Exec.
+Onboarding `ready` means that optional repository default and descriptor are
+prepared; it does not assert native authentication or a checkout. Computer entry
+does not log in or clone. The user or agent chooses whether to use the default or
+another authorized repository, and chooses the branch and destination through
+ordinary native Lore commands. Existing checkouts are not changed. The descriptor
+contains no tokens; native Lore owns authentication, refresh and checkout behavior.
+The automatically loaded [Computer handbook](instructions.md) explains private
+workspace layout, explicit Lore/Artifact publication and environment apply/selection.
+Without explicit environment selection, MCP uses the Hub profile's configured
+default environment. A checkout alone never selects or applies an environment.
 
 The [native OIDC fragment](lore-oidc.example.toml), Hub contribution/client records
 and exact OAuth REST paths in policy must be selected together. Native private

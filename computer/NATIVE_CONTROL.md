@@ -187,7 +187,7 @@ Computer exists, or that an unavailable CLI evaluator/prover was executed.
 
 The current Kubernetes Hub policy admits exactly `ExecSandbox` for the trusted
 onboarding hook. It validates the recorded owner workspace/sandbox and governance
-before writing the public checkout descriptor or running the fixed helper. This
+before writing the public repository descriptor. It does not run login or clone. This
 uses existing `sandbox:write`; no `sandbox:exec` scope is defined. It exposes no
 external shell endpoint and transfers no operator credential into the Computer.
 Historical Mac forwarder/provisioner fixtures without onboarding retain their

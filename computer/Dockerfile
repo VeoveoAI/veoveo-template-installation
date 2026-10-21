@@ -8,7 +8,6 @@ COPY --from=environment --chmod=0755 /usr/local/bin/veoveo-environment /usr/loca
 COPY --from=lore --chmod=0755 /usr/local/bin/lore /usr/local/bin/lore
 COPY --from=opencode --chmod=0755 /bin/opencode /usr/local/bin/opencode
 COPY --chmod=0644 computer/opencode.json computer/instructions.md /etc/computer/
-COPY --chmod=0755 computer/computer-workspace /usr/local/bin/computer-workspace
 ENV HOME=/sandbox/home \
     SSL_CERT_DIR=/etc/ssl/certs \
     XDG_CONFIG_HOME=/sandbox/home/.config \

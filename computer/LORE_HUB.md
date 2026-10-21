@@ -297,9 +297,10 @@ revoked. No Computer/session deletion cascades into this owner association.
 
 Computer access remains usable while optional onboarding is preparing, auth-needed,
 denied or unavailable. `GET /computer/onboarding` is a read-only browser-session
-status; admitted entry schedules a bounded retry. The prepared public descriptor
-lets `computer-workspace` continue checkout immediately after unchanged native
-user login succeeds. Credentials remain in the user's native persistent store,
+status; admitted entry schedules a bounded preparation retry. `ready` means the
+optional repository default and public descriptor are prepared, not that native
+login or checkout occurred. The user or agent chooses ordinary native Lore login,
+repository, branch and destination when wanted. Credentials remain in the user's native persistent store,
 separate from the Computer's platform refresh family and factory custody.
 
 This source path requires component/deployed qualification; configuration alone
