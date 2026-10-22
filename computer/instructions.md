@@ -1,8 +1,6 @@
 This private Computer provides OpenCode, the configured Hub MCP connection and
-native Lore CLI. Hub supplies authorized platform tools and environment routing;
-Lore owns source repositories, native login, authorization and refresh. Factories
-are separate agent-free build/check jobs, not the Computer's coding agent or a
-mandatory image-publication step for every edit.
+native Lore CLI. Hub supplies authorized platform tools and branch selection;
+Lore owns source repositories, native login, authorization and refresh.
 
 ## Workspace and publication
 
@@ -34,37 +32,13 @@ Clone with the chosen repository URI and destination, then use that checkout's
 configured remote. Source reaches remote followers only after explicit commit
 and push, not file saves or local commits alone.
 
-## Environments and source updates
+## Served branches
 
-Without explicit selection, Hub MCP uses the profile's configured default
-environment. Checkout alone never selects or applies an environment. Select an
-admitted environment with the `veoveo-environment` HTTP header on the ordinary
-Hub MCP connection, retaining its configured URL and native opaque authentication.
-OpenCode project/Location configuration scopes that connection; separate chats in
-one Location do not independently select it. Routing does not clone data or add ACLs.
-
-Apply or explicitly watch a chosen source directory using the same definition:
-
-```sh
-veoveo-environment apply --definition environment.json --local time=./time --exclude .git --exclude .lore --exclude target
-veoveo-environment watch --definition environment.json --local time=./time --exclude .git --exclude .lore --exclude target
-```
-
-Replace `time=./time` with the actual owned component and chosen path. The client
-uses existing `COMPUTER_HUB_URL`/`COMPUTER_HUB_REFERENCE`; do not copy the reference
-into source. Exclusions are explicit, not automatic; keep credentials, scratch and
-unrelated outputs outside the selected source. Apply uploads a private source
-snapshot and updates desired runtime source using admitted runtime/storage inputs.
-Watch repeats for changed selected source/definitions, not the home. Neither
-command commits/pushes Lore or selects the application's MCP connection.
-
-A `--local` source apply replaces that component's Lore-follow selection; local
-definition apply also replaces definition-file following. Lore follows only explicitly
-selected published branches; pins stay exact. A failed candidate retains any
-previous serving worker; an override without one is unavailable, not inherited.
-Use apply status/build diagnostics to distinguish desired from serving source.
-Runtime services continue independently of the Computer; its local watch stops
-when the Computer stops.
+A branch of a server repository that has `openshell/run` is served once it is
+pushed to Lore: Hub builds it and runs it in its own sandbox. Local edits and local
+commits serve nothing. Hub's tools report each branch's status and logs and select
+which branch of each server this account uses; a server without a selection uses
+the installation's base branch. A selection applies to every chat of this account.
 
 ## Artifact transfers
 

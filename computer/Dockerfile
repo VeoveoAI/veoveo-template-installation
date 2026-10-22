@@ -1,10 +1,8 @@
 # syntax=docker/dockerfile:1.27@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
-# Required named contexts: reviewed factory, Lore and environment-helper images,
+# Required named contexts: reviewed factory and Lore images,
 # and the matching-platform OpenCode package directory (containing bin/opencode).
 FROM factory
 USER root
-# Same checked Hub helper artifact, built once for this target platform.
-COPY --from=environment --chmod=0755 /usr/local/bin/veoveo-environment /usr/local/bin/veoveo-environment
 COPY --from=lore --chmod=0755 /usr/local/bin/lore /usr/local/bin/lore
 COPY --from=opencode --chmod=0755 /bin/opencode /usr/local/bin/opencode
 COPY --chmod=0644 computer/opencode.json /etc/computer/
