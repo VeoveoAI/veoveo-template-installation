@@ -1,0 +1,146 @@
+# The image builder and the local registry. Hub builds each branch's openshell/image
+# with BuildKit over TCP and pushes it to the registry; the node pulls from the
+# registry through its registries.yaml entry for the Service's fixed ClusterIP.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: buildkitd
+  namespace: veoveo-system
+data:
+  buildkitd.toml: |
+    [worker.oci]
+      gc = true
+      maxUsedSpace = "80GB"
+      minFreeSpace = "20GB"
+    [registry."registry.veoveo-system.svc.cluster.local:5000"]
+      http = true
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: buildkitd
+  namespace: veoveo-system
+spec:
+  serviceName: buildkitd
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: buildkitd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: buildkitd
+    spec:
+      # BuildKit's user-namespace variant: privileged inside a user namespace is not
+      # host-privileged.
+      hostUsers: false
+      containers:
+        - name: buildkitd
+          image: moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+          args:
+            - --addr
+            - unix:///run/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --config
+            - /etc/buildkit/buildkitd.toml
+          securityContext:
+            privileged: true
+          ports:
+            - name: buildkit
+              containerPort: 1234
+          readinessProbe:
+            exec:
+              command: [buildctl, debug, workers]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests: {cpu: "1", memory: 1Gi}
+            limits: {memory: 16Gi}
+          volumeMounts:
+            - name: cache
+              mountPath: /var/lib/buildkit
+            - name: config
+              mountPath: /etc/buildkit
+      volumes:
+        - name: config
+          configMap:
+            name: buildkitd
+  volumeClaimTemplates:
+    - metadata:
+        name: cache
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 100Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: buildkitd
+  namespace: veoveo-system
+spec:
+  selector:
+    app.kubernetes.io/name: buildkitd
+  ports:
+    - name: buildkit
+      port: 1234
+      targetPort: buildkit
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: registry
+  namespace: veoveo-system
+spec:
+  serviceName: registry
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: registry
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: registry
+    spec:
+      containers:
+        - name: registry
+          image: registry:3.1.2@sha256:01cd312e67026f06f5d89c3e133a4a9adc7cb9eeb9b1194e0b2954dfd770efd2
+          env:
+            - name: REGISTRY_STORAGE_DELETE_ENABLED
+              value: "true"
+          ports:
+            - name: registry
+              containerPort: 5000
+          readinessProbe:
+            httpGet: {path: /v2/, port: registry}
+            periodSeconds: 2
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/registry
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 100Gi
+---
+# The node's registries.yaml names this address, so it stays fixed.
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: veoveo-system
+spec:
+  clusterIP: 10.43.200.10
+  selector:
+    app.kubernetes.io/name: registry
+  ports:
+    - name: registry
+      port: 5000
+      targetPort: registry

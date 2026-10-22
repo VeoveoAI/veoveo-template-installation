@@ -124,6 +124,33 @@ Use `veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432` with
 manifests or argv. Application migrations remain component-owned; no application
 shares the gateway role.
 
+## Logs, image builder and registry
+
+Factory sandboxes need three installation services. [logs.yaml](logs.yaml) runs
+Vector on every node and single-node VictoriaLogs, so every container's output
+outlives its pod for 7 days. [builder.yaml](builder.yaml) runs BuildKit's
+user-namespace variant, which Hub reaches at
+`tcp://buildkitd.veoveo-system.svc.cluster.local:1234`, and a plain Distribution
+registry at `registry.veoveo-system.svc.cluster.local:5000` with the fixed ClusterIP
+`10.43.200.10`:
+
+```sh
+kubectl apply -f kubernetes/logs.yaml -f kubernetes/builder.yaml
+```
+
+Point the node's container runtime at the registry once, then restart K3s. The
+restart takes the API away for a few seconds and restarts no container:
+
+```sh
+sudo tee /etc/rancher/k3s/registries.yaml >/dev/null <<'YAML'
+mirrors:
+  "registry.veoveo-system.svc.cluster.local:5000":
+    endpoint:
+      - "http://10.43.200.10:5000"
+YAML
+sudo systemctl restart k3s
+```
+
 ## SeaweedFS
 
 ```sh

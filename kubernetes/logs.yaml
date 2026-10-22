@@ -1,0 +1,163 @@
+# The cluster log collector and store: Vector reads every container's output on the
+# node and ships it to single-node VictoriaLogs, where it outlives its pod. Agents read
+# it through the Hub MCP server; nothing else queries the store.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: victorialogs
+  namespace: veoveo-system
+spec:
+  serviceName: victorialogs
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: victorialogs
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: victorialogs
+    spec:
+      containers:
+        - name: victorialogs
+          image: victoriametrics/victoria-logs:v1.53.0@sha256:251121fa882af99b95ba0c230a4a2f412ea602d2698c64a96c58dc9842bb755d
+          args: [-storageDataPath=/vlogs, -retentionPeriod=7d, -httpListenAddr=:9428]
+          ports:
+            - name: http
+              containerPort: 9428
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 2Gi}
+          volumeMounts:
+            - name: data
+              mountPath: /vlogs
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: victorialogs
+  namespace: veoveo-system
+spec:
+  selector:
+    app.kubernetes.io/name: victorialogs
+  ports:
+    - name: http
+      port: 9428
+      targetPort: http
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vector
+  namespace: veoveo-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: veoveo-vector
+rules:
+  - apiGroups: [""]
+    resources: [pods, namespaces, nodes]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: veoveo-vector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: veoveo-vector
+subjects:
+  - kind: ServiceAccount
+    name: vector
+    namespace: veoveo-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vector
+  namespace: veoveo-system
+data:
+  vector.yaml: |
+    data_dir: /var/lib/vector
+    sources:
+      pods:
+        type: kubernetes_logs
+        # With Vector's default interval, pods deleted within about 15 s were missed.
+        glob_minimum_cooldown_ms: 1000
+    sinks:
+      victorialogs:
+        type: elasticsearch
+        inputs: [pods]
+        endpoints: [http://victorialogs.veoveo-system.svc.cluster.local:9428/insert/elasticsearch/]
+        mode: bulk
+        api_version: v8
+        healthcheck: {enabled: false}
+        query:
+          _msg_field: message
+          _time_field: timestamp
+          _stream_fields: kubernetes.pod_namespace,kubernetes.pod_name,kubernetes.container_name
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vector
+  namespace: veoveo-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vector
+    spec:
+      serviceAccountName: vector
+      containers:
+        - name: vector
+          image: timberio/vector:0.60.0-distroless-libc@sha256:a9ed9a4710bdc2efa66e94c1e8edc7b439709e6e50079f1e1b2b1bf479d387da
+          args: [--config, /etc/vector/vector.yaml]
+          env:
+            - name: VECTOR_SELF_NODE_NAME
+              valueFrom:
+                fieldRef: {fieldPath: spec.nodeName}
+          # Reads the node's pod log files.
+          securityContext:
+            runAsUser: 0
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 2Gi}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vector
+              readOnly: true
+            - name: pods
+              mountPath: /var/log/pods
+              readOnly: true
+            # Read checkpoints survive restarts; without them Vector re-read every pod
+            # log from the beginning.
+            - name: data
+              mountPath: /var/lib/vector
+      volumes:
+        - name: config
+          configMap:
+            name: vector
+        - name: pods
+          hostPath:
+            path: /var/log/pods
+        - name: data
+          hostPath:
+            path: /var/lib/vector
+            type: DirectoryOrCreate
