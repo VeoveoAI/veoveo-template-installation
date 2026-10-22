@@ -61,7 +61,7 @@ that omits the application extensions.
 
 Its first start runs three scripts from the `veoveo-postgres-initdb` ConfigMap:
 [owner.sql](../postgres/initdb/owner.sql) creates `veoveo_owner`
-(`LOGIN CREATEROLE CREATEDB`) and `veoveo`;
+(`LOGIN CREATEROLE CREATEDB`, a member of `pg_signal_backend`) and `veoveo`;
 [postgres-platform.sql](postgres-platform.sql) creates the gateway's and Lore's
 logins, the `openshell_gateway` database, the `lore` schema and
 `max_connections = 512`; [zz-extensions.sql](../postgres/initdb/zz-extensions.sql)
