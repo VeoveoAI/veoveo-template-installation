@@ -1,0 +1,32 @@
+# One per factory instance: Lore access as the branch's latest pusher. The gateway
+# refreshes it with the instance's Hub client, which issues tokens for that person
+# and the instance's repository; Lore decides what each call may do. Replace
+# veoveo.example.com with Hub's host.
+id: vv-factory-lore
+display_name: Factory instance Lore access
+credentials:
+  - name: access_token
+    env_vars: [LORE_AUTH_TOKEN]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+    refresh:
+      strategy: oauth2_client_credentials
+      token_url: https://veoveo.example.com/oauth/token
+      refresh_before: 60s
+      max_lifetime: 300s
+      material:
+        - name: client_id
+          required: true
+        - name: client_secret
+          required: true
+          secret: true
+endpoints:
+  - host: lore.veoveo-system.svc.cluster.local
+    port: 41337
+    protocol: rest
+    enforcement: enforce
+    rules:
+      - allow: {method: POST, path: /**}
+binaries:
+  - /usr/local/bin/lore

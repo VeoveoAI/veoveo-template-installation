@@ -1,0 +1,21 @@
+# One per factory instance: the registration token Hub minted for it. Its server
+# registers with it on first start and again whenever its saved registration no
+# longer fits. Replace veoveo.example.com with Hub's host.
+id: vv-factory-registration
+display_name: Factory instance registration
+credentials:
+  - name: initial_access_token
+    env_vars: [VEOVEO_REGISTRATION_SECRET]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+endpoints:
+  - host: veoveo.example.com
+    port: 443
+    path: /oauth/register
+    protocol: rest
+    enforcement: enforce
+    rules:
+      - allow: {method: POST, path: /oauth/register}
+binaries:
+  - /sandbox/src/**

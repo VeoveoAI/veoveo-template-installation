@@ -151,6 +151,26 @@ YAML
 sudo systemctl restart k3s
 ```
 
+## Factory sandbox policy and providers
+
+Every factory sandbox gets [factory-base.yaml](policies/factory-base.yaml): its
+checkout in `/sandbox/src`, Hub's metadata and token endpoints and PostgreSQL for the
+server it builds there, and open internet access stated as one explicit rule. Each
+instance also gets two providers whose profiles carry their own endpoints:
+[factory-registration](../openshell/providers/factory-registration.yaml), the
+instance's registration token for Hub, and
+[factory-lore](../openshell/providers/factory-lore.yaml), Lore access as the
+branch's latest pusher, refreshed by the gateway with the instance's Hub client.
+Replace `veoveo.example.com` with Hub's host in all three, then import both profiles
+into the factory workspace:
+
+```sh
+openshell profile import --workspace vv-factory --file openshell/providers/factory-registration.yaml
+openshell profile import --workspace vv-factory --file openshell/providers/factory-lore.yaml
+```
+
+Hub creates each instance's providers and sandbox from these.
+
 ## SeaweedFS
 
 ```sh
