@@ -3,10 +3,10 @@
 Linux uses K3s for foundation services and OpenShell's native Kubernetes driver
 for Hub/MCP, Computer and factory workloads. The accepted architecture and
 qualification status live in [veoveo-docs](../veoveo-docs/LORE_OPENSHELL_INTEGRATION.md).
-The ordinary [Kubernetes inputs](kubernetes/README.md) bootstrap CloudNativePG,
-SeaweedFS, single-replica Lore, OpenShell gateway and the existing public tunnel.
-K3s has an independent embedded datastore. Gateway and application PostgreSQL
-roles/databases are distinct; they may initially share a CNPG cluster. This is a
+The ordinary [Kubernetes inputs](kubernetes/README.md) bootstrap PostgreSQL as a plain
+StatefulSet, SeaweedFS, single-replica Lore, OpenShell gateway and the existing public
+tunnel. K3s has an independent embedded datastore. Gateway and application PostgreSQL
+roles/databases are distinct and share one PostgreSQL instance. This is a
 single-node recovery target, not qualified multi-host HA.
 
 Mac remains normal native source development and component/integration testing,

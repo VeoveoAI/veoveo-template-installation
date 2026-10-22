@@ -46,81 +46,83 @@ core `sandbox.yaml` release manifest (SHA-256
 not the separate extensions release. The Linux amd64 controller digest is
 `sha256:876f9621e0f0e168bcff13aa377880b75fd37e1c8712f2f249e8878c22d06ffd`;
 do not substitute the ARM64 manifest. Wait for controller readiness before native
-sandbox creation. Install CloudNativePG from its official pinned operator chart:
-
-```sh
-helm repo add cnpg https://cloudnative-pg.github.io/charts
-helm upgrade --install cnpg cnpg/cloudnative-pg --namespace cnpg-system \
-  --create-namespace --version 0.29.1
-```
-
-The official chart index pairs `0.29.1` with operator `1.30.1`; its archive SHA-256
-is `b53d3991fe84bcf38767e7702cae78666265427a127a26fff168ab4207d2b1df`.
-Confirm that pairing with the downloaded chart before selection. Ordinary controller
-readiness is not application dependency ordering.
+sandbox creation.
 
 ## PostgreSQL and native storage identities
 
-Build [postgres/Dockerfile](../postgres/Dockerfile), publish its Linux image digest,
-and render a private copy of `postgres.yaml` with that exact image. Verify the
-image's actual postgres UID/GID; the sample explicitly uses Debian's `999:999`
-and must match the selected artifact. This image supplies PostgreSQL `18.6`,
-vector `0.8.7` and PostGIS `3.6.4`. Do not replace it with a plain image that omits
-the application extensions. Qualify CNPG init/start/restart with this image.
+PostgreSQL runs as a plain StatefulSet ([postgres.yaml](postgres.yaml)): one
+instance, one volume, the `veoveo-postgres-rw` Service every client already names,
+and TLS from the installation's own PostgreSQL CA. No operator. Build
+[postgres/Dockerfile](../postgres/Dockerfile), publish its Linux image digest, and
+render a private copy of `postgres.yaml` with that exact image. Verify the image's
+postgres UID/GID; the sample uses Debian's `999:999`. This image supplies PostgreSQL
+`18.6`, vector `0.8.7` and PostGIS `3.6.4`. Do not replace it with a plain image
+that omits the application extensions.
 
-The Cluster sets the [native CNPG parameter](https://cloudnative-pg.io/docs/devel/postgresql_conf/)
-`postgresql.parameters.max_connections` to the string `"512"`. PostgreSQL's
-default of 100 was insufficient for the base services together with simultaneously
-retained development worker pools. This is database capacity, not a workload
-admission limit. Budget each Core-backed process for its default pool of up to
-10 connections plus its dedicated instance connection; listeners and singletons
-also use dedicated connections. The current OpenShell gateway defaults to a
-10-connection data pool plus a separate 4-connection mutation-lock pool per
-replica. Include Lore, retained workers, overlapping rollouts, operator and
-reserved connections, and headroom when sizing the installation. Retained workers
-can continue using their pools after a newer worker becomes serving, so count
-them alongside current selections rather than only counting active components.
+Its first start runs three scripts from the `veoveo-postgres-initdb` ConfigMap:
+[owner.sql](../postgres/initdb/owner.sql) creates `veoveo_owner`
+(`LOGIN CREATEROLE CREATEDB`) and `veoveo`;
+[postgres-platform.sql](postgres-platform.sql) creates the gateway's and Lore's
+logins, the `openshell_gateway` database, the `lore` schema and
+`max_connections = 512`; [zz-extensions.sql](../postgres/initdb/zz-extensions.sql)
+enables the extensions. Everything after that is plain SQL: Hub creates server
+roles and data-environment databases, and settings change with `ALTER SYSTEM` and a
+reload, or a restart for the few settings that need one, such as `max_connections`.
+`pg_hba.conf` admits TLS with a password to every database, so databases created at
+runtime are reachable, and the `postgres` superuser only from inside the pod.
+
+Budget connections for each Core-backed process (a pool of up to 10 plus its
+dedicated instance connection, listeners and singletons), the OpenShell gateway (a
+10-connection data pool plus a 4-connection mutation-lock pool per replica), Lore,
+rollouts, operators and headroom.
 
 Create `kubernetes.io/basic-auth` Secrets in `veoveo-system`, each with native
 `username` and `password` keys, from private files:
 
 | Secret | Username | Responsibility |
 | --- | --- | --- |
-| `veoveo-owner-db` | `veoveo_owner` | Existing app schema/role bootstrap |
+| `veoveo-owner-db` | `veoveo_owner` | Server roles and data-environment databases |
 | `openshell-gateway-role` | `openshell_gateway` | Gateway database only |
 | `lore-db` | `server_lore` | Lore schema only |
 
-Generate the initial password files without leading/trailing whitespace or a
-terminal newline. For example, before creating the corresponding Secret:
+Generate the password files without leading/trailing whitespace or a terminal
+newline, and use the same credential in the Secret and in application input.
+URI-encode it when building a database URL:
 
 ```sh
 python3 -c 'import pathlib, secrets, sys; pathlib.Path(sys.argv[1]).write_bytes(secrets.token_urlsafe(48).encode("ascii"))' \
   "$PRIVATE/lore-db.password"
 ```
 
-Apply the same file convention to all managed roles. CNPG `1.30.1` explicitly
-calls `strings.TrimSpace(passwordFromSecret)` during
-[native managed-role reconciliation](https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.1/internal/management/controller/roles/runnable.go#L340-L375),
-before applying the password to PostgreSQL. Kubernetes Secret bytes can therefore
-contain a terminal LF while the actual database password does not. Do not use
-`echo` to write these password files; use a no-newline write and use that same
-credential in the Secret and application input. URI-encode the credential when
-building a database URL; encoding a stray LF as `%0A` does not remove the mismatch.
-
-The native CNPG Cluster/Database resources own these roles/databases/schema.
-Application migrations remain component-owned. No application shares the gateway
-role. `veoveo_owner` retains the existing trusted `CREATEROLE` bootstrap contract;
-it is not a sandbox or human identity. No passwords appear in manifests or argv.
+Create the installation's PostgreSQL CA and the server certificate for the Service
+name. The CA key stays private; only its certificate is a trust input:
 
 ```sh
+host=veoveo-postgres-rw.veoveo-system.svc.cluster.local
+openssl req -x509 -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-256 -days 3650 \
+  -subj /CN=veoveo-postgres-ca -keyout "$PRIVATE/postgres-ca.key" -out "$PRIVATE/postgres-ca.crt"
+openssl req -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-256 -subj "/CN=$host" \
+  -keyout "$PRIVATE/postgres-server.key" -out "$PRIVATE/postgres-server.csr"
+printf 'subjectAltName=DNS:%s\nextendedKeyUsage=serverAuth\n' "$host" > "$PRIVATE/postgres-server.ext"
+openssl x509 -req -in "$PRIVATE/postgres-server.csr" -CA "$PRIVATE/postgres-ca.crt" \
+  -CAkey "$PRIVATE/postgres-ca.key" -CAcreateserial -days 825 \
+  -extfile "$PRIVATE/postgres-server.ext" -out "$PRIVATE/postgres-server.crt"
+kubectl -n veoveo-system create secret tls veoveo-postgres-tls \
+  --cert "$PRIVATE/postgres-server.crt" --key "$PRIVATE/postgres-server.key"
+kubectl -n veoveo-system create configmap postgres-client-ca \
+  --from-file=postgres-ca.crt="$PRIVATE/postgres-ca.crt"
+kubectl -n veoveo-system create configmap veoveo-postgres-initdb \
+  --from-file=owner.sql=postgres/initdb/owner.sql \
+  --from-file=platform.sql=kubernetes/postgres-platform.sql \
+  --from-file=zz-extensions.sql=postgres/initdb/zz-extensions.sql
 kubectl apply -f "$PRIVATE/postgres.yaml"
-kubectl -n veoveo-system wait cluster/veoveo-postgres \
-  --for=condition=Ready --timeout=300s
+kubectl -n veoveo-system wait pod/veoveo-postgres-0 --for=condition=Ready --timeout=300s
 ```
 
-Use `veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432`. TLS/client trust
-and native connection URI settings must be explicit in each private client input.
-CNPG's private CA is a public trust input for clients, never its signing key.
+Use `veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432` with
+`sslmode=verify-full` and `postgres-ca.crt` as the root. No passwords appear in
+manifests or argv. Application migrations remain component-owned; no application
+shares the gateway role.
 
 ## SeaweedFS
 
@@ -287,9 +289,8 @@ PostgreSQL and Lore images. Do not copy push/admin credentials into either names
 Create `openshell-gateway-db` in `openshell`, key `uri`, with the gateway-only
 PostgreSQL URI using `sslmode=verify-full` and
 `sslrootcert=/etc/openshell/database-ca/postgres-ca.crt`. Copy only the public
-CNPG CA certificate into `postgres-client-ca` ConfigMap key `postgres-ca.crt` in
-`openshell`; native chart extraVolumes mount it read-only. This is separate from
-CNPG's role-password Secret. Private
+PostgreSQL CA certificate into `postgres-client-ca` ConfigMap key `postgres-ca.crt`
+in `openshell`; native chart extraVolumes mount it read-only. Private
 values select the actual management OIDC issuer/audience/claim mappings. Keep
 TLS and mTLS enabled; the chart's idempotent native PKI hook owns gateway/client
 certificates and sandbox signing keys. Keep the gateway ID stable across restarts.
@@ -368,7 +369,7 @@ Render/lint the exact upstream charts and server-side admit ordinary resources
 before deployment. For an offline OpenShell render only, disable its live
 `agentSandbox.preflight.enabled` check; never disable the deployed preflight.
 Builder owns chart rendering, schema checks, immutable image verification and
-deployed probes. These source inputs alone do not prove CNPG extension-image
+deployed probes. These source inputs alone do not prove PostgreSQL extension-image
 compatibility, Seaweed TLS/IAM, signed bytes, service recovery or a Kubernetes
 Computer. Keep deterministic checks, deployed checks and final exact MiMo
 acceptance separate. Remove obsolete Linux platform Compose launch paths only

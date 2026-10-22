@@ -1,75 +1,122 @@
-# Requires CloudNativePG 1.30.1. Replace imageName with the published Linux
-# postgres/Dockerfile image@sha256 and confirm its UID/GID before applying.
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
+# PostgreSQL as a plain StatefulSet: the extension image from postgres/Dockerfile, one
+# volume and TLS from the installation's PostgreSQL CA. Its first start runs the
+# scripts in the veoveo-postgres-initdb ConfigMap; after that, Hub creates server
+# roles and data-environment databases with plain SQL. Replace the image with the
+# published Linux image@sha256 and confirm its postgres UID/GID (Debian: 999).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: veoveo-postgres-hba
+  namespace: veoveo-system
+data:
+  pg_hba.conf: |
+    # Inside the pod: the trusted administrator. Everything else: TLS and a password,
+    # to any database, so data-environment databases created at runtime are reachable.
+    local   all  all                trust
+    hostssl all  all  0.0.0.0/0     scram-sha-256
+    hostssl all  all  ::/0          scram-sha-256
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: veoveo-postgres-rw
+  namespace: veoveo-system
+spec:
+  selector:
+    app.kubernetes.io/name: veoveo-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   name: veoveo-postgres
   namespace: veoveo-system
 spec:
-  instances: 1
-  imageName: REPLACE_WITH_EXTENSION_IMAGE_AT_SHA256
-  imagePullSecrets:
-    - name: registry-pull
-  postgresUID: 999
-  postgresGID: 999
-  postgresql:
-    parameters:
-      max_connections: "512"
-  storage:
-    storageClass: local-path
-    size: 50Gi
-  bootstrap:
-    initdb:
-      database: veoveo
-      owner: veoveo_owner
-      secret:
-        name: veoveo-owner-db
-  managed:
-    roles:
-      - name: veoveo_owner
-        ensure: present
-        login: true
-        createrole: true
-        passwordSecret:
-          name: veoveo-owner-db
-      - name: openshell_gateway
-        ensure: present
-        login: true
-        passwordSecret:
-          name: openshell-gateway-role
-      - name: server_lore
-        ensure: present
-        login: true
-        passwordSecret:
-          name: lore-db
----
-apiVersion: postgresql.cnpg.io/v1
-kind: Database
-metadata:
-  name: openshell-gateway
-  namespace: veoveo-system
-spec:
-  name: openshell_gateway
-  owner: openshell_gateway
-  cluster:
-    name: veoveo-postgres
----
-apiVersion: postgresql.cnpg.io/v1
-kind: Database
-metadata:
-  name: veoveo-applications
-  namespace: veoveo-system
-spec:
-  name: veoveo
-  owner: veoveo_owner
-  cluster:
-    name: veoveo-postgres
-  extensions:
-    - name: vector
-      ensure: present
-    - name: postgis
-      ensure: present
-  schemas:
-    - name: lore
-      owner: server_lore
-      ensure: present
+  serviceName: veoveo-postgres-rw
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: veoveo-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: veoveo-postgres
+    spec:
+      imagePullSecrets:
+        - name: registry-pull
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: REPLACE_WITH_EXTENSION_IMAGE_AT_SHA256
+          args:
+            - -c
+            - ssl=on
+            - -c
+            - ssl_cert_file=/etc/postgresql/tls/tls.crt
+            - -c
+            - ssl_key_file=/etc/postgresql/tls/tls.key
+            - -c
+            - hba_file=/etc/postgresql/hba/pg_hba.conf
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            # The image needs a superuser password or this setting to initialize. The
+            # hba_file above replaces the file it writes, so postgres has no password and
+            # logs in only from inside the pod.
+            - name: POSTGRES_HOST_AUTH_METHOD
+              value: trust
+            - name: VEOVEO_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: veoveo-owner-db, key: password}
+            - name: VEOVEO_GATEWAY_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: openshell-gateway-role, key: password}
+            - name: VEOVEO_LORE_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: lore-db, key: password}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: [pg_isready, --host, /var/run/postgresql, --username, postgres]
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            - name: tls
+              mountPath: /etc/postgresql/tls
+              readOnly: true
+            - name: hba
+              mountPath: /etc/postgresql/hba
+              readOnly: true
+      volumes:
+        - name: initdb
+          configMap:
+            name: veoveo-postgres-initdb
+        - name: tls
+          secret:
+            secretName: veoveo-postgres-tls
+            # Root-owned, group postgres, group-readable: PostgreSQL accepts this key mode.
+            defaultMode: 0640
+        - name: hba
+          configMap:
+            name: veoveo-postgres-hba
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 50Gi

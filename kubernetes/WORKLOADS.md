@@ -44,8 +44,8 @@ factory protected-branch scenario. Create `lore-settings` from the native TOML,
 exact keys `LORE_POSTGRES_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
 This `--from-env-file` input uses raw `KEY=value` lines without shell quotes;
 URL-encode the PostgreSQL password inside the single-line URI, using the
-[no-whitespace managed-role credential](README.md#postgresql-and-native-storage-identities).
-Do not preserve an accidental terminal LF that CNPG trims. Hub/Artifact env
+[no-whitespace credential](README.md#postgresql-and-native-storage-identities).
+Hub/Artifact env
 files sourced by their shell entrypoints retain ordinary shell quoting.
 Use `server_lore`, schema/bucket `lore`, and the dedicated native S3 identity.
 Create that bucket once with its existing IAM identity name using the
@@ -55,7 +55,7 @@ Artifact alone needs exact `Admin:artifacts` for its startup CreateBucket and
 bucket configuration; Lore does not. See the [scoped identity inputs](README.md#seaweedfs).
 Its PostgreSQL URI uses the Service DNS with `sslmode=verify-full` and
 `sslrootcert=/etc/lore/postgres-ca/postgres-ca.crt`. Create `postgres-client-ca`
-ConfigMap key `postgres-ca.crt` in `veoveo-system` from only the CNPG public CA;
+ConfigMap key `postgres-ca.crt` in `veoveo-system` from only the PostgreSQL CA certificate;
 the ordinary Lore Deployment mounts it read-only. Native SQLx parses these URI
 options without a Lore source change.
 No source grants are inferred from the storage credential or Hub administrator.
@@ -180,7 +180,7 @@ Service authority into a signed URL.
 ### PostgreSQL client trust shared within each workspace
 
 Create `postgres-client-ca` ConfigMap in each actual native workspace namespace
-with `postgres-ca.crt` (CNPG public CA), `storage-ca.crt` (Seaweed public CA)
+with `postgres-ca.crt` (PostgreSQL CA certificate), `storage-ca.crt` (Seaweed public CA)
 and `lore-ca.crt` (the selected native Lore service public CA),
 never their keys. Use the public Seaweed CA certificate from the
 `seaweedfs-ca-cert` Secret's **`tls.crt`** key. That chart input key is distinct

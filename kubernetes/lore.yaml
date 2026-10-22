@@ -138,7 +138,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              cnpg.io/cluster: veoveo-postgres
+              app.kubernetes.io/name: veoveo-postgres
       ports:
         - protocol: TCP
           port: 5432
