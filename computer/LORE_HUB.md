@@ -202,16 +202,19 @@ Tasks/Artifacts, configuration, native service credentials and unrelated service
 Routine repository/grant changes need no restart: read the current complete
 control plane through existing `GET /admin/{profile}/control-plane`, edit its typed
 records and publish through existing authenticated `PUT` on the same route. Use
-the installation's admitted administrative profile/client. A business admin role
-does not authorize these routes; the control plane needs an explicit Hub policy rule
-in `policies[].rules` whose `profiles` names the route's `{profile}` (`local` in the
-reference installation), for example:
+the installation's admitted administrative profile/client. These routes need an
+explicit Hub policy rule in `policies[].rules` whose `profiles` names the route's
+`{profile}` (`local` in the reference installation) and whose `roles` names the Entra
+`administrator` app role, which Hub carries in the token's `roles` claim:
 
 ```json
 {"id": "installation-administration", "effect": "allow",
  "actions": ["admin_read", "admin_write"], "profiles": ["local"],
- "principalIds": ["<administrator principal>"], "tenantIds": ["<tenant>"]}
+ "roles": ["administrator"], "tenantIds": ["<tenant>"]}
 ```
+
+Making someone an administrator is assigning them that Entra app role; Hub's `admin`
+installation role, with its risks, governs only server tool permissions.
 
 A trusted operator's private native curl config may hold its existing Authorization
 header:
