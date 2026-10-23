@@ -248,7 +248,7 @@ kubectl -n veoveo-system create secret generic seaweedfs-ca-cert \
 Issue the component/service SANs required by the selected chart from the
 trusted installation CA using the existing TLS recipe; inspect the rendered
 commands/volumes before selection. The S3 leaf additionally covers its private
-Service DNS name and the unchanged public object hostname. No cert-manager is
+Service DNS name, the origin server name the tunnel's S3 route verifies. No cert-manager is
 required; private signing keys remain trusted operator inputs.
 
 `seaweedfs-s3-identities` has the native key `seaweedfs_s3_config` containing
@@ -315,8 +315,9 @@ S3 clients use HTTPS on `seaweedfs-s3.veoveo-system.svc.cluster.local:9000`.
 Internal master/volume/filer data and metadata use their explicit local-path PVCs;
 there is no hostPath. The chart's native network policies admit its peers and the
 S3 port from foundation Pods/native supervisors; actual egress still requires
-the workload's native policy. Preserve public SigV4 Host/method/path/query/headers
-through the tunnel; never rewrite the public object hostname to Service DNS.
+the workload's native policy. Signed object URLs are `/artifacts/` paths on the
+public host; preserve their SigV4 Host/method/path/query/headers through the
+tunnel, and never rewrite the public host to Service DNS.
 
 ## Native OpenShell gateway
 

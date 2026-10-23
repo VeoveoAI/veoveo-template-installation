@@ -210,16 +210,19 @@ or evidence of real inference. Run paid acceptance only after deterministic,
 component and deployed probes pass, with this exact model selected.
 
 Artifact object transfers use Hub-issued upload/download grants and native
-`/usr/bin/curl` from the agent's Bash tool. The `artifact_bytes` policy admits
-only that binary to `objects.veoveo.example.com:443` as unbound TCP, preserving
-end-to-end HTTPS and SigV4 method, authority, path/query and headers without
-HTTP interception or credential injection. Replace this exact authority together
-with Artifact's signing endpoint and verified TLS route; do not add arbitrary
-HTTPS egress or OpenCode itself to this object-byte rule. Hub/model credentials
-must never accompany signed object requests. Keep signed URLs/headers out of
-reports and tracing, use the returned method/URL/required headers unchanged,
-and complete the Hub contract's finalize step where required. Qualify actual
-upload/download byte counts and hashes separately from metadata/MCP success.
+`/usr/bin/curl` from the agent's Bash tool. Signed object URLs are `/artifacts/`
+paths on the public host. The `artifact_bytes` policy admits only that binary, and
+only PUT and GET on `/artifacts/**`, at an inspected endpoint with no credential
+binding: the proxy forwards the signed method, Host, path, query, headers and body
+unchanged, and curl trusts the proxy through OpenShell's `CURL_CA_BUNDLE`. It is
+disjoint from the Hub MCP path, which OpenCode alone reaches. Replace the host
+together with Artifact's signing endpoint and the tunnel's `/artifacts/` route; do
+not add arbitrary HTTPS egress or OpenCode itself to this object-byte rule.
+Hub/model credentials must never accompany signed object requests. Keep signed
+URLs/headers out of reports and tracing, use the returned method/URL/required
+headers unchanged, and complete the Hub contract's finalize step where required.
+Qualify actual upload/download byte counts and hashes separately from metadata/MCP
+success.
 See the [native signed-authority contract](../openshell/REFERENCE.md#native-seaweedfs-https-and-signed-authority).
 
 Lore acts as the Computer's owner after the owner's one Hub sign-in; there is no

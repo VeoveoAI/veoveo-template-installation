@@ -248,10 +248,12 @@ provider API key or storage credential. Native CPU decoding is preprocessing;
 inference remains full-model CUDA FP32 without CPU fallback.
 
 Set `VEOVEO_EMBEDDING_STORAGE_ORIGIN` to the exact signed URL origin **with an
-explicit port**, for example `https://objects.veoveo.example.com:443`. This is not
-the private S3 Service endpoint. Preserve signed URL host/path/query; never rewrite
-it. `policies/embedding-runtime.yaml` passes TLS through to that exact host and
-the verified Python ELF path. Runtime 2a3 uses HTTPX `trust_env=False`, so
+explicit port**, the public host `https://veoveo.example.com:443`, whose `/artifacts/`
+paths hold the signed objects. This is not the private S3 Service endpoint.
+Preserve signed URL host/path/query; never rewrite it.
+`policies/embedding-runtime.yaml` passes TLS through to that exact host and the
+verified Python ELF path; passthrough cannot narrow it to `/artifacts/`, and the
+runtime fetches only URLs of that origin. Runtime 2a3 uses HTTPX `trust_env=False`, so
 `SSL_CERT_FILE`/proxy environment is not a custom-CA solution. This selected path
 requires an ordinary publicly trusted certificate. A different trust/mediation
 design needs review before rollout; no verification bypass is provided.

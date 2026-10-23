@@ -1,0 +1,27 @@
+# The tunnel is remotely managed: cloudflared runs with --token-file (tunnel.yaml)
+# and reads these routes from Cloudflare, never from this file. They are the
+# tunnel's published application routes as the dashboard holds them, recorded in
+# the shape of Cloudflare's tunnel configuration API body. Render the public host.
+# cloudflared serves a request by the first route whose hostname and path (a Go
+# regular expression) match, so the /artifacts/ route precedes Hub's.
+config:
+  ingress:
+    # Signed S3 objects: Artifact signs path-style URLs for the bucket `artifacts`.
+    # The public Host, method, path, query, headers and body reach SeaweedFS as the
+    # client signed them; only the TLS server name changes. Never set
+    # httpHostHeader here: SigV4 binds the public Host.
+    - hostname: veoveo.example.com
+      path: ^/artifacts/
+      service: https://seaweedfs-s3.veoveo-system.svc.cluster.local:9000
+      originRequest:
+        originServerName: seaweedfs-s3.veoveo-system.svc.cluster.local
+        caPool: /etc/cloudflared-ca/storage.crt
+    # Everything else on the host is Hub, through OpenShell's native exposure,
+    # which selects vv-control/hub service http from Host.
+    - hostname: veoveo.example.com
+      service: https://openshell.openshell.svc.cluster.local:8080
+      originRequest:
+        httpHostHeader: vv-control--hub--http.openshell.localhost
+        originServerName: openshell.openshell.svc.cluster.local
+        caPool: /etc/cloudflared-ca/gateway.crt
+    - service: http_status:404

@@ -396,22 +396,25 @@ with `s3.policy`; the built-in `readwrite` preset alone lacks required startup a
 multipart actions. Never mount the bootstrap S3 credential in Artifact. Preserve
 all newly created data and credentials thereafter.
 
-The existing tunnel's object-host route must use verified TLS to that native S3
-listener, with a certificate valid for the selected origin server name. Preserve
-the public S3 Host, method, path/query and headers; never rewrite a returned signed
-URL. Configure Artifact's `VEOVEO_STORAGE_SIGNING_ENDPOINT` to
-`https://objects.veoveo.example.com`. For initial qualification the same reachable
-HTTPS authority may be used for `VEOVEO_STORAGE_ENDPOINT`; a distinct internal
-endpoint requires its own verified route/trust. Artifact uses path-style S3, so
-no wildcard bucket hostname or S3 adapter is needed. In the reference copies of
-Artifact, Media and acceptance-client policies, admit exactly
-`objects.veoveo.example.com`, port `443`, protocol `tcp`, for their intended
-executables. This keeps signed requests outside HTTP interception and preserves
-SigV4 method, Host, path/query and headers unchanged. Replace the Mac's
+Signed objects live under `/artifacts/` on the public host. The existing tunnel's
+`/artifacts/` route, ahead of Hub's route for the same host, must use verified TLS
+to that native S3 listener, with a certificate valid for the selected origin
+server name. Preserve the public Host, method, path/query and headers; never
+rewrite a returned signed URL. Configure Artifact's
+`VEOVEO_STORAGE_SIGNING_ENDPOINT` to `https://veoveo.example.com`: Artifact uses
+path-style S3, so with the bucket `artifacts` it signs
+`https://veoveo.example.com/artifacts/<key>`, and no wildcard bucket hostname or
+S3 adapter is needed. Artifact's own calls, including bucket-level ones the route
+does not carry, use its private `VEOVEO_STORAGE_ENDPOINT`. Computer curl and
+Media's Artifact client reach signed URLs through an inspected REST endpoint for
+`/artifacts/**` on the public host, with only their methods and no credential
+binding; the proxy forwards the signed method, Host, path/query, headers and body
+unchanged. The embedding runtime passes TLS through to the host. Replace the Mac's
 `host.openshell.internal:9000` byte-route selection; do not grant a broad HTTPS
 endpoint or attach an application/provider credential to signed storage requests.
-The object tunnel route preserves the **public S3 Host**, unlike native Hub/Media
-service ingress; its TLS origin-server name must match the S3 listener certificate.
+The `/artifacts/` route preserves the **public Host**, unlike Hub's route and
+Media's service ingress; its TLS origin-server name must match the S3 listener
+certificate.
 
 Qualify an actual signed upload/download from both the Linux workload and the Mac,
 unchanged method/URL/headers, exact bytes/hash, ranges where required and refused

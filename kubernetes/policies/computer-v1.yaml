@@ -51,10 +51,21 @@ network_policies:
     binaries:
     - path: /usr/local/bin/opencode
   artifact_bytes:
+    # Artifact's signed object URLs, under /artifacts/ on the public host. No
+    # credential binding: the proxy forwards their method, Host, path, query,
+    # headers and body as signed.
     endpoints:
-    - host: objects.veoveo.example.com
+    - host: veoveo.example.com
       port: 443
-      protocol: tcp
-      tls: skip
+      path: /artifacts/**
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: PUT
+          path: /artifacts/**
+      - allow:
+          method: GET
+          path: /artifacts/**
     binaries:
     - path: /usr/bin/curl

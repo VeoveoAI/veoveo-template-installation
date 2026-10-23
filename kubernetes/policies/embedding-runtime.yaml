@@ -1,5 +1,7 @@
 # Full-model CUDA runtime. --gpu 1 supplies native GPU filesystem admission.
-# Only the exact public signed-object origin is reachable; TLS stays end-to-end.
+# Only the public host, where Artifact's signed object URLs are, is reachable. TLS
+# stays end-to-end: the runtime's HTTPX client ignores the environment, so it trusts
+# only public roots, never the proxy's inspection CA.
 version: 1
 filesystem_policy:
   include_workdir: true
@@ -20,7 +22,7 @@ filesystem_policy:
 network_policies:
   artifact_bytes:
     endpoints:
-    - host: objects.veoveo.example.com
+    - host: veoveo.example.com
       port: 443
       protocol: tcp
       tls: skip

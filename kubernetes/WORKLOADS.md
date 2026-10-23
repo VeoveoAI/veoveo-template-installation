@@ -20,7 +20,7 @@ placement does not add a new authentication or Lore permission system.
 | Local registry, every Veoveo image | `registry.veoveo-system.svc.cluster.local:5000` |
 | Hub public origin / registered-server issuer | `https://veoveo.example.com` |
 | Browser and native Lore authorization-server issuer | `https://veoveo.example.com/oauth` |
-| Public signed objects | `https://objects.veoveo.example.com` |
+| Public signed objects | `https://veoveo.example.com/artifacts/` |
 
 Render public origins to the actual installation. Service DNS replaces old host
 loopback/Docker aliases only for this Linux placement. Keep every endpoint's
@@ -32,7 +32,7 @@ or disable TLS to make trust pass.
 
 The private Lore leaf must cover `lore.veoveo-system.svc.cluster.local` and its
 native Hub deployment endpoint must use that same recipient. The S3 leaf must
-cover both its private Service DNS and unchanged public signing authority. Build
+cover its private Service DNS, which the tunnel verifies. Build
 the maintained [Lore image](../factory/Lore.Dockerfile) with reviewed **public**
 CA files only in its existing `ca` context; include storage and database public
 roots needed by its selected clients. Build Factory/Computer with the necessary
@@ -88,13 +88,19 @@ the remaining back-off (measured 2026-10-22: Ready 1 s after the Pod's deletion 
 Hub served). Test real native operations and late or interrupted issuer/storage
 dependencies separately. No service-order init Job.
 
-For the existing tunnel, create `public-tunnel` ConfigMap from the privately
-rendered `tunnel-config.yaml` and a same-name Secret with `credentials.json`.
-Create `public-tunnel-ca` ConfigMap with **public** `gateway.crt` and `storage.crt`.
-The gateway public CA comes from the chart's retained native PKI output; only its
-public certificate is copied. `tunnel.yaml` pins the verified official cloudflared
-`2026.10.1` Linux amd64 digest; apply that selected manifest. Never use `noTLSVerify`. Hub routing intentionally
-sets its native exposure Host; S3 routing must **not** set `httpHostHeader`.
+The existing tunnel is remotely managed: cloudflared runs with `--token-file` and
+reads its routes from Cloudflare. [tunnel-routes.yaml](tunnel-routes.yaml) records
+those routes, in order, as the dashboard holds them; enter them under the tunnel's
+routes, rendered to the public host. The first route whose host and path match
+serves a request, so `/artifacts/` comes before Hub's route for the same host.
+Create the `public-tunnel` Secret with the tunnel token as its `token` key, and the
+`public-tunnel-ca` ConfigMap with **public** `gateway.crt` and `storage.crt`, the
+files the routes' CA pools name. The gateway public CA comes from the chart's
+retained native PKI output; only its public certificate is copied. `tunnel.yaml`
+pins the verified official cloudflared `2026.10.1` Linux amd64 digest; apply that
+selected manifest. Never use `noTLSVerify`. Hub routing intentionally sets its
+native exposure Host; S3 routing must **not** set `httpHostHeader`, since SigV4
+binds the public Host.
 
 ## Workspace-local trusted service configuration
 
@@ -189,18 +195,21 @@ client URLs (actual access/secret keys remain only in that private file):
 
 ```text
 VEOVEO_STORAGE_ENDPOINT=https://seaweedfs-s3.veoveo-system.svc.cluster.local:9000
-VEOVEO_STORAGE_SIGNING_ENDPOINT=https://objects.veoveo.example.com
+VEOVEO_STORAGE_SIGNING_ENDPOINT=https://veoveo.example.com
 VEOVEO_STORAGE_REGION=us-east-1
 VEOVEO_STORAGE_BUCKET=artifacts
 ```
 
-The public signing authority must match the Computer curl policy/tunnel route and
-TLS certificate. Media's Artifact client also sends signed uploads directly to this
-authority: select the same host and port in Media's `object_storage` policy for
-`/usr/local/bin/veoveo-mcp-media`. Its `tls: skip` preserves end-to-end TLS and the
-signed method, URL and headers without credential injection or HTTP interception.
-The client still verifies the server certificate. Never substitute the private
-Service authority into a signed URL.
+Artifact addresses the bucket by path, so it signs
+`https://veoveo.example.com/artifacts/<key>` and SigV4 binds that host and path;
+the tunnel's `/artifacts/` route carries them to the private S3 unchanged. Computer
+curl and Media's Artifact client send signed requests to the public host through
+OpenShell's inspected `artifact_bytes` endpoint for `/artifacts/**`, which allows
+only their methods and forwards Host, path, query, headers and body as signed, with
+no credential binding. That host's other endpoints in the same policies are
+inspected too, so a passthrough rule for it would be ambiguous. The embedding
+runtime passes TLS through to the host instead (see [EMBEDDING.md](EMBEDDING.md)).
+Never substitute the private Service authority into a signed URL.
 
 ### PostgreSQL client trust shared within each workspace
 
