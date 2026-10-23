@@ -28,6 +28,10 @@
       "profile": "vv-computer-model",
       "credentialKey": "DEEPINFRA_API_KEY",
       "secret": "computer-model-api-key"
+    },
+    "loreProvider": {
+      "profile": "vv-lore",
+      "credentialKey": "LORE_ACCESS_TOKEN"
     }
   },
   "secrets": [
@@ -96,7 +100,7 @@
     "hubIssuer": "https://veoveo.example.com",
     "loreServer": "grpcs://lore.veoveo-system.svc.cluster.local:41337",
     "registrationProfile": "vv-factory-registration",
-    "loreProfile": "vv-factory-lore",
+    "loreProfile": "vv-lore",
     "imageBuilder": {
       "buildkit": "tcp://buildkitd.veoveo-system.svc.cluster.local:1234",
       "registry": "registry.veoveo-system.svc.cluster.local:5000",

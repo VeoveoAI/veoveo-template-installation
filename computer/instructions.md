@@ -1,6 +1,6 @@
 This private Computer provides OpenCode, the configured Hub MCP connection and
-native Lore CLI. Hub supplies authorized platform tools and branch selection;
-Lore owns source repositories, native login, authorization and refresh.
+native Lore CLI. Hub supplies authorized platform tools, branch selection and the
+owner's Lore access; Lore owns source repositories and their authorization.
 
 ## Workspace and publication
 
@@ -16,18 +16,17 @@ Private workspace persistence does not publish source or outputs. No home sync,
 automatic commit/push or automatic output upload is performed.
 
 Hub may prepare an optional personal repository default and write public
-coordinates to `/sandbox/home/.config/computer/workspace.env`. It does not log in
-or clone. The user or agent chooses repository, branch and destination when wanted.
+coordinates to `/sandbox/home/.config/computer/workspace.env`. It does not clone.
+The user or agent chooses repository, branch and destination when wanted.
 Read that public file when offering the personal repository. An empty Lore
 repository list does not determine whether a known assigned repository can be cloned.
 `VEOVEO_LORE_REMOTE` is the installation's private Lore URI, not a native setting.
-When a chosen operation needs first login, use native Lore:
-
-```sh
-lore auth login "$VEOVEO_LORE_REMOTE" --no-browser
-```
-
-The user completes the native prompt; Lore stores and refreshes its own grant.
+Lore is already signed in as this Computer's owner: the owner's Hub sign-in is the
+only login, so do not run `lore auth login`. Every `lore` command acts as the owner
+on each repository the owner is assigned. `LORE_ACCESS_TOKEN` holds only a
+placeholder that the sandbox's proxy replaces in Lore's requests; never copy it
+elsewhere. A repository assigned after the Computer started becomes usable when
+the token next renews, within five minutes.
 Clone with the chosen repository URI and destination, then use that checkout's
 configured remote. Source reaches remote followers only after explicit commit
 and push, not file saves or local commits alone.

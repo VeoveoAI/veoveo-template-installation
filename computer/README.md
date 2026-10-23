@@ -18,9 +18,10 @@ deployment acceptance.
 - Factory toolchain: this revision's [factory Dockerfile](../factory/Dockerfile),
   UID/GID 10001, with the Hub SDK CLI at `b2304759b07f3e1d07cd1bf9ec9a182c6dcddd65`.
   Rebuild it when that pin changes and select its inspected immutable image digest.
-- Native Lore: source commit `e2f04c909d596472bf3a2c555156d77e047f8393`, retaining
-  native OIDC refresh and S3/PostgreSQL storage and ending a lagging subscriber's
-  notification stream. Build with the existing
+- Native Lore: source commit `bd9da2128acd83963b7168d63af7401409867bc7`, retaining
+  native OIDC refresh and S3/PostgreSQL storage, ending a lagging subscriber's
+  notification stream and reading `LORE_ACCESS_TOKEN` and `LORE_IDENTITY` when their
+  flags are absent, which Computers and factory sandboxes need. Build with the existing
   [Lore Dockerfile](../factory/Lore.Dockerfile)
   and the selected source/CA named contexts. Use the resulting immutable image ID;
   the same image is Hub's and every factory build's `lore` context.
@@ -127,9 +128,12 @@ fixed retry delay. Current browser-owner/session admission remains mandatory.
 
 The supported Linux path uses the private Kubernetes Lore Service at
 `grpcs://lore.veoveo-system.svc.cluster.local:41337`. Select that same endpoint in
-the versioned Computer template, Hub deployment data and
-[Kubernetes Computer policy](../kubernetes/policies/computer-v1.yaml). The leaf must
-cover that Service DNS name and the image must trust its installation public CA;
+the versioned Computer template, Hub deployment data and the global
+[`vv-lore` profile](../openshell/providers/lore.yaml), whose inspected endpoint
+Computers share with factory sandboxes; the
+[Kubernetes Computer policy](../kubernetes/policies/computer-v1.yaml) has no Lore
+rule of its own. The leaf must cover that Service DNS name; the image and the
+gateway's proxy must trust its installation public CA;
 see [the Kubernetes trust inputs](../kubernetes/WORKLOADS.md#private-service-names-and-trust).
 No Compose-published port or host alias is needed for this Linux path.
 
@@ -137,11 +141,14 @@ The Mac Docker development fixture above instead uses `host.openshell.internal`
 with its native backend host-gateway pin and a trusted Lore fixture published only
 on host loopback port 41337. Its leaf must cover that hostname, with the same
 end-to-end TLS verification; no host DNS edit is needed. Replace an endpoint only
-as a consistent installation input. The Computer's exact Lore TCP rule uses `tls: skip`
-to pass through the immediate gRPC TLS handshake; Lore still verifies the server
-certificate and hostname. `SSL_CERT_DIR` adds the image's installed public CA
-roots alongside OpenShell's injected `SSL_CERT_FILE`; keep both so native Lore
-trusts the private service and the supervised OAuth route. Set this template input
+as a consistent installation input. The fixture's exact Lore TCP rule in
+[policy.yaml](policy.yaml) uses `tls: skip` to pass through the immediate gRPC TLS
+handshake. The shared `vv-lore` profile's endpoint is the Kubernetes Service, so the
+fixture's Lore calls carry the provider's placeholder unsubstituted: this fixture
+does not provide the owner's Lore access. On Linux the proxy terminates Lore's TLS on
+the profile's inspected endpoint, and Lore verifies the proxy through OpenShell's
+injected `SSL_CERT_FILE`. `SSL_CERT_DIR` adds the image's installed public CA roots
+alongside it; keep both. Set this template input
 for existing reviewed images; future Computer builds also include it by default.
 The template
 supplies image/environment/resources/driver settings only. Hub clones
@@ -215,36 +222,22 @@ and complete the Hub contract's finalize step where required. Qualify actual
 upload/download byte counts and hashes separately from metadata/MCP success.
 See the [native signed-authority contract](../openshell/REFERENCE.md#native-seaweedfs-https-and-signed-authority).
 
-Lore uses the user's native persistent login, separate from the Computer browser
-and MCP grant. Select the [Hub-issued native Lore setup](LORE_HUB.md): Entra proves
+Lore acts as the Computer's owner after the owner's one Hub sign-in; there is no
+Lore login. Select the [Hub-issued native Lore setup](LORE_HUB.md): Entra proves
 identity through Hub's existing broker, Hub manages explicit live repository
 assignments and signs native claims, and unchanged Lore enforces its own contract.
-The native `lore auth login "$VEOVEO_LORE_REMOTE" --no-browser` command uses the
-server-advertised public client/device/exchange settings; later expiry uses native
-refresh. No human token is copied to a factory or another Computer.
+Each custody handoff gives the Computer's own Hub client a new secret in the
+gateway's `oauth2_client_credentials` refresh custody of the workspace-local
+`computer-lore` provider, created from global `vv-lore`, and rotates it before the
+sandbox starts. Each token is the owner's, with one native resource entry for every
+repository the owner is assigned. The sandbox receives only the provider's
+placeholder in `LORE_ACCESS_TOKEN` and the owner's principal in `LORE_IDENTITY`,
+which the native Lore CLI reads; the proxy substitutes the token on the profile's
+inspected endpoint. No human token is copied to a factory or another Computer.
 
-For an operator's native exec qualification, explicitly use the image workload's
-paths rather than assuming the exec session inherits its environment:
-
-```sh
-openshell --workspace "$COMPUTER_WORKSPACE" sandbox exec --no-tty --no-login-shell \
-  "$COMPUTER_SANDBOX" -- env \
-  HOME=/sandbox/home \
-  XDG_CONFIG_HOME=/sandbox/home/.config \
-  XDG_DATA_HOME=/sandbox/home/.local/share \
-  XDG_STATE_HOME=/sandbox/home/.local/state \
-  XDG_CACHE_HOME=/sandbox/home/.cache \
-  LORE_GLOBAL_PATH=/sandbox/home/.local/share/lore \
-  LORE_AUTH_PATH=/sandbox/home/.config/lore/auth \
-  /usr/local/bin/lore auth login "$VEOVEO_LORE_REMOTE" --no-browser
-```
-
-Use the same explicit paths for subsequent native exec Lore checks. The measured
-exec defaults were `HOME=/sandbox` with no XDG or Lore path overrides, so login
-there wrote `/sandbox/.config/lore/tokenstore.toml`; OpenCode shell tools read
-`/sandbox/home/.config/lore/auth/tokenstore.toml`. A successful exec login in the
-first store does not authenticate the workload's separate store. Ordinary Lore
-commands inside the Computer's OpenCode shell already inherit the image paths.
+An operator's native exec session need not inherit the workload's environment.
+Check Lore from the Computer's OpenCode shell, which inherits the image paths and
+both variables.
 
 Optional personal-workspace onboarding is selected by the Hub contribution's
 `personalWorkspace.deployment`, an explicit registered native deployment ID.

@@ -198,17 +198,18 @@ server it builds there, and open internet access stated as one explicit rule. Ea
 instance also gets two providers whose profiles carry their own endpoints:
 [factory-registration](../openshell/providers/factory-registration.yaml), the
 instance's registration token for Hub, and
-[factory-lore](../openshell/providers/factory-lore.yaml), Lore access as the
-branch's latest pusher, refreshed by the gateway with the instance's Hub client.
+[lore](../openshell/providers/lore.yaml), Lore access as the branch's latest
+pusher, refreshed by the gateway with the instance's Hub client. Each Computer's
+Lore provider uses the same global profile, as the Computer's owner.
 Replace `veoveo.example.com` with Hub's host in all three. Hub creates each
 instance's providers with no profile workspace, which OpenShell resolves only
 against global profiles, so import both globally:
 
 ```sh
 openshell profile lint --global --file openshell/providers/factory-registration.yaml
-openshell profile lint --global --file openshell/providers/factory-lore.yaml
+openshell profile lint --global --file openshell/providers/lore.yaml
 openshell profile import --global --file openshell/providers/factory-registration.yaml
-openshell profile import --global --file openshell/providers/factory-lore.yaml
+openshell profile import --global --file openshell/providers/lore.yaml
 openshell workspace create --name vv-factory
 ```
 

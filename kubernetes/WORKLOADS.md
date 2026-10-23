@@ -26,9 +26,9 @@ Render public origins to the actual installation. Service DNS replaces old host
 loopback/Docker aliases only for this Linux placement. Keep every endpoint's
 exact binary/port/method/path/provider rule. The `policies/` files use native
 policy schema and complete canonicalization, not a second policy language.
-Lore's user path remains TLS passthrough; factory sandboxes reach Lore through the
-`vv-factory-lore` profile's credential-bound endpoint. Do not add aliases or disable
-TLS to make trust pass.
+Computers and factory sandboxes reach Lore through the `vv-lore` profile's
+credential-bound endpoint; no policy has a passthrough Lore rule. Do not add aliases
+or disable TLS to make trust pass.
 
 The private Lore leaf must cover `lore.veoveo-system.svc.cluster.local` and its
 native Hub deployment endpoint must use that same recipient. The S3 leaf must
@@ -274,6 +274,11 @@ openshell sandbox template create computer-v1 --workspace installation \
   --env SSL_CERT_DIR=/etc/ssl/certs \
   --env VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337
 ```
+
+Each Computer's `computer-lore` provider uses the global `vv-lore` profile that
+`computers.loreProvider` names, imported with the
+[factory profiles](README.md#factory-sandbox-policy-and-providers). Hub sets
+`LORE_IDENTITY` in each owner's template clone; the template sets no Lore variable.
 
 **No Docker `persistent_workspace` flag or explicit `/sandbox` volume is passed.**
 The selected Kubernetes driver creates and seeds the private workspace PVC for

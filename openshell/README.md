@@ -233,7 +233,7 @@ Select [the Hub-native issuer and factory profile](../computer/LORE_HUB.md) with
 its exact repository scope, separate factory principal and native
 `oauth2_client_credentials` custody. Hub admits the current explicit assignment
 and returns Lore's native signed resource entry; native OpenShell renews it. The
-factory receives only its opaque `LORE_AUTH_TOKEN` reference. No model/agent,
+factory receives only its opaque `LORE_ACCESS_TOKEN` reference. No model/agent,
 human refresh grant, management identity, IdP admin credential or raw JWT is
 attached to a deterministic factory.
 
