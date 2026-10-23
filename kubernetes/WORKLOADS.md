@@ -339,6 +339,16 @@ update), or publish a new policy file or template name through the live control
 plane. Running Computers keep their version until their owners restart them; a new
 sandbox, such as the first one, starts at the current version.
 
+`computers.collectAfterSeconds` (the example: 7200, two hours) collects idle
+Computers: Hub deletes the sandbox of a Computer with no browser request through Hub
+and no network traffic from its sandbox for that long, keeping `~`, and the next entry
+creates it at the current version, telling of the update when the version changed.
+Collection uses the `GetSandbox` and `DeleteSandbox` rights a restart already needs,
+and OpenShell's recorded `last_activity_time`, so the gateway must run a release that
+records it. A job that makes no network traffic for that long is collected; omit the
+setting to never collect. Hub counts both from its own start, so restarting Hub delays
+collection by up to that long.
+
 Each Computer's `computer-lore` provider uses the global `vv-lore` profile that
 `computers.loreProvider` names, imported with the
 [factory profiles](README.md#factory-sandbox-policy-and-providers). Hub sets

@@ -126,6 +126,13 @@ gateway when changing them; SSH limits remain unchanged. Warm HTTP requests open
 their native tunnel immediately and fail at an actual configured limit, with no
 fixed retry delay. Current browser-owner/session admission remains mandatory.
 
+`computers.collectAfterSeconds` (reference: 7200) is how long a Computer may stay idle,
+with no browser request through Hub and no network traffic from the Computer, before
+Hub deletes its sandbox. `~` is kept and the next entry creates the sandbox at the
+current version, so collection loses only running programs and `/tmp`, as a restart
+does. Every working agent calls its model through OpenShell's proxy, so an agent at
+work keeps its Computer; a long job with no network traffic does not.
+
 The supported Linux path uses the private Kubernetes Lore Service at
 `grpcs://lore.veoveo-system.svc.cluster.local:41337`. Select that same endpoint in
 the versioned Computer template, Hub deployment data and the global

@@ -20,6 +20,7 @@
     "workContext": "default",
     "port": 4096,
     "forwardingConnectionLimit": 512,
+    "collectAfterSeconds": 7200,
     "hubProvider": {
       "profile": "vv-computer-hub",
       "credentialKey": "COMPUTER_HUB_REFERENCE"
