@@ -199,19 +199,38 @@ migration intentionally discards disposable OAuth/device-browser continuity as
 specified in the execution plan; preserve actual Computer working storage,
 Tasks/Artifacts, configuration, native service credentials and unrelated services.
 
+A member creates a repository and owns it without an administrator, through Hub's
+`POST /lore/{profile}/repositories` with `{"name": …}` or the console server's
+`create_repository` tool, which calls that route as its caller. Hub creates the
+repository in the installation's one registered Lore deployment as the caller, with
+a Lore login token it issues them, so Lore records them as its creator. It then
+publishes one control-plane revision that registers the repository and assigns the
+caller `owner` in their tenant, renews the Lore access of the caller's Computers,
+and answers the repository's `id`, `name` and `remote` to clone: the deployment's
+endpoint followed by `/<id>`. The route needs the caller's tenant and the Lore login
+Hub would issue them; no `admin_*` policy rule is involved. A name Lore holds
+already is 409. A 503 that names an `id` is a repository Lore created whose
+publication failed; calling again with the same name and that `id` registers it, and
+only its Lore creator can. An owner assignment an administrator later removes stays
+removed. Sharing a repository and removing one remain the administrator's
+control-plane edits below.
+
 Routine repository/grant changes need no restart: read the current complete
 control plane through existing `GET /admin/{profile}/control-plane`, edit its typed
 records and publish through existing authenticated `PUT` on the same route. Use
-the installation's admitted administrative profile/client. A business admin role
-does not authorize these routes; the control plane needs an explicit Hub policy rule
-in `policies[].rules` whose `profiles` names the route's `{profile}` (`local` in the
-reference installation), for example:
+the installation's admitted administrative profile/client. These routes need an
+explicit Hub policy rule in `policies[].rules` whose `profiles` names the route's
+`{profile}` (`local` in the reference installation) and whose `roles` names the Entra
+`administrator` app role, which Hub carries in the token's `roles` claim:
 
 ```json
 {"id": "installation-administration", "effect": "allow",
  "actions": ["admin_read", "admin_write"], "profiles": ["local"],
- "principalIds": ["<administrator principal>"], "tenantIds": ["<tenant>"]}
+ "roles": ["administrator"], "tenantIds": ["<tenant>"]}
 ```
+
+Making someone an administrator is assigning them that Entra app role; Hub's `admin`
+installation role, with its risks, governs only server tool permissions.
 
 A trusted operator's private native curl config may hold its existing Authorization
 header:
