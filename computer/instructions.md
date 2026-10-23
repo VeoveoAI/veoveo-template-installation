@@ -23,10 +23,10 @@ repository list does not determine whether a known assigned repository can be cl
 `VEOVEO_LORE_REMOTE` is the installation's private Lore URI, not a native setting.
 Lore is already signed in as this Computer's owner: the owner's Hub sign-in is the
 only login, so do not run `lore auth login`. Every `lore` command acts as the owner
-on each repository the owner is assigned. `LORE_ACCESS_TOKEN` holds only a
-placeholder that the sandbox's proxy replaces in Lore's requests; never copy it
-elsewhere. A repository assigned after the Computer started becomes usable when
-the token next renews, within five minutes.
+on each repository the owner is assigned, including one assigned while the
+Computer runs: Hub renews the owner's Lore access as soon as an assignment changes.
+`LORE_ACCESS_TOKEN` holds only a placeholder that the sandbox's proxy replaces in
+Lore's requests; never copy it elsewhere.
 Clone with the chosen repository URI and destination, then use that checkout's
 configured remote. Source reaches remote followers only after explicit commit
 and push, not file saves or local commits alone.

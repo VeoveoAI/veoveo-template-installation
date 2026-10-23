@@ -150,11 +150,13 @@ provide this access.
 
 The `lore-computer` public client stays: Hub issues each person's Lore token as the
 token that client would obtain through the exchange, and Lore's OIDC configuration
-names it. Grant withdrawal blocks new issuance after live catalog adoption, and a
-newly assigned repository is in the Computer's token after the gateway's next
-refresh, within the 300-second token lifetime this sample selects. Cached native
-JWTs and in-flight operations retain their ordinary expiry behavior; this does not
-promise immediate native token revocation. Never copy a token or the placeholder
+names it. When a published revision adds, removes or changes an owner's assignment,
+Hub at once asks the gateway to renew that owner's Computer credential, so the next
+Lore request carries a token with the current assignments; this happens once per
+installation, whether the revision was published through the admin route, imported
+before startup or adopted by a replica, and a Computer that cannot renew is logged
+without failing the publication. A token already sent or cached keeps its native
+expiry; this does not promise immediate native token revocation. Never copy a token or the placeholder
 into chat, shell arguments or another user's Computer.
 
 ## Factory sandbox Lore access
