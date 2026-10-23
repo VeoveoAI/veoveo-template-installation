@@ -77,9 +77,16 @@ kubectl apply -f "$PRIVATE/lore.yaml"
 The private manifest replaces only the explicit image marker with the verified
 Linux image digest. A single Lore process owns its native local locks; the small
 PVC holds its HOME/temp/local lock paths. Repository storage stays in native
-S3/PostgreSQL. A TCP readiness probe proves only a listening socket. Ordinary
-Deployment restart handles startup exit; test real native operations and late/
-interrupted issuer/storage dependencies separately. No service-order init Job.
+S3/PostgreSQL. A TCP readiness probe proves only a listening socket.
+
+Lore reads Hub's OIDC discovery document at startup, so it cannot become Ready
+before Hub serves its public issuer: until then it exits with `OIDC discovery
+endpoint returned error` and its Deployment restarts it. Do not wait for Lore here;
+continue with the workspaces and Hub, and check Lore once Hub serves (below). The
+ordinary Deployment restart picks Hub up, and deleting the crash-looping Pod skips
+the remaining back-off (measured 2026-10-22: Ready 1 s after the Pod's deletion once
+Hub served). Test real native operations and late or interrupted issuer/storage
+dependencies separately. No service-order init Job.
 
 For the existing tunnel, create `public-tunnel` ConfigMap from the privately
 rendered `tunnel-config.yaml` and a same-name Secret with `credentials.json`.
@@ -309,7 +316,12 @@ existing trusted native command that loads `/etc/veoveo/hub/hub.env` and execs t
 Hub binary. Long-running Hub/MCP sandboxes explicitly select
 `--restart-policy always`; native default `Never` is unsuitable. Expose the same
 Hub `http` service on `8080` with native `bearer_passthrough`. No Helm inventory
-owns it. Console/Artifact/Media retain their actual native commands/configs, using
+owns it. Once Hub serves at its public issuer, Lore becomes Ready:
+
+```sh
+kubectl -n veoveo-system wait deployment/lore --for=condition=Available --timeout=300s
+```
+ Console/Artifact/Media retain their actual native commands/configs, using
 their own trusted claims, Kubernetes policies and distinct native registration
 providers; do not share Hub's control identity. Time and every other server built
 from a pushed Lore branch run as factory sandboxes that Hub creates; the
