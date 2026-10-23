@@ -106,6 +106,15 @@ network_policies:
       - allow:
           method: DELETE
           path: /selection/*/*
+    - host: veoveo.example.com
+      port: 443
+      path: /lore/**
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /lore/*/repositories
     binaries:
     - path: /usr/local/bin/veoveo-mcp-console
   database:

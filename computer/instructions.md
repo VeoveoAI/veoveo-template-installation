@@ -27,6 +27,9 @@ on each repository the owner is assigned, including one assigned while the
 Computer runs: Hub renews the owner's Lore access as soon as an assignment changes.
 `LORE_ACCESS_TOKEN` holds only a placeholder that the sandbox's proxy replaces in
 Lore's requests; never copy it elsewhere.
+To start a new repository, call the Hub tool `console__create_repository` with its
+name: it creates the repository as the owner and assigns it to them, so the next
+`lore` command can clone or push it. Do not run `lore repository create` directly.
 Clone with the chosen repository URI and destination, then use that checkout's
 configured remote. Source reaches remote followers only after explicit commit
 and push, not file saves or local commits alone.
