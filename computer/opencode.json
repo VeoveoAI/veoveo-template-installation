@@ -5,7 +5,13 @@
   "share": "disabled",
   "warming": false,
   "snapshots": false,
-  "plugins": ["-opencode.vcs.git", "-opencode.vcs.hg"],
+  "plugins": [
+    "-opencode.vcs.git",
+    "-opencode.vcs.hg",
+    "-opencode.provider.ollama",
+    "-opencode.provider.lmstudio",
+    "-opencode.provider.vllm"
+  ],
   "providers": {
     "deepinfra": {
       "settings": {"apiKey": "{env:DEEPINFRA_API_KEY}"}
