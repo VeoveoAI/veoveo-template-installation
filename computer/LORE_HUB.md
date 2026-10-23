@@ -199,6 +199,22 @@ migration intentionally discards disposable OAuth/device-browser continuity as
 specified in the execution plan; preserve actual Computer working storage,
 Tasks/Artifacts, configuration, native service credentials and unrelated services.
 
+A member creates a repository and owns it without an administrator, through Hub's
+`POST /lore/{profile}/repositories` with `{"name": …}` or the console server's
+`create_repository` tool, which calls that route as its caller. Hub creates the
+repository in the installation's one registered Lore deployment as the caller, with
+a Lore login token it issues them, so Lore records them as its creator. It then
+publishes one control-plane revision that registers the repository and assigns the
+caller `owner` in their tenant, renews the Lore access of the caller's Computers,
+and answers the repository's `id`, `name` and `remote` to clone: the deployment's
+endpoint followed by `/<id>`. The route needs the caller's tenant and the Lore login
+Hub would issue them; no `admin_*` policy rule is involved. A name Lore holds
+already is 409. A 503 that names an `id` is a repository Lore created whose
+publication failed; calling again with the same name and that `id` registers it, and
+only its Lore creator can. An owner assignment an administrator later removes stays
+removed. Sharing a repository and removing one remain the administrator's
+control-plane edits below.
+
 Routine repository/grant changes need no restart: read the current complete
 control plane through existing `GET /admin/{profile}/control-plane`, edit its typed
 records and publish through existing authenticated `PUT` on the same route. Use
