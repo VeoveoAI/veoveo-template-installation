@@ -39,11 +39,17 @@ spec:
           image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
           command: [/bin/sh, -ec]
           args:
+            # Replace each file in the existing claim by renaming a complete copy over it,
+            # so the claim and its UID stay. No file changes unless every copy succeeds.
             - |
               umask 077
-              test ! -e /output/hub.json
-              cp /input/hub.json /input/hub.env /input/computer-policy-v1.yaml /input/factory-base-v1.yaml /input/authorization-server.jwks.json /output/
-              chmod 0600 /output/hub.json /output/hub.env /output/computer-policy-v1.yaml /output/factory-base-v1.yaml /output/authorization-server.jwks.json
+              files="hub.json hub.env computer-policy-v1.yaml factory-base-v1.yaml authorization-server.jwks.json"
+              trap 'for f in $files; do rm -f "/output/.$f.new"; done' EXIT
+              for f in $files; do
+                cp "/input/$f" "/output/.$f.new"
+                chmod 0600 "/output/.$f.new"
+              done
+              for f in $files; do mv -f "/output/.$f.new" "/output/$f"; done
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

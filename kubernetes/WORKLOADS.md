@@ -130,7 +130,7 @@ selected public `authorization-server.jwks.json`, using native Secret `--from-fi
 arguments. The JWKS file preserves the file-backed JWKS path in
 `identity/entra.example.json`; it contains public verification keys, never signing
 keys. Match these five names to `hub-config-pvc.yaml`. Before
-running the one-time Job, replace its copy-image marker with the verified immutable
+running the seed Job, replace its copy-image marker with the verified immutable
 Linux utility image. Hub and MCP runtime images use UID `10001`; the config
 seed Job uses that UID so mode `0600` files remain readable to the component.
 The Job's group `10001` does not require the image's primary GID to match: Time
@@ -139,8 +139,15 @@ and Artifact images can use GID `999`, while the measured native Hub uses GID
 use UID/GID `10001`, matching `server.sandboxUid`/`sandboxGid`. Native workspace
 seeding runs as that identity and must be able to read the image's private
 `/sandbox` directories. Confirm actual identities against the selected runtime.
-The Job copies only those files without output and refuses an existing target. The PVC labels
-match native default resource admission for workspace `vv-control`.
+The Job copies only those files without output, each to a hidden temporary name in
+the claim, and renames them into place once every copy succeeded. A rerun therefore
+replaces the files of the existing claim, which keeps the claim and the UID OpenShell
+pinned when it admitted the Hub sandbox. To change a file, recreate the bootstrap
+Secret, apply the manifest again (its claim stays unchanged), wait for and delete the
+Job as below, and restart Hub through its native lifecycle so it reads the files
+again. `hub.json` seeds only an empty installation; a live control plane changes
+through Hub's control-plane route. The PVC labels match native default resource
+admission for workspace `vv-control`.
 
 ```sh
 kubectl apply -f "$PRIVATE/hub-config-pvc.yaml"
@@ -162,12 +169,13 @@ provider references instead.
 native `vv-services` bootstrap for console/Artifact/Media. Use only Artifact's
 `storage.env` and Media's `provider.env` in their separate temporary Secrets;
 the config Jobs run as UID `10001` with seed group `10001`, copy exact files as
-mode `0600`, and never copy operator directories. The component's owner UID must
+mode `0600`, replace them in an existing claim as Hub's seed does, and never copy
+operator directories. The component's owner UID must
 match; its primary GID need not match for these owner-only files. Confirm actual
 identities against the selected Artifact/Media runtime images. Their `*-driver-config.json`
 inputs mount each service's own writable state and read-only configuration.
-Delete completed seed Jobs and their temporary Secrets. This is initial trusted
-storage preparation, never a Helm inventory or runtime reconciliation process.
+Delete completed seed Jobs and their temporary Secrets. This is trusted storage
+preparation, never a Helm inventory or runtime reconciliation process.
 
 Artifact's existing native `storage.env` separates its private backend from signed
 client URLs (actual access/secret keys remain only in that private file):
@@ -196,8 +204,9 @@ never their keys. Use the public Seaweed CA certificate from the
 `seaweedfs-ca-cert` Secret's **`tls.crt`** key. That chart input key is distinct
 from the copied `storage-ca.crt` filename; a Secret containing only `ca.crt` does
 not satisfy the chart's native `[grpc].ca` path. Render the utility image in
-`postgres-client-ca.yaml`, apply its workspace-local PVCs/one-time Jobs, wait for
-completion, then delete those Jobs and temporary source ConfigMaps. The native
+`postgres-client-ca.yaml`, apply its workspace-local PVCs and seed Jobs, which
+replace the CA files of an existing claim in place, wait for completion, then delete
+those Jobs and temporary source ConfigMaps. The native
 driver-config examples mount these approved CA-only claims read-only at
 `/etc/veoveo/tls`. They contain no Hub signing/configuration secret and are reused
 only inside their named workspace.
@@ -419,9 +428,9 @@ HMAC value agreed with the synthetic Media service. Never copy real provider
 credentials or real webhook keys into this fixture.
 
 Create `media-provider-config-bootstrap` from that exact file in the actual
-`vv-services` namespace, then use the fixture's separate claim and one-time seed
-Job in `media-provider-config-pvc.yaml`. The Job runs as UID 10001
-and copies only `provider.env` as mode 0600. Replace only its copy-image marker with the
+`vv-services` namespace, then use the fixture's separate claim and seed Job in
+`media-provider-config-pvc.yaml`. The Job runs as UID 10001 and copies only
+`provider.env` as mode 0600, replacing an existing one in place. Replace only its copy-image marker with the
 reviewed utility digest. Remove the completed Job and bootstrap Secret after
 seeding. `media-provider-driver-config.json` mounts only that claim, read-only at
 `/etc/veoveo/media`; no service state, database/storage credentials, or service

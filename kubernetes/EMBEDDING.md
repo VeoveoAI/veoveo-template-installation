@@ -146,8 +146,8 @@ This is the amd64 child of the runtime's reviewed Python base index
 `sha256:7bec7ddcddeff7975d6ba9b4be7dd6f6b2f55e7491539145e2978f7f97ce9144`;
 the verified utility supplies `/bin/sh` and GNU tar 1.35. It needs no private
 registry credential. The token Job copies one nonempty file as UID/GID 10001,
-mode 0600, refuses an existing
-target, has no retry and emits no value. It does not reconcile or rotate custody.
+mode 0600, replaces an existing one by renaming a complete copy over it, has no
+retry and emits no value. It does not reconcile or rotate custody.
 If a partial Job fails, inspect its exact state before any explicit new attempt.
 
 Populate the model claim separately from the existing trusted, hash-verified

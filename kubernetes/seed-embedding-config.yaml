@@ -1,4 +1,5 @@
-# Trusted one-time token copy, not an application workload or reconciler.
+# Trusted token copy, not an application workload or reconciler; a rerun replaces the
+# token in the existing claim.
 # The existing inference provider and this file must refer to the same secret.
 apiVersion: batch/v1
 kind: Job
@@ -26,8 +27,15 @@ spec:
         - /bin/sh
         - -ec
         args:
-        - umask 077; test -s /input/runtime.token; test ! -e /output/runtime.token;
-          cp /input/runtime.token /output/runtime.token; chmod 0600 /output/runtime.token
+        # Replace the file in the existing claim by renaming a complete copy over it,
+        # so the claim and its UID stay.
+        - |
+          umask 077
+          trap 'rm -f /output/.runtime.token.new' EXIT
+          test -s /input/runtime.token
+          cp /input/runtime.token /output/.runtime.token.new
+          chmod 0600 /output/.runtime.token.new
+          mv -f /output/.runtime.token.new /output/runtime.token
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

@@ -40,8 +40,14 @@ spec:
         - /bin/sh
         - -ec
         args:
-        - umask 077; test ! -e /output/provider.env; cp /input/provider.env /output/provider.env;
-          chmod 0600 /output/provider.env
+        # Replace the file in the existing claim by renaming a complete copy over it,
+        # so the claim and its UID stay.
+        - |
+          umask 077
+          trap 'rm -f /output/.provider.env.new' EXIT
+          cp /input/provider.env /output/.provider.env.new
+          chmod 0600 /output/.provider.env.new
+          mv -f /output/.provider.env.new /output/provider.env
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

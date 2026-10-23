@@ -40,8 +40,17 @@ spec:
         - /bin/sh
         - -ec
         args:
-        - umask 022; test ! -e /output/postgres-ca.crt; cp /input/postgres-ca.crt
-          /input/storage-ca.crt /input/lore-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt /output/lore-ca.crt
+        # Replace each file in the existing claim by renaming a complete copy over it,
+        # so the claim and its UID stay. No file changes unless every copy succeeds.
+        - |
+          umask 022
+          files="postgres-ca.crt storage-ca.crt lore-ca.crt"
+          trap 'for f in $files; do rm -f "/output/.$f.new"; done' EXIT
+          for f in $files; do
+            cp "/input/$f" "/output/.$f.new"
+            chmod 0444 "/output/.$f.new"
+          done
+          for f in $files; do mv -f "/output/.$f.new" "/output/$f"; done
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -109,8 +118,17 @@ spec:
         - /bin/sh
         - -ec
         args:
-        - umask 022; test ! -e /output/postgres-ca.crt; cp /input/postgres-ca.crt
-          /input/storage-ca.crt /input/lore-ca.crt /output/; chmod 0444 /output/postgres-ca.crt /output/storage-ca.crt /output/lore-ca.crt
+        # Replace each file in the existing claim by renaming a complete copy over it,
+        # so the claim and its UID stay. No file changes unless every copy succeeds.
+        - |
+          umask 022
+          files="postgres-ca.crt storage-ca.crt lore-ca.crt"
+          trap 'for f in $files; do rm -f "/output/.$f.new"; done' EXIT
+          for f in $files; do
+            cp "/input/$f" "/output/.$f.new"
+            chmod 0444 "/output/.$f.new"
+          done
+          for f in $files; do mv -f "/output/.$f.new" "/output/$f"; done
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

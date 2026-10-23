@@ -1,4 +1,5 @@
-# Trusted one-time file copy. Render the immutable utility image before admission.
+# Trusted file copy; a rerun replaces the files in the existing claim. Render the
+# immutable utility image before admission.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -24,8 +25,14 @@ spec:
         - /bin/sh
         - -ec
         args:
-        - umask 077; test ! -e /output/storage.env; cp /input/storage.env /output/storage.env;
-          chmod 0600 /output/storage.env
+        # Replace the file in the existing claim by renaming a complete copy over it,
+        # so the claim and its UID stay.
+        - |
+          umask 077
+          trap 'rm -f /output/.storage.env.new' EXIT
+          cp /input/storage.env /output/.storage.env.new
+          chmod 0600 /output/.storage.env.new
+          mv -f /output/.storage.env.new /output/storage.env
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -74,8 +81,14 @@ spec:
         - /bin/sh
         - -ec
         args:
-        - umask 077; test ! -e /output/provider.env; cp /input/provider.env /output/provider.env;
-          chmod 0600 /output/provider.env
+        # Replace the file in the existing claim by renaming a complete copy over it,
+        # so the claim and its UID stay.
+        - |
+          umask 077
+          trap 'rm -f /output/.provider.env.new' EXIT
+          cp /input/provider.env /output/.provider.env.new
+          chmod 0600 /output/.provider.env.new
+          mv -f /output/.provider.env.new /output/provider.env
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
