@@ -34,9 +34,10 @@ The fragment assumes these existing installation identities:
 - The Computer's existing public PKCE+refresh client `computer-browser` and exact
   callback `https://veoveo.example.com/computer/callback`, with the current MCP
   profile/Work Context eligibility. Merge the example client by its typed ID and
-  preserve existing memberships/identity settings; do not append a duplicate. Its
-  allowed resources/scopes explicitly include the selected native Lore audience
-  and login scope set for personal workspace creation.
+  preserve existing memberships/identity settings; do not append a duplicate. It
+  needs only the Computer MCP audience and the `mcp` scope: the Computer reaches
+  Lore through its own Lore client, and repository creation through Hub's
+  deployment client.
 
 Replace these names consistently when the installation uses different admitted
 IDs. Keep `computers.gateway` and `nativeUpstreams` on the same dedicated native
@@ -266,38 +267,12 @@ made in this configuration slice. Full native CLI/Entra exchange, refresh,
 per-user isolation, grant withdrawal/expiry and Linux proxy behavior remain later
 acceptance, not conclusions from JSON/TOML parsing.
 
-## Personal workspace first use
+## Repository creation
 
-`lore.personalWorkspace.deployment` is an optional explicit first-use deployment
-ID. It never selects the first deployment by name or replaces an existing owner's
-association. The Computer fragments include the matching `computer-browser` public
-client. For an existing `opencode` OAuth client used to request personal workspace
-selection, merge the same native audience into its `allowedResources` and all
-selected deployment `loginScopes` into `allowedScopes`, preserving its existing
-MCP audience, redirect URIs, Work Context and grants. Do this only when merging the
-matching registered Lore contribution; adding an unknown audience to the standalone
-identity example would be invalid. Broker `oidcClients.allowedResources` is separate
-and cannot substitute for initiating OAuth-client admission.
-
-A direct authenticated user can POST `{"deployment":"primary"}` (or the selected
-registered ID) to `/personal-workspace/{profile}` before first-use binding. To reuse
-an already authorized repository, also provide `repository` with its exact native
-ID. Reuse checks the existing native resource grant and Get; it adds no Owner
-privilege. A conflicting existing personal association is not replaced.
-
-After native creation, Hub verifies the actual repository/default-branch IDs and
-creator before publishing only that actual repository and caller Owner assignment
-through the existing control revision CAS. A reserved publication ID prevents a
-crash retry from regranting an assignment after its committed publication was later
-revoked. No Computer/session deletion cascades into this owner association.
-
-Computer access remains usable while optional onboarding is preparing, auth-needed,
-denied or unavailable. `GET /computer/onboarding` is a read-only browser-session
-status; admitted entry schedules a bounded preparation retry. `ready` means the
-optional repository default and public descriptor are prepared, not that native
-login or checkout occurred. The user or agent chooses ordinary native Lore login,
-repository, branch and destination when wanted. Credentials remain in the user's native persistent store,
-separate from the Computer's platform refresh family and factory custody.
+Hub prepares no personal repository and writes nothing into a Computer. A person
+creates a repository with the console tool `create_repository` (Hub's
+`POST /lore/{profile}/repositories`): Hub creates it in Lore as the caller and
+assigns it to them, so their Computer's next `lore` command can clone or push it.
 
 This source path requires component/deployed qualification; configuration alone
 is not a successful native creation, auth, checkout or isolation receipt.

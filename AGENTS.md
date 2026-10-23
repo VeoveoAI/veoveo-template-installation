@@ -30,6 +30,7 @@
   global grants to compensate for an installation mismatch. Local Keycloak
   remains identity/management bootstrap; repository assignments belong to Hub.
   Do not restore the retired direct-issuer provisioning helper or its grant state.
+- The platform never writes into a Computer's `/sandbox`; it is the person's home.
 - Never commit credentials. `.env`, TLS/private state and local backups remain
   ignored and excluded from build contexts.
 - During rapid development, application data is disposable for authorized resets

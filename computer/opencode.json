@@ -6,7 +6,6 @@
   "warming": false,
   "snapshots": false,
   "plugins": ["-opencode.vcs.git", "-opencode.vcs.hg"],
-  "instructions": ["/sandbox/home/.config/computer/instructions.md"],
   "providers": {
     "deepinfra": {
       "settings": {"apiKey": "{env:DEEPINFRA_API_KEY}"}

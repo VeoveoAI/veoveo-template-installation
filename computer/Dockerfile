@@ -6,28 +6,17 @@ USER root
 COPY --from=lore --chmod=0755 /usr/local/bin/lore /usr/local/bin/lore
 COPY --from=opencode --chmod=0755 /bin/opencode /usr/local/bin/opencode
 COPY --chmod=0644 computer/opencode.json /etc/computer/
-ENV HOME=/sandbox/home \
+# /sandbox is the person's home and the platform writes nothing into it: the
+# factory base leaves only the mount point, owned by the sandbox user, and
+# OpenCode and Lore create their own directories under HOME. Connection
+# configuration stays read-only in /etc/computer.
+ENV HOME=/sandbox \
     SSL_CERT_DIR=/etc/ssl/certs \
-    XDG_CONFIG_HOME=/sandbox/home/.config \
-    XDG_DATA_HOME=/sandbox/home/.local/share \
-    XDG_STATE_HOME=/sandbox/home/.local/state \
-    XDG_CACHE_HOME=/sandbox/home/.cache \
-    LORE_GLOBAL_PATH=/sandbox/home/.local/share/lore \
-    LORE_AUTH_PATH=/sandbox/home/.config/lore/auth \
     OPENCODE_CONFIG=/etc/computer/opencode.json \
     OPENCODE_DISABLE_MODELS_FETCH=1
-# Native Docker copy-up or Kubernetes automatic workspace-PVC seeding preserves
-# these image defaults and private UID/GID-10001 paths; no extra copy-up Job is needed.
-# Native connection configuration stays read-only; public managed guidance is
-# seeded in the persistent home before OpenCode discovers its instruction source.
 RUN test "$(id -u sandbox)" = 10001 \
     && test "$(id -g sandbox)" = 10001 \
-    && install -d -o 10001 -g 10001 -m 0700 /sandbox /sandbox/home /sandbox/projects \
-       /sandbox/home/.config /sandbox/home/.config/computer /sandbox/home/.local /sandbox/home/.local/share \
-       /sandbox/home/.local/state /sandbox/home/.cache \
-       /sandbox/home/.local/share/lore /sandbox/home/.config/lore /sandbox/home/.config/lore/auth \
     && chmod 0755 /etc/computer
-COPY --chown=10001:10001 --chmod=0600 computer/instructions.md /sandbox/home/.config/computer/instructions.md
 USER sandbox
 WORKDIR /sandbox
 # Hub also supplies this fixed command as native Create governance. Native

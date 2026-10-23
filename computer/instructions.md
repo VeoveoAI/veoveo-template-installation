@@ -2,24 +2,19 @@ This private Computer provides OpenCode, the configured Hub MCP connection and
 native Lore CLI. Hub supplies authorized platform tools, branch selection and the
 owner's Lore access; Lore owns source repositories and their authorization.
 
-## Workspace and publication
+## Home and publication
 
-`/sandbox` persists across ordinary Computer stop/start; deletion/reset can discard
-it. `HOME=/sandbox/home`, with persistent XDG config/data/state/cache beneath it.
-Lore's native auth store is `/sandbox/home/.config/lore/auth`; ordinary OpenCode
-shell commands inherit these paths. Keep credential stores outside source snapshots.
-Use `/sandbox/projects/<chosen-name>` for projects or optional native checkouts;
-preserve existing user layout and branch choices. Keep disposable work separate,
-for example `/sandbox/scratch`; `/tmp` is temporary and caches are rebuildable.
-Clean only your own identified scratch, preserving user changes and other sessions.
-Private workspace persistence does not publish source or outputs. No home sync,
-automatic commit/push or automatic output upload is performed.
+`~` is always kept; everything else comes with the Computer version. `~` is this
+Computer's home and belongs to its owner: programs keep their own configuration,
+data and caches there, and the platform writes nothing into it. A restart loses
+only running programs and `/tmp`. Keep credential stores out of source checkouts.
+Put projects and checkouts where the owner wants them under `~`, and preserve the
+existing layout and branch choices. Keep disposable work separate, for example
+`~/scratch`; `/tmp` is temporary and caches are rebuildable. Clean only your own
+identified scratch, preserving user changes and other sessions. Keeping `~`
+publishes nothing: there is no home sync, automatic commit/push or automatic
+output upload.
 
-Hub may prepare an optional personal repository default and write public
-coordinates to `/sandbox/home/.config/computer/workspace.env`. It does not clone.
-The user or agent chooses repository, branch and destination when wanted.
-Read that public file when offering the personal repository. An empty Lore
-repository list does not determine whether a known assigned repository can be cloned.
 `VEOVEO_LORE_REMOTE` is the installation's private Lore URI, not a native setting.
 Lore is already signed in as this Computer's owner: the owner's Hub sign-in is the
 only login, so do not run `lore auth login`. Every `lore` command acts as the owner
@@ -30,9 +25,12 @@ Lore's requests; never copy it elsewhere.
 To start a new repository, call the Hub tool `console__create_repository` with its
 name: it creates the repository as the owner and assigns it to them, so the next
 `lore` command can clone or push it. Do not run `lore repository create` directly.
-Clone with the chosen repository URI and destination, then use that checkout's
-configured remote. Source reaches remote followers only after explicit commit
-and push, not file saves or local commits alone.
+The owner or agent chooses the repository, branch and destination. An empty Lore
+repository list does not determine whether a known assigned repository can be
+cloned. Clone with the chosen repository URI and destination, then use that
+checkout's configured remote.
+Source reaches remote followers only after explicit commit and push, not file saves
+or local commits alone.
 
 ## Served branches
 
@@ -48,7 +46,7 @@ Use Hub's authorized Artifact operations to publish outputs or request downloads
 Transfer bytes with native `/usr/bin/curl`, preserving the exact grant method,
 signed URL and required headers. Do not rewrite/redirect the request or mix Hub
 or model authorization into it. Keep signed capabilities private: use a mode0600
-curl config under `/sandbox` (`umask 077`), run `/usr/bin/curl --config`, then remove
+curl config under `~` (`umask 077`), run `/usr/bin/curl --config`, then remove
 it; avoid verbose/trace output. Ask Hub for a fresh operation if the grant expires.
 Complete any required upload/finalize step; byte transfer alone is not publication.
 Record safe operation/Artifact IDs, status, byte counts and hashes, not signed URLs.

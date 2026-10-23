@@ -90,17 +90,17 @@ private key. Supervisor's separate build recipe is unchanged by this input seam.
 
 ## State and native governance
 
-`WORKDIR=/sandbox` is the native persistent-workspace target. `/sandbox/home`
-contains HOME, XDG config/data/state/cache, OpenCode databases and native Lore's
-credential/config/data directories. `/sandbox/projects` holds working trees. The
-image seeds private UID/GID 10001 paths, matching the selected native runtime.
-Docker preserves them through its configured persistent workspace volume and native
-copy-up. Kubernetes uses OpenShell's
-automatic per-sandbox workspace PVC and native image-workdir seeding with sandbox
-UID/fsGroup ownership; do not add a shared explicit `/sandbox` claim or another
-copy-up Job. `/etc/computer` is immutable connection configuration outside the
-persistent mount; public managed instructions live in the private home.
-No secret is copied into the image.
+`/sandbox` is the person's home: `HOME=/sandbox` and `WORKDIR=/sandbox`, the
+native persistent-workspace target. The platform never writes into it. The image
+has only the empty mount point, owned by UID/GID 10001 like the selected native
+runtime, and sets no XDG or Lore path variables: OpenCode and native Lore create
+their own configuration, data, state and cache directories under `HOME`. Docker
+keeps `/sandbox` in its configured persistent workspace volume. Kubernetes uses
+OpenShell's automatic per-sandbox workspace PVC with sandbox UID/fsGroup ownership;
+its native seeding finds nothing to copy and writes only its own marker. Do not add
+a shared explicit `/sandbox` claim or a copy-up Job. Everything outside `/sandbox`
+and `/tmp` comes with the Computer version and is read-only; `/etc/computer` holds
+the immutable connection configuration. No secret is copied into the image.
 
 The operator imports the global, nonsecret native provider profiles and creates the
 trusted workload template using the existing authenticated native CLI. The example
@@ -166,12 +166,16 @@ Hub admission. A mount path or browser-cache namespace is not an origin security
 boundary; live two-user and account-switching acceptance remains required.
 
 Native retention preserves the stable sandbox ID/spec on runtime loss; Start can
-recreate the missing runtime with fresh native runtime identity. Stop/Start and
-provisioning failures retain files. Explicit Delete removes the exactly owned
-workspace volume. A crash during deletion can retain an orphan requiring native
-operator reconciliation; absence of a container is not evidence that files are
-disposable. User files remain scratch until pushed/uploaded, despite this routine
-lifecycle durability. Factory sandboxes are separate: one per served branch.
+recreate the missing runtime with fresh native runtime identity. `/sandbox` is kept
+across restarts: Stop/Start, provisioning failures and a native Delete that keeps
+the workspace retain it, and the next sandbox of the same name in the same
+workspace adopts the kept volume unchanged. The sandbox name comes from the
+Computer ID, so the Computer's URL stays too. An ordinary Delete removes the exactly
+owned workspace volume; that is how a Computer is removed for good. A crash during
+deletion can retain an orphan requiring native operator reconciliation; absence of
+a container is not evidence that files are disposable. User files remain unpublished
+until pushed/uploaded, despite this lifecycle durability. Factory sandboxes are
+separate: one per served branch.
 
 ## Credentials, endpoints and user login
 
@@ -239,68 +243,46 @@ which the native Lore CLI reads; the proxy substitutes the token on the profile'
 inspected endpoint. No human token is copied to a factory or another Computer.
 
 An operator's native exec session need not inherit the workload's environment.
-Check Lore from the Computer's OpenCode shell, which inherits the image paths and
-both variables.
+Check Lore from the Computer's OpenCode shell, which inherits `HOME` and both
+variables.
 
-Optional personal-workspace onboarding is selected by the Hub contribution's
-`personalWorkspace.deployment`, an explicit registered native deployment ID.
-Computer entry starts preparation outside browser custody; `GET /computer/onboarding`
-reads the last typed result without starting work. Lore unavailability or missing
-user auth leaves Computer access usable. The owner's repository association survives
-Computer replacement, and changing the installation default does not replace it.
+The [Computer handbook](instructions.md) explains the home, explicit
+Lore/Artifact publication, and served branches: a pushed branch of a server
+repository with `openshell/run` is served, and Hub's tools select which branch of
+each server the account uses. A checkout alone serves or selects nothing.
+`computer/instructions.md` is the handbook's one source. Installation supplies its
+Markdown as plain `computers.handbook` text in the trusted Hub control document,
+and Hub serves it as the MCP server `instructions` of its Computer endpoint
+(`computers.profile`) to Computer clients (`computers.oauthClient`), so every MCP
+client learns it when it connects; OpenCode puts MCP server instructions in its
+system prompt. Hub writes nothing into the Computer, and a handbook edit needs no
+image rebuild, restart or new version: clients see it on their next connection.
+An omitted or empty `handbook` serves no handbook. This is not a template language.
+Guidance references the Computer's current native inputs; it does not copy
+credentials, grants or project environment selections into a global prompt.
 
-Hub delivers public repository coordinates to
-`/sandbox/home/.config/computer/workspace.env` through native owner-scoped Exec.
-Onboarding `ready` means that optional repository default and descriptor are
-prepared; it does not assert native authentication or a checkout. Computer entry
-does not log in or clone. The user or agent chooses whether to use the default or
-another authorized repository, and chooses the branch and destination through
-ordinary native Lore commands. Existing checkouts are not changed. The descriptor
-contains no tokens; native Lore owns authentication, refresh and checkout behavior.
-The automatically loaded [Computer handbook](instructions.md) explains private
-workspace layout, explicit Lore/Artifact publication, and served branches: a pushed
-branch of a server repository with `openshell/run` is served, and Hub's tools select
-which branch of each server the account uses. A checkout alone serves or selects
-nothing.
-
-The image seeds `/sandbox/home/.config/computer/instructions.md` before OpenCode's
-first instruction discovery, and its config loads only that path. Installation
-supplies the shared Markdown as plain `computers.handbook` text in the trusted Hub
-control document; [hub.example.json](hub.example.json) includes it. This is not a
-template language. Guidance references the Computer's current native inputs and
-optional public descriptor; it does not copy credentials, grants or project
-environment selections into a global prompt.
-
-Each admitted `/computer` entry or completed login schedules best-effort delivery
-from the **current** live catalog through the existing owner-scoped native Exec.
-Hub atomically replaces the file; OpenCode's existing watcher refreshes subsequent
-model steps. Delivery is independent of personal repository preparation and never
-blocks entry or invokes login/clone. Omitting `handbook` skips replacement;
-`"handbook":""` explicitly clears the managed text. A live config update reaches
-the Computer on its next entry, not through immediate fleet-wide push.
-
-To update guidance, read the fresh full control response using the existing admin
-API, then prepare the ordinary publication candidate with the selected Markdown:
+For the initial trusted import, set the field in the complete seed before
+`veoveo-hub validate` / `import-control-plane`:
 
 ```sh
-python3 - "$PRIVATE/control-read.json" computer/instructions.md "$PRIVATE/control-candidate.json" <<'PY'
-import json
-from pathlib import Path
-import sys
-control = json.loads(Path(sys.argv[1]).read_text())["controlPlane"]
-control["computers"]["handbook"] = Path(sys.argv[2]).read_text()
-output = Path(sys.argv[3])
-output.write_text(json.dumps(control, indent=2) + "\n")
-output.chmod(0o600)
-PY
+umask 077
+jq --rawfile handbook computer/instructions.md '.computers.handbook = $handbook' \
+  "$PRIVATE/hub.json" > "$PRIVATE/hub.candidate.json"
+```
+
+To update guidance later, read the fresh full control response using the existing
+admin API, then prepare the ordinary publication candidate from the same file:
+
+```sh
+umask 077
+jq --rawfile handbook computer/instructions.md \
+  '.controlPlane | .computers.handbook = $handbook' \
+  "$PRIVATE/control-read.json" > "$PRIVATE/control-candidate.json"
 ```
 
 Publish that full candidate through the same live admin control-plane API, preserving
-unrelated settings. For initial trusted import, include the same Markdown field in
-the complete seed before `veoveo-hub validate` / `import-control-plane`. Install the
-Hub binary that understands this field before publishing it. Existing snapshots do
-not need rewriting because guidance is optional. Initial Computer packaging must
-select this managed instruction path; later text updates need no image rebuild.
+unrelated settings. [hub.example.json](hub.example.json) omits the field so that the
+handbook has no second copy.
 
 The [native OIDC fragment](lore-oidc.example.toml), Hub contribution/client records
 and exact OAuth REST paths in policy must be selected together. Native private
@@ -311,10 +293,9 @@ receipts. Existing source/image pins remain unchanged until coordinated review.
 
 ## Validation boundary
 
-Changing the image's initial handbook seed or configured instruction path requires
-a Computer image rebuild. Once that path is installed, publish text changes through
-`computers.handbook` and enter the Computer again; no image or OpenCode restart is
-needed. Policy changes alone require no binary rebuild.
+Handbook changes are published through `computers.handbook` and reach clients on
+their next MCP connection; no image rebuild or restart is needed. Policy changes
+alone require no binary rebuild.
 
 Before promotion, validate the JSON with this fork's native OpenCode Config.Info
 schema after substituting synthetic opaque references; parse the policy through
@@ -322,10 +303,11 @@ native `openshell_policy::parse_sandbox_policy_file` and lint both native profil
 Also admit the selected Hub control policy/profile using the exact RPC/binding
 boundary in [NATIVE_CONTROL.md](NATIVE_CONTROL.md).
 Build the image from the reviewed local contexts without inference. Under UID/GID 10001,
-check exact binary versions/digests, seeded managed-instruction ownership, writable
-HOME/XDG paths, non-writable `/etc/computer`, and absence of a factory token. A native test-owned
-Computer must then prove persisted OpenCode/Lore state across Stop/Start, runtime
-loss and gateway restart, followed by exactly owned Delete cleanup. Only later
+check exact binary versions/digests, a writable `HOME`, non-writable `/etc/computer`,
+and absence of a factory token. A native test-owned Computer must then prove
+persisted OpenCode/Lore state across Stop/Start, runtime loss, gateway restart and a
+delete that keeps the workspace followed by a sandbox of the same name, followed by
+exactly owned Delete cleanup. Only later
 qualify real user login, Hub revocation/owner isolation and explicit MiMo tool use
 on the coordinated Linux deployment. The component retention E2E receipt does not
 prove this image, Hub browser ingress, real Lore login or model inference.

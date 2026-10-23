@@ -130,10 +130,7 @@
       }
     ],
     "repositories": [],
-    "assignments": [],
-    "personalWorkspace": {
-      "deployment": "primary"
-    }
+    "assignments": []
   },
   "oauthClients": [
     {
@@ -165,8 +162,7 @@
       "invocationMode": "direct",
       "displayName": "Private Computer browser",
       "allowedResources": [
-        "https://veoveo.example.com/mcp/computer",
-        "https://veoveo.example.com/resources/lore"
+        "https://veoveo.example.com/mcp/computer"
       ],
       "grantTypes": [
         "authorization_code_pkce",
@@ -179,9 +175,7 @@
         "https://veoveo.example.com/computer/callback"
       ],
       "allowedScopes": [
-        "mcp",
-        "lore:login",
-        "offline_access"
+        "mcp"
       ]
     }
   ],

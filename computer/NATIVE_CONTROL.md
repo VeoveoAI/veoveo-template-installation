@@ -148,13 +148,12 @@ Both policies allow only the Hub binary to POST these native RPC paths beneath
 | Per-owner workspace/template | GetWorkspace, CreateWorkspace, CreateSandboxTemplate |
 | Workspace-local user/model custody | GetProvider, CreateProvider, ConfigureProviderRefresh, RotateProviderCredential |
 | Native Computer lifecycle | GetSandbox, CreateSandbox, StartSandbox, StopSandbox |
-| Optional owner-bound onboarding | ExecSandbox (existing `sandbox:write`, workspace user role) |
 | Factory sandbox removal and replacement (Kubernetes policy) | DeleteSandbox (`sandbox:write`), DeleteProvider (`provider:write`) |
 
 One enforced REST endpoint selects `/openshell.v1.OpenShell/**` at the native
 gateway authority, with the same provider binding and exactly these POST rules:
-eighteen in the [Kubernetes policy](../kubernetes/policies/hub-computer-entra.example.yaml),
-the sixteen without the factory row in the Mac fixtures. The service-root selector
+seventeen in the [Kubernetes policy](../kubernetes/policies/hub-computer-entra.example.yaml),
+the fifteen without the factory row in the Mac fixtures. The service-root selector
 chooses the HTTP route; it does not grant additional RPCs. There is no wildcard
 allow rule, arbitrary browser-facing Exec, UpdateConfig, UpdateProvider, profile
 import or operator-only credential export. Profiles are installed separately by the
@@ -197,10 +196,7 @@ Computer exists, or that an unavailable CLI evaluator/prover was executed.
 The current Kubernetes Hub policy also admits BuildKit at
 `buildkitd.veoveo-system.svc.cluster.local:1234` for `/usr/local/bin/buildctl`, and
 Lore for both the Hub binary and `/usr/local/bin/lore`, which reads a pushed
-revision's `openshell/` as its pusher. It admits exactly `ExecSandbox` for the trusted
-onboarding hook. It validates the recorded owner workspace/sandbox and governance
-before writing the public repository descriptor. It does not run login or clone. This
-uses existing `sandbox:write`; no `sandbox:exec` scope is defined. It exposes no
-external shell endpoint and transfers no operator credential into the Computer.
-Historical Mac forwarder/provisioner fixtures without onboarding retain their
-original RPC list; select the actual native endpoint/policy together.
+revision's `openshell/` as its pusher. It admits no `ExecSandbox`: Hub never runs a
+command in, or writes into, a Computer, whose `/sandbox` is its owner's home. The
+Mac forwarder/provisioner fixtures keep their RPC list; select the actual native
+endpoint/policy together.

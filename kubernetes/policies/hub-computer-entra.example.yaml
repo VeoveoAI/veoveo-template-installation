@@ -48,9 +48,6 @@ network_policies:
           path: /openshell.v1.OpenShell/GetGatewayInfo
       - allow:
           method: POST
-          path: /openshell.v1.OpenShell/ExecSandbox
-      - allow:
-          method: POST
           path: /openshell.v1.OpenShell/ForwardTcp
       - allow:
           method: POST
@@ -99,7 +96,7 @@ network_policies:
           path: /openshell.v1.OpenShell/DeleteProvider
     binaries:
     - path: /usr/local/bin/veoveo-hub
-  # Lore for personal workspaces and factory watches (the Hub binary) and for reading a
+  # Lore for repository creation and factory watches (the Hub binary) and for reading a
   # pushed revision's openshell/ as its pusher (Lore's command line in the Hub image).
   native_workspace:
     endpoints:
