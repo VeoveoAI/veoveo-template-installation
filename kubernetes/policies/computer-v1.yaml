@@ -36,13 +36,13 @@ network_policies:
     binaries:
     - path: /usr/local/bin/opencode
   hub_computer:
-    # The Computer's own status and restart, for any program in it: the proxy puts the
-    # owner's Hub token in place of the COMPUTER_HUB_REFERENCE placeholder. The path's
-    # profile is the Hub's computers.profile.
+    # The Computer's own status, restart and previous version, for any program in it:
+    # the proxy puts the owner's Hub token in place of the COMPUTER_HUB_REFERENCE
+    # placeholder, which Hub admits for its Computers profile.
     endpoints:
     - host: veoveo.example.com
       port: 443
-      path: /computer/*/*
+      path: /computer/*
       protocol: rest
       enforcement: enforce
       credential_binding:
@@ -50,10 +50,13 @@ network_policies:
       rules:
       - allow:
           method: GET
-          path: /computer/*/status
+          path: /computer/status
       - allow:
           method: POST
-          path: /computer/*/restart
+          path: /computer/restart
+      - allow:
+          method: POST
+          path: /computer/previous
     binaries:
     - path: /**
   model:

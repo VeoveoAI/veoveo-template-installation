@@ -119,16 +119,16 @@ network_policies:
     # anyone and console names in the computer tool's description.
     - host: veoveo.example.com
       port: 443
-      path: /computer/**
+      path: /computer/*
       protocol: rest
       enforcement: enforce
       rules:
       - allow:
           method: GET
-          path: /computer/*/status
+          path: /computer/status
       - allow:
           method: POST
-          path: /computer/*/restart
+          path: /computer/restart
       - allow:
           method: GET
           path: /computer/version

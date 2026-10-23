@@ -39,7 +39,10 @@ Computer's version, the current one and what an update brings. If an update is
 available or was just installed, tell the person what's new in a line or two;
 restart only when the person asks, with `restart: true`. A restart keeps `~` and
 ends running programs, this session included; the Hub answers before it restarts.
-`COMPUTER_VERSION` names the version this Computer started at.
+`COMPUTER_VERSION` names the version this Computer started at. A program here reads
+the same status with `GET /computer/status` on the Hub's origin (`COMPUTER_HUB_URL`
+without its path) and `Authorization: Bearer $COMPUTER_HUB_REFERENCE`; the proxy
+supplies the owner's token. The person's browser shows it at `/computer/status`.
 
 ## Served branches
 

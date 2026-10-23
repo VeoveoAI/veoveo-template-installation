@@ -318,8 +318,13 @@ The profiles and the template may come before or after Hub starts: Hub reads the
 template when a Computer is entered, and until it and the profiles exist, `/computer`
 says that Computers are unavailable and why. The template, the
 [policy](policies/computer-v1.yaml) and Hub's `computers` settings make the Computer
-version, a twelve-digit digest that `/computer`, the console's `computer` tool and
-each sandbox's `COMPUTER_VERSION` name. The optional `veoveo.ai/release-note`
+version, a twelve-digit digest that `/computer/status`, the console's `computer` tool
+and each sandbox's `COMPUTER_VERSION` name. `GET /computer/status`, `POST
+/computer/restart` and `POST /computer/previous` serve the owner's browser session and
+a bearer of Hub's Computers profile: the [Computer policy](policies/computer-v1.yaml)
+lets any program in a Computer call them with the owner's Hub token, and
+[console's policy](policies/console.yaml) lets console call status and restart for its
+caller and read the public `GET /computer/version`. The optional `veoveo.ai/release-note`
 annotation is the version's release note; its first line is the summary agents tell
 the person. To publish a new version, delete the template and create it again under
 the same name with the new image, environment or note (OpenShell has no template
