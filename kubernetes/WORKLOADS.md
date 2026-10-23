@@ -276,6 +276,13 @@ two global provider profiles, the image builder (BuildKit, the local registry an
 Lore CLI image `veoveo/lore` there by digest) and soft caps (`instancesPerUser: 4`,
 `enforce: false`: exceeding the cap warns in the instance's status). These are Hub
 control-plane values: the file seeds them and the live route below changes them.
+Its `oauthClients` also register `veoveo-hub-sdk-cli`, the public client whose
+`login` signs a person in from a terminal: the authorization code grant with PKCE and
+refresh-token rotation, no client secret, the person's `local` MCP profile and the
+loopback redirect `http://127.0.0.1:3211/callback`. Hub matches a redirect URI
+exactly, port included, so the CLI listens on that port; 3211 stays clear of
+OpenCode's `http://127.0.0.1:3210/callback`. The client grants nothing by itself:
+the person's own memberships and grants decide what the CLI may do.
 Merge installation identity/settings/signing/services by their typed keys;
 never concatenate duplicate IDs or replace an existing active catalog with this
 bootstrap sample. Run the Hub binary's native validate/import commands against

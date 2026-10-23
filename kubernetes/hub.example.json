@@ -177,6 +177,29 @@
       "allowedScopes": [
         "mcp"
       ]
+    },
+    {
+      "id": "veoveo-hub-sdk-cli",
+      "authorizationServer": "hub",
+      "defaultWorkContext": "default",
+      "invocationMode": "direct",
+      "displayName": "veoveo-hub-sdk-cli",
+      "allowedResources": [
+        "https://veoveo.example.com/mcp/local"
+      ],
+      "grantTypes": [
+        "authorization_code_pkce",
+        "refresh_token"
+      ],
+      "authMethods": [
+        "none"
+      ],
+      "redirectUris": [
+        "http://127.0.0.1:3211/callback"
+      ],
+      "allowedScopes": [
+        "mcp"
+      ]
     }
   ],
   "oidcClients": [
