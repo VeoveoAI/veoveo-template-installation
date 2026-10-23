@@ -258,6 +258,13 @@ runtime fetches only URLs of that origin. Runtime 2a3 uses HTTPX `trust_env=Fals
 requires an ordinary publicly trusted certificate. A different trust/mediation
 design needs review before rollout; no verification bypass is provided.
 
+Known gap: because the runtime cannot trust OpenShell's inspection CA, its policy
+passes TLS through to the whole public host, not only `/artifacts/`, so
+`/usr/local/bin/python3.14` can reach every public path of that host. The runtime
+holds no Hub identity or other credential. The fix is for the runtime to trust the
+inspection CA, after which its policy becomes an inspected endpoint allowing only
+GET on `/artifacts/**`, as Computer curl's is.
+
 Retain native `vv-embedding-registration` and `vv-embedding-inference` profiles
 and approved provider custody. Registration and inference use separate exact
 credential bindings. Do not attach a member/admin provider to the MCP delegation

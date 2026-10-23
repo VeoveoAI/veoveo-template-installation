@@ -93,9 +93,10 @@ reads its routes from Cloudflare. [tunnel-routes.yaml](tunnel-routes.yaml) recor
 those routes, in order, as the dashboard holds them; enter them under the tunnel's
 routes, rendered to the public host. The first route whose host and path match
 serves a request, so `/artifacts/` comes before Hub's route for the same host.
-Create the `public-tunnel` Secret with the tunnel token as its `token` key, and the
-`public-tunnel-ca` ConfigMap with **public** `gateway.crt` and `storage.crt`, the
-files the routes' CA pools name. The gateway public CA comes from the chart's
+Create the `public-tunnel` Secret with the tunnel token as its `token` key, which
+`tunnel.yaml` mounts at `/etc/cloudflared-credentials`, and the `public-tunnel-ca`
+ConfigMap with **public** `gateway.crt` and `storage.crt`, mounted at
+`/etc/cloudflared-ca`, the files the routes' CA pools name. The gateway public CA comes from the chart's
 retained native PKI output; only its public certificate is copied. `tunnel.yaml`
 pins the verified official cloudflared `2026.10.1` Linux amd64 digest; apply that
 selected manifest. Never use `noTLSVerify`. Hub routing intentionally sets its
