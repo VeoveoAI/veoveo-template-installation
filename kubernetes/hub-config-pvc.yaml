@@ -34,8 +34,6 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-      imagePullSecrets:
-        - name: registry-pull
       containers:
         - name: copy
           image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
@@ -44,8 +42,8 @@ spec:
             - |
               umask 077
               test ! -e /output/hub.json
-              cp /input/hub.json /input/hub.env /input/computer-policy-v1.yaml /input/authorization-server.jwks.json /output/
-              chmod 0600 /output/hub.json /output/hub.env /output/computer-policy-v1.yaml /output/authorization-server.jwks.json
+              cp /input/hub.json /input/hub.env /input/computer-policy-v1.yaml /input/factory-base-v1.yaml /input/authorization-server.jwks.json /output/
+              chmod 0600 /output/hub.json /output/hub.env /output/computer-policy-v1.yaml /output/factory-base-v1.yaml /output/authorization-server.jwks.json
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -68,6 +66,8 @@ spec:
                 path: hub.env
               - key: computer-policy-v1.yaml
                 path: computer-policy-v1.yaml
+              - key: factory-base-v1.yaml
+                path: factory-base-v1.yaml
               - key: authorization-server.jwks.json
                 path: authorization-server.jwks.json
         - name: output

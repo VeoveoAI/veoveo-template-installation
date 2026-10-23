@@ -49,7 +49,7 @@ management identity is independent of all Lore users and factory grants.
 | `resource_id_template = "urc-{id}"` | Deployment `resourceIdTemplate` |
 | OIDC `client_id = "lore-computer"` | Dedicated secretless public registration with device, refresh and public exchange grants |
 | OIDC `scopes = ["lore:login"]` | Finite deployment/client scopes `lore:login` plus native-added `offline_access` |
-| OIDC `scope_template = "lore-repo-{id}"` | Deployment `scopeTemplate`; factory profile's exact target scope |
+| OIDC `scope_template = "lore-repo-{id}"` | Deployment `scopeTemplate`; the repository exchange selector |
 | Private `grpcs://host.openshell.internal:41337` | Deployment `endpoint`, native server certificate SAN, policy hostname and `VEOVEO_LORE_REMOTE` |
 
 For Linux, the selected private native endpoint is
@@ -108,8 +108,8 @@ Only native `owner`, `admin`, `obliterate`, `migrate` privileges may be explicit
 assigned. Neither Hub administration nor Work Context membership implies any
 Lore repository access or `is_service_account` bypass.
 
-The sample grants Alice/Bob the shared `1111…1111` repository, only Bob the
-`2222…2222` repository, and a separate factory principal the shared repository.
+The sample grants Alice/Bob the shared `1111…1111` repository and only Bob the
+`2222…2222` repository.
 Replace all synthetic IDs with reviewed native IDs and actual canonical Hub
 principal IDs. Changing a user's directory app roles is not how this Hub-owned
 repository data is managed. A Hub administrator can publish explicit assignments
@@ -162,55 +162,22 @@ new repository issuance after live catalog adoption; cached native JWTs and
 in-flight operations retain their ordinary expiry behavior. This sample selects
 300-second tokens; it does not promise immediate native token revocation.
 
-## Explicit factory identity and native refresh
+## Factory sandbox Lore access
 
-Select [lore-time.example.yaml](../openshell/providers/lore-time.example.yaml),
-using native profile/provider name `vv-lore-time`. Do not import over an unrelated
-existing profile/provider. The existing deterministic
-[factory RPC policy](../openshell/factory-time.yaml) already binds that provider.
-Retain its limited read RPCs and exact dependency access. Native token permissions
-are ordinary access; the workload policy separately bounds the factory's calls.
-
-Configure the Hub `lore-factory` registration with its private Env secret reference
-and exact repository assignment. Its service identity is
-`https://veoveo.example.com/oauth#lore-factory`, distinct from every human and native
-management identity. Supply the same reviewed client secret privately to native
-OpenShell's existing refresh custody and to the trusted Hub secret locator; neither
-belongs in the profile, image, factory environment/argv or Computer. The gateway's
-own trusted outbound access must reach the configured token URL. The factory does
-not fetch tokens or receive the client secret.
-
-For a new, operator-owned `vv-time-build` workspace (inspect existing objects before
-creating anything):
-
-```sh
-(
-  : "${VEOVEO_LORE_FACTORY_CLIENT_SECRET:?trusted dedicated client secret}"
-  export VEOVEO_LORE_FACTORY_CLIENT_SECRET
-  openshell profile lint --workspace vv-time-build \
-    --file openshell/providers/lore-time.example.yaml
-  openshell profile import --workspace vv-time-build \
-    --file openshell/providers/lore-time.example.yaml
-  openshell provider create --workspace vv-time-build --name vv-lore-time \
-    --type vv-lore-time --runtime-credentials
-  openshell provider refresh configure --workspace vv-time-build vv-lore-time \
-    --credential-key LORE_AUTH_TOKEN --strategy oauth2-client-credentials \
-    --material client_id=lore-factory \
-    --secret-material-env client_secret=VEOVEO_LORE_FACTORY_CLIENT_SECRET
-  openshell provider refresh rotate --workspace vv-time-build vv-lore-time \
-    --credential-key LORE_AUTH_TOKEN
-  openshell provider refresh status --workspace vv-time-build vv-lore-time \
-    --credential-key LORE_AUTH_TOKEN
-)
-```
-
-Initial rotation proves setup only, not renewal beyond expiry. The native factory
-receives its opaque `LORE_AUTH_TOKEN` reference and uses the existing native
-`lore --access-token` path under its admitted policy. Preserve the deterministic
-pinned revision/build/test/output workflow in [FACTORY_TIME.md](../openshell/FACTORY_TIME.md);
-the retired local direct-issuer helper is not part of this setup. Attach
-no human refresh grant, administrator/native-control provider, model credential or
-agent to the factory. Keep any existing member SDK preflight identity separate.
+The installation configures no factory client, secret or repository assignment.
+Hub registers one OAuth client per factory instance, whose identifier is the
+instance's deployment ID, and keeps only the digest of its secret. Its
+client-credentials grant issues a repository-scoped Lore token for the instance's
+latest pusher, admitted against that person's current assignment on every issue;
+the client requests no scope and holds no grant of its own. The gateway holds the
+secret in refresh custody and refreshes the token through the global profile
+[`vv-factory-lore`](../openshell/providers/factory-lore.yaml), which Hub's
+`factory.loreProfile` names. The sandbox receives only the provider's placeholder
+in `LORE_AUTH_TOKEN`, which its start command passes to `lore --access-token`.
+Install the profile as described in
+[Factory sandbox policy and providers](../kubernetes/README.md#factory-sandbox-policy-and-providers).
+Attach no human refresh grant, administrator/native-control provider, model
+credential or agent to a factory sandbox.
 
 ## Live publication and first cutover
 

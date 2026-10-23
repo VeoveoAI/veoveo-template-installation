@@ -41,16 +41,6 @@
         "kind": "hub"
       },
       "metadata": {}
-    },
-    {
-      "id": "lore-factory-client-secret",
-      "source": "env",
-      "purpose": "oauth_client_secret",
-      "locator": "VEOVEO_LORE_FACTORY_CLIENT_SECRET",
-      "owner": {
-        "kind": "hub"
-      },
-      "metadata": {}
     }
   ],
   "nativeUpstreams": {
@@ -131,13 +121,6 @@
         "tenant": "example",
         "principal": "https://identity.veoveo.example.com#bob",
         "actions": []
-      },
-      {
-        "deployment": "primary",
-        "repository": "11111111111111111111111111111111",
-        "tenant": "example",
-        "principal": "https://veoveo.example.com/oauth#lore-factory",
-        "actions": []
       }
     ]
   },
@@ -163,28 +146,6 @@
         "lore:login",
         "offline_access"
       ]
-    },
-    {
-      "id": "lore-factory",
-      "authorizationServer": "hub",
-      "defaultWorkContext": "default",
-      "invocationMode": "automated",
-      "displayName": "Exact-repository deterministic factory",
-      "allowedResources": [
-        "https://veoveo.example.com/resources/lore"
-      ],
-      "grantTypes": [
-        "client_credentials"
-      ],
-      "authMethods": [
-        "client_secret_post"
-      ],
-      "allowedScopes": [
-        "lore:login",
-        "offline_access"
-      ],
-      "credentialSecret": "lore-factory-client-secret",
-      "tenant": "example"
     },
     {
       "id": "computer-browser",

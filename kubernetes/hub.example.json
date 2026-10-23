@@ -40,16 +40,6 @@
         "kind": "hub"
       },
       "metadata": {}
-    },
-    {
-      "id": "lore-factory-client-secret",
-      "source": "env",
-      "purpose": "oauth_client_secret",
-      "locator": "VEOVEO_LORE_FACTORY_CLIENT_SECRET",
-      "owner": {
-        "kind": "hub"
-      },
-      "metadata": {}
     }
   ],
   "nativeUpstreams": {
@@ -57,12 +47,6 @@
     "certificateAuthority": "/run/openshell-supervisor-ca/material/ca.crt",
     "bearerEnvironment": "HUB_NATIVE_CONTROL_REFERENCE",
     "bindings": [
-      {
-        "endpoint": "http://time.internal:8800/time/mcp",
-        "workspace": "vv-services",
-        "sandbox": "time",
-        "port": 8800
-      },
       {
         "endpoint": "http://artifact.internal:8801/artifact/mcp",
         "workspace": "vv-services",
@@ -74,8 +58,54 @@
         "workspace": "vv-services",
         "sandbox": "media",
         "port": 8802
+      },
+      {
+        "endpoint": "http://console.internal:8805/console/mcp",
+        "workspace": "vv-services",
+        "sandbox": "console",
+        "port": 8805
       }
     ]
+  },
+  "execution": {
+    "defaultEnvironment": "01900000-0000-7000-8000-000000000001",
+    "environments": {
+      "01900000-0000-7000-8000-000000000001": {
+        "owner": {
+          "tenant": "example",
+          "principal": "https://identity.veoveo.example.com#alice"
+        },
+        "displayName": "Installation",
+        "readers": [],
+        "components": {}
+      }
+    },
+    "baseBranch": "main"
+  },
+  "factory": {
+    "gateway": {
+      "endpoint": "https://openshell.openshell.svc.cluster.local:8080",
+      "certificateAuthority": "/run/openshell-supervisor-ca/material/ca.crt",
+      "bearerEnvironment": "HUB_NATIVE_CONTROL_REFERENCE"
+    },
+    "workspace": "vv-factory",
+    "policyFile": "/etc/veoveo/hub/factory-base-v1.yaml",
+    "cpu": "4",
+    "memory": "8Gi",
+    "port": 8800,
+    "hubIssuer": "https://veoveo.example.com",
+    "loreServer": "grpcs://lore.veoveo-system.svc.cluster.local:41337",
+    "registrationProfile": "vv-factory-registration",
+    "loreProfile": "vv-factory-lore",
+    "imageBuilder": {
+      "buildkit": "tcp://buildkitd.veoveo-system.svc.cluster.local:1234",
+      "registry": "registry.veoveo-system.svc.cluster.local:5000",
+      "lore": "registry.veoveo-system.svc.cluster.local:5000/veoveo/lore@sha256:REPLACE_WITH_LORE_CLI_SHA256"
+    },
+    "caps": {
+      "instancesPerUser": 4,
+      "enforce": false
+    }
   },
   "lore": {
     "deployments": [
@@ -123,28 +153,6 @@
         "lore:login",
         "offline_access"
       ]
-    },
-    {
-      "id": "lore-factory",
-      "authorizationServer": "hub",
-      "defaultWorkContext": "default",
-      "invocationMode": "automated",
-      "displayName": "Exact-repository deterministic factory",
-      "allowedResources": [
-        "https://veoveo.example.com/resources/lore"
-      ],
-      "grantTypes": [
-        "client_credentials"
-      ],
-      "authMethods": [
-        "client_secret_post"
-      ],
-      "allowedScopes": [
-        "lore:login",
-        "offline_access"
-      ],
-      "credentialSecret": "lore-factory-client-secret",
-      "tenant": "example"
     },
     {
       "id": "computer-browser",

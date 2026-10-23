@@ -87,12 +87,20 @@ network_policies:
           path: /openshell.v1.OpenShell/StopSandbox
       - allow:
           method: POST
+          path: /openshell.v1.OpenShell/DeleteSandbox
+      - allow:
+          method: POST
           path: /openshell.v1.OpenShell/ConfigureProviderRefresh
       - allow:
           method: POST
           path: /openshell.v1.OpenShell/RotateProviderCredential
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/DeleteProvider
     binaries:
     - path: /usr/local/bin/veoveo-hub
+  # Lore for personal workspaces and factory watches (the Hub binary) and for reading a
+  # pushed revision's openshell/ as its pusher (Lore's command line in the Hub image).
   native_workspace:
     endpoints:
     - host: lore.veoveo-system.svc.cluster.local
@@ -102,6 +110,15 @@ network_policies:
     binaries:
     - path: /usr/local/bin/veoveo-hub
     - path: /usr/local/bin/lore
+  # BuildKit builds each branch's openshell/image/; buildctl runs as its own executable.
+  image_builder:
+    endpoints:
+    - host: buildkitd.veoveo-system.svc.cluster.local
+      port: 1234
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/buildctl
   browser_code_exchange:
     endpoints:
     - host: veoveo.example.com

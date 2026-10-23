@@ -1,4 +1,7 @@
-# Kubernetes Service and unchanged public issuer inputs; preserve exact native rules.
+# Console, the Hub MCP server, as a platform sandbox in vv-services. It calls Hub's
+# user routes as its caller and reads instance output from the log store, which the
+# factory base policy withholds from branch instances. Kubernetes Service and public
+# Hub authority inputs; replace veoveo.example.com with Hub's host.
 version: 1
 filesystem_policy:
   include_workdir: true
@@ -14,7 +17,7 @@ filesystem_policy:
   read_write:
   - /tmp
   - /dev/null
-  - /var/lib/veoveo/time
+  - /var/lib/veoveo/console
 network_policies:
   registration:
     endpoints:
@@ -24,13 +27,13 @@ network_policies:
       protocol: rest
       enforcement: enforce
       credential_binding:
-        provider: vv-time-registration
+        provider: vv-console-registration
       rules:
       - allow:
           method: POST
           path: /oauth/register
     binaries:
-    - path: /usr/local/bin/veoveo-mcp-time
+    - path: /usr/local/bin/veoveo-mcp-console
   hub_metadata:
     endpoints:
     - host: veoveo.example.com
@@ -61,6 +64,9 @@ network_policies:
           method: GET
           path: /oauth/register/*
       - allow:
+          method: PUT
+          path: /oauth/register/*
+      - allow:
           method: DELETE
           path: /oauth/register/*
     - host: veoveo.example.com
@@ -73,7 +79,35 @@ network_policies:
           method: POST
           path: /oauth/token
     binaries:
-    - path: /usr/local/bin/veoveo-mcp-time
+    - path: /usr/local/bin/veoveo-mcp-console
+  hub_routes:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /factory/**
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /factory/*/instance
+      - allow:
+          method: PUT
+          path: /factory/*/watch
+    - host: veoveo.example.com
+      port: 443
+      path: /selection/**
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: PUT
+          path: /selection/*/*
+      - allow:
+          method: DELETE
+          path: /selection/*/*
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-console
   database:
     endpoints:
     - host: veoveo-postgres-rw.veoveo-system.svc.cluster.local
@@ -81,4 +115,17 @@ network_policies:
       protocol: tcp
       tls: skip
     binaries:
-    - path: /usr/local/bin/veoveo-mcp-time
+    - path: /usr/local/bin/veoveo-mcp-console
+  log_store:
+    endpoints:
+    - host: victorialogs.veoveo-system.svc.cluster.local
+      port: 9428
+      path: /select/logsql/query
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /select/logsql/query
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-console

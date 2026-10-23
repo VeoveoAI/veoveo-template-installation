@@ -261,10 +261,11 @@ and the prepared Lore/factory build remain execution gates.
 
 ## Prepared Time factory
 
-The [prepared Time workflow](FACTORY_TIME.md) adds separate standard policies and
-profiles for a trusted source publisher and bounded factory. Historical fixture
-receipts remain separate. Do not publish source or run
-a model until the execution checklist has accepted deployed Hub/Time.
+Removed. The prepared Time workflow, its publisher and factory policies and the
+`vv-lore-time` profile used an installation-wide `lore-factory` Hub client. Factory
+sandboxes replace it: Hub serves each pushed branch from its own sandbox with a
+per-instance Lore client ([Kubernetes inputs](../kubernetes/README.md#factory-sandbox-policy-and-providers)).
+Historical fixture receipts remain in the execution checklist.
 
 ## Private Artifact follow-up
 

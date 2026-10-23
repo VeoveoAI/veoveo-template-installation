@@ -1,15 +1,19 @@
 # Maintained chart schema from 846de5fa01234a22827915b3f4e5b9092367078b.
-# additional_ca_bundle requires gateway fix f39b1fee81891646b57441d15d0d6e3a0c890385.
-# Admitted terminal-runtime recovery and GPU propagation require gateway 53e3665811a72dd1555edb18aeb4fedef4158dbd.
-# Expired native Kubernetes bundles require supervisor d7a990083214e8a618f05b1b471aeeac6d9aa82a.
-# REQUIRED private override: all three fork image registry/repository/digests,
-# OIDC issuer/audience/claim mappings, and installation gateway name if changed.
+# Gateway, supervisor and sandbox runtime are all built from OpenShell
+# a6ed0ab4119208d99fb3211fe64fb1d0e52adf10, which contains the additional_ca_bundle,
+# admitted terminal-runtime recovery, GPU propagation and expired-bundle supervisor
+# fixes, and are published to the installation's local registry as
+# veoveo/openshell/{gateway,supervisor,sandbox}. The node pulls them through its
+# registries.yaml entry; no image-pull Secret is used.
+# REQUIRED private override: the three image digests, OIDC issuer/audience/claim
+# mappings, and installation gateway name if changed.
 fullnameOverride: openshell
 replicaCount: 1
 workload:
   kind: deployment
-imagePullSecrets:
-  - name: registry-pull
+global:
+  image:
+    registry: registry.veoveo-system.svc.cluster.local:5000/veoveo
 gateway:
   image:
     digest: REPLACE_WITH_GATEWAY_SHA256
@@ -78,5 +82,3 @@ gatewayConfig:
     additional_ca_bundle: /etc/openshell/platform-ca/ca.crt
     allow_driver_config: true
     workspace_mode: managed
-    image_pull_secrets:
-      - registry-pull

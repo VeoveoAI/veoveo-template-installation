@@ -15,38 +15,42 @@ component pins below identify verified source revisions in the maintained Veoveo
 forks, not upstream release versions. Source selection alone is not build or
 deployment acceptance.
 
-- Factory toolchain: UID/GID 10001 installation commit
-  `983a9f915f480996c974d98e1519c6d1089cb6f4` or a reviewed descendant retaining
-  the deterministic factory boundary. Select its inspected immutable image digest.
-- Native Lore: source commit `6b7a0e598b8fbbaed82c777109135ddb25873bbf`, retaining
-  native OIDC refresh and S3/PostgreSQL storage. Build with the existing
+- Factory toolchain: this revision's [factory Dockerfile](../factory/Dockerfile),
+  UID/GID 10001, with the Hub SDK CLI at `b2304759b07f3e1d07cd1bf9ec9a182c6dcddd65`.
+  Rebuild it when that pin changes and select its inspected immutable image digest.
+- Native Lore: source commit `e2f04c909d596472bf3a2c555156d77e047f8393`, retaining
+  native OIDC refresh and S3/PostgreSQL storage and ending a lagging subscriber's
+  notification stream. Build with the existing
   [Lore Dockerfile](../factory/Lore.Dockerfile)
-  and the selected source/CA named contexts. Use the resulting immutable image ID.
+  and the selected source/CA named contexts. Use the resulting immutable image ID;
+  the same image is Hub's and every factory build's `lore` context.
 - OpenCode: source commit `c5fb62662c9c6fcb5064ef191956ca0da14e1af9`, including
   runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
   online-only UI, mounted-router navigation and route-relative titlebar history.
-  The earlier Linux reference image was
-  `registry.cloudflare.com/cd9522254303bfb3d2322a0d9b82764f/veoveo-computer@sha256:12c2ba83bd6f3dea715d1f8ab25ee20dd81dfb8145868f9a193f73cb4ce695d4`.
+  The earlier Linux reference image digest was
+  `sha256:12c2ba83bd6f3dea715d1f8ab25ee20dd81dfb8145868f9a193f73cb4ce695d4`.
   Both fresh owner homepages render. Direct mounted Settings, Back to app,
   New session and browser Back/Forward retain the Computer prefix. The final
   bounded exact-model acceptance passed; see the dated
   [qualification record](../kubernetes/README.md#reference-qualification-checkpoint--2026-10-20). Use the final reviewed native
   platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
-- Native OpenShell gateway/driver: `53e3665811a72dd1555edb18aeb4fedef4158dbd`,
-  retaining Kubernetes workspace persistence, connected-target forwarding readiness,
+- Native OpenShell gateway/driver, supervisor and sandbox runtime:
+  `a6ed0ab4119208d99fb3211fe64fb1d0e52adf10` for all three, which adds gRPC on
+  sandbox service routes to `53e3665811a72dd1555edb18aeb4fedef4158dbd`, retaining
+  Kubernetes workspace persistence, connected-target forwarding readiness,
   destination-CA staging, admitted GPU allocation propagation and native recovery
   of a terminated admitted supervisor under `always`/`on-failure`. Temporarily
   Pending Pods and stale controller status preserve running intent; fresh runtime
   generations replace terminal Pods while retaining supported persistent state.
-  The selected supervisor is
+  It contains the supervisor of
   `d7a990083214e8a618f05b1b471aeeac6d9aa82a`, retaining mediated HTTP/2 stream
   turnover and trusted gateway Service-DNS resolution, and renewing an expired
   native Kubernetes launch credential pair before policy discovery. Fresh bundles
   skip rebootstrap to avoid the initial runtime-binding persistence race. The
-  sandbox runtime remains
-  `846de5fa01234a22827915b3f4e5b9092367078b`. Select each component's reviewed
-  immutable image through native configuration. Both Kubernetes Pods deliberately
+  chart and sandbox runtime base is `846de5fa01234a22827915b3f4e5b9092367078b`.
+  Publish the three images to the local registry and select their digests through
+  native configuration. Both Kubernetes Pods deliberately
   use `Never`; host recovery uses fresh generations rather than restarting an old
   Pod with its expired bootstrap. The third Linux host reboot restored the owned
   `always` workloads without manual Starts; mounted browser navigation and the
@@ -68,7 +72,9 @@ docker image inspect --format '{{.Id}}' veoveo/computer:reviewed
 ```
 
 The Dockerfile has no fallback base image, package download or runtime self-update.
-Promote the inspected immutable image identity, never the example tag, into the
+Publish the image to the installation's
+[local registry](../kubernetes/README.md#logs-image-builder-and-registry) as
+`veoveo/computer` and promote its digest there, never the example tag, into the
 trusted native workload template. The inherited factory trust must cover both the
 private Lore service and the selected public/native endpoints. The Factory and
 Lore `ca` named contexts contain only reviewed public `*.crt` files, exactly one
@@ -122,7 +128,7 @@ fixed retry delay. Current browser-owner/session admission remains mandatory.
 The supported Linux path uses the private Kubernetes Lore Service at
 `grpcs://lore.veoveo-system.svc.cluster.local:41337`. Select that same endpoint in
 the versioned Computer template, Hub deployment data and
-[Kubernetes Computer policy](../kubernetes/policies/computer.yaml). The leaf must
+[Kubernetes Computer policy](../kubernetes/policies/computer-v1.yaml). The leaf must
 cover that Service DNS name and the image must trust its installation public CA;
 see [the Kubernetes trust inputs](../kubernetes/WORKLOADS.md#private-service-names-and-trust).
 No Compose-published port or host alias is needed for this Linux path.
@@ -158,7 +164,7 @@ provisioning failures retain files. Explicit Delete removes the exactly owned
 workspace volume. A crash during deletion can retain an orphan requiring native
 operator reconciliation; absence of a container is not evidence that files are
 disposable. User files remain scratch until pushed/uploaded, despite this routine
-lifecycle durability. Factory jobs remain separate deterministic executions.
+lifecycle durability. Factory sandboxes are separate: one per served branch.
 
 ## Credentials, endpoints and user login
 

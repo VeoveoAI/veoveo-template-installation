@@ -33,8 +33,6 @@ spec:
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
-      imagePullSecrets:
-      - name: registry-pull
       containers:
       - name: copy
         image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256

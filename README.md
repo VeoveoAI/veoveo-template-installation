@@ -45,12 +45,12 @@ A fresh installation must first provision identity credentials and external volu
 No agent joins bootstrap networks, mounts operator state or accesses Docker.
 
 `factory/` packages the native Lore CLI, a pinned Rust toolchain and the scoped
-Hub SDK client. Factories execute explicit build commands against published Lore
-revisions. OpenCode and model credentials belong in user Computers. The server
-uses native OIDC with its public CA trust and the existing hook extension. The
-first smoke factory's RPC policy is read-only. Build commands select the required
-patched sources;
-the [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md) records current acceptance.
+Hub SDK client as the base of user Computers. A pushed Lore branch of a server
+repository with `openshell/run` is served from its own factory sandbox, built from
+that repository's `openshell/image/`; the installation supplies the
+[base policy, provider profiles, log store, image builder and registry](kubernetes/README.md#factory-sandbox-policy-and-providers).
+OpenCode and model credentials belong in user Computers. The
+[execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md) records current acceptance.
 
 The [Entra reference](openshell/REFERENCE.md) retains identity contracts and
 historical Docker deployment receipts. Its Docker/Compose placement commands do
@@ -69,8 +69,8 @@ verified behavior from work still in progress.
 
 [Computer image and native configuration](computer/README.md) extend the reviewed
 factory toolchain with native OpenCode and user-owned Lore credentials. Persistent
-HOME/XDG state belongs in the native owner workspace; factories remain deterministic
-builders without agents or model credentials. These inputs require separate source,
+HOME/XDG state belongs in the native owner workspace; factory sandboxes run no
+agent and hold no model credentials. These inputs require separate source,
 image and deployed qualification.
 
 ## Scope and recovery

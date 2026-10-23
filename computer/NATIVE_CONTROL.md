@@ -149,13 +149,22 @@ Both policies allow only the Hub binary to POST these native RPC paths beneath
 | Workspace-local user/model custody | GetProvider, CreateProvider, ConfigureProviderRefresh, RotateProviderCredential |
 | Native Computer lifecycle | GetSandbox, CreateSandbox, StartSandbox, StopSandbox |
 | Optional owner-bound onboarding | ExecSandbox (existing `sandbox:write`, workspace user role) |
+| Factory sandbox removal and replacement (Kubernetes policy) | DeleteSandbox (`sandbox:write`), DeleteProvider (`provider:write`) |
 
 One enforced REST endpoint selects `/openshell.v1.OpenShell/**` at the native
-gateway authority, with the same provider binding and exactly the sixteen POST
-rules above. The service-root selector chooses the HTTP route; it does not grant
-additional RPCs. There is no wildcard allow rule, arbitrary browser-facing Exec, Delete, UpdateProvider,
-profile import or operator-only credential export. Profiles are installed separately
-by the trusted operator.
+gateway authority, with the same provider binding and exactly these POST rules:
+eighteen in the [Kubernetes policy](../kubernetes/policies/hub-computer-entra.example.yaml),
+the sixteen without the factory row in the Mac fixtures. The service-root selector
+chooses the HTTP route; it does not grant additional RPCs. There is no wildcard
+allow rule, arbitrary browser-facing Exec, UpdateConfig, UpdateProvider, profile
+import or operator-only credential export. Profiles are installed separately by the
+trusted operator.
+
+Factory sandboxes need no permission beyond the seven above. Hub creates, starts,
+stops and deletes them and their per-instance providers with the existing sandbox
+and provider permissions. A push whose sandbox policy is unchanged restarts the
+sandbox; a changed policy or image recreates it. Hub never updates a running
+sandbox's policy, so it calls no UpdateConfig and needs no `config:write`.
 
 Keep these RPC rules in one endpoint configuration. The native
 [HTTP/2 eligibility predicate](https://github.com/VeoveoAI/OpenShell/blob/9724fb1834dec157b4482a1da97338fd8ca1e50c/crates/openshell-supervisor-network/src/proxy/relay.rs#L45)
@@ -174,18 +183,21 @@ locally; no extra public JWKS egress is required for that path.
 
 Before rollout, use native policy parsing/ambiguity admission and profile linting.
 Confirm native policy construction produces one REST endpoint configuration, with
-exactly the sixteen POST allow rules and unchanged provider/binary bindings;
+exactly the POST allow rules above and unchanged provider/binary bindings;
 there must be no wildcard allow rule. These structural checks and the reviewed
 per-stream evaluator do not establish successful live RPCs or an observed denial.
 
 Deployment acceptance must verify TLS ALPN `h2`, actual issuer/audience/roles/scopes
 and the required RPCs with test-owned resources, including denial of an unlisted
-RPC such as `/openshell.v1.OpenShell/DeleteSandbox`. Also prove ordinary user
+RPC such as `/openshell.v1.OpenShell/UpdateConfig`. Also prove ordinary user
 data-plane identity separation, self PKCE exchange and native control renewal.
 These examples do not claim that an IdP client, provider, endpoint or deployed
 Computer exists, or that an unavailable CLI evaluator/prover was executed.
 
-The current Kubernetes Hub policy admits exactly `ExecSandbox` for the trusted
+The current Kubernetes Hub policy also admits BuildKit at
+`buildkitd.veoveo-system.svc.cluster.local:1234` for `/usr/local/bin/buildctl`, and
+Lore for both the Hub binary and `/usr/local/bin/lore`, which reads a pushed
+revision's `openshell/` as its pusher. It admits exactly `ExecSandbox` for the trusted
 onboarding hook. It validates the recorded owner workspace/sandbox and governance
 before writing the public repository descriptor. It does not run login or clone. This
 uses existing `sandbox:write`; no `sandbox:exec` scope is defined. It exposes no

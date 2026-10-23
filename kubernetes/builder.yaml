@@ -1,5 +1,6 @@
 # The image builder and the local registry. Hub builds each branch's openshell/image
-# with BuildKit over TCP and pushes it to the registry; the node pulls from the
+# with BuildKit over TCP and pushes it to the registry under factory/; the operator
+# publishes every Veoveo platform image to it under veoveo/. The node pulls from the
 # registry through its registries.yaml entry for the Service's fixed ClusterIP.
 apiVersion: v1
 kind: ConfigMap

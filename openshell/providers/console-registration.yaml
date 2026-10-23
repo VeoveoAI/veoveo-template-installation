@@ -1,0 +1,8 @@
+id: vv-console-registration
+display_name: Console initial registration
+credentials:
+  - name: initial_access_token
+    env_vars: [VEOVEO_REGISTRATION_SECRET]
+    required: true
+    auth_style: bearer
+    header_name: authorization

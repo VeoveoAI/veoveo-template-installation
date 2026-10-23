@@ -2,12 +2,12 @@
 ARG BASE=rust:1.99.0-trixie@sha256:6ff07edce8775d0f64be7aba9197229407301bddf2054d62c27b541a6238a181
 FROM ${BASE}
 USER root
-# Deterministic jobs use the component toolchain and native Lore CLI.
+# The base of Computers: the component toolchain and native Lore CLI.
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates protobuf-compiler libprotobuf-dev \
     && rm -rf /var/lib/apt/lists/* /var/log/apt /var/log/dpkg.log
-# Native SDK client for deterministic platform operations; SDK has no runtime image.
+# Native SDK client for platform operations; SDK has no runtime image.
 RUN cargo install --locked --git https://github.com/VeoveoAI/veoveo-hub-sdk \
-    --rev cc23dc97bbe60f83e95d6e9d0c8fdcc35742d5a2 --root /usr/local veoveo-hub-sdk-cli
+    --rev b2304759b07f3e1d07cd1bf9ec9a182c6dcddd65 --root /usr/local veoveo-hub-sdk-cli
 COPY --from=lore --chmod=0755 /usr/local/bin/lore /usr/local/bin/lore
 # The trusted named context contains reviewed public CA certificates only, one per file.
 COPY --from=ca --chmod=0644 /*.crt /usr/local/share/ca-certificates/

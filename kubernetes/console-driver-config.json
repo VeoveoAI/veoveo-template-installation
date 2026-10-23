@@ -1,0 +1,24 @@
+{
+  "kubernetes": {
+    "volumes": [
+      {
+        "name": "state",
+        "persistent_volume_claim": {
+          "claim_name": "console-state-v1",
+          "read_only": false
+        }
+      }
+    ],
+    "containers": {
+      "agent": {
+        "volume_mounts": [
+          {
+            "name": "state",
+            "mount_path": "/var/lib/veoveo/console",
+            "read_only": false
+          }
+        ]
+      }
+    }
+  }
+}

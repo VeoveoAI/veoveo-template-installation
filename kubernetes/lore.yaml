@@ -28,8 +28,6 @@ spec:
         app.kubernetes.io/name: lore
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: registry-pull
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
