@@ -66,6 +66,9 @@ network_policies:
           path: /openshell.v1.OpenShell/CreateSandboxTemplate
       - allow:
           method: POST
+          path: /openshell.v1.OpenShell/DeleteSandboxTemplate
+      - allow:
+          method: POST
           path: /openshell.v1.OpenShell/GetProvider
       - allow:
           method: POST

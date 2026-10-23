@@ -145,15 +145,16 @@ Both policies allow only the Hub binary to POST these native RPC paths beneath
 | Existing upstreams and Computer browser bytes | ForwardTcp |
 | Preinstalled global profiles and trusted template | GetProviderProfile, GetSandboxTemplate |
 | Backend discovery | GetGatewayInfo (`config:read`, platform admin) |
-| Per-owner workspace/template | GetWorkspace, CreateWorkspace, CreateSandboxTemplate |
+| Per-owner workspace/template | GetWorkspace, CreateWorkspace, CreateSandboxTemplate, DeleteSandboxTemplate (the clone is replaced at each new Computer version; Kubernetes policy) |
 | Workspace-local user/model custody | GetProvider, CreateProvider, ConfigureProviderRefresh, RotateProviderCredential |
 | Native Computer lifecycle | GetSandbox, CreateSandbox, StartSandbox, StopSandbox |
 | Factory sandbox removal and replacement (Kubernetes policy) | DeleteSandbox (`sandbox:write`), DeleteProvider (`provider:write`) |
 
 One enforced REST endpoint selects `/openshell.v1.OpenShell/**` at the native
 gateway authority, with the same provider binding and exactly these POST rules:
-seventeen in the [Kubernetes policy](../kubernetes/policies/hub-computer-entra.example.yaml),
-the fifteen without the factory row in the Mac fixtures. The service-root selector
+eighteen in the [Kubernetes policy](../kubernetes/policies/hub-computer-entra.example.yaml),
+the fifteen without the factory row and template replacement in the Mac fixtures, whose Docker driver
+cannot keep a Computer's home and so cannot replace it. The service-root selector
 chooses the HTTP route; it does not grant additional RPCs. There is no wildcard
 allow rule, arbitrary browser-facing Exec, UpdateConfig, UpdateProvider, profile
 import or operator-only credential export. Profiles are installed separately by the
