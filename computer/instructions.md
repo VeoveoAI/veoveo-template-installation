@@ -32,6 +32,15 @@ checkout's configured remote.
 Source reaches remote followers only after explicit commit and push, not file saves
 or local commits alone.
 
+## This Computer's version
+
+Call the Hub tool `console__computer` at the start of a session: it reports this
+Computer's version, the current one and what an update brings. If an update is
+available or was just installed, tell the person what's new in a line or two;
+restart only when the person asks, with `restart: true`. A restart keeps `~` and
+ends running programs, this session included; the Hub answers before it restarts.
+`COMPUTER_VERSION` names the version this Computer started at.
+
 ## Served branches
 
 A branch of a server repository that has `openshell/run` is served once it is

@@ -170,8 +170,10 @@ recreate the missing runtime with fresh native runtime identity. `/sandbox` is k
 across restarts: Stop/Start, provisioning failures and a native Delete that keeps
 the workspace retain it, and the next sandbox of the same name in the same
 workspace adopts the kept volume unchanged. The sandbox name comes from the
-Computer ID, so the Computer's URL stays too. An ordinary Delete removes the exactly
-owned workspace volume; that is how a Computer is removed for good. A crash during
+Computer ID, so the Computer's URL stays too. Hub never stops or starts a Computer:
+its first creation, a restart and an update all delete the sandbox keeping the
+workspace and create one at the version they start, which Hub records once it is
+ready. An ordinary Delete removes the exactly owned workspace volume; that is how a Computer is removed for good. A crash during
 deletion can retain an orphan requiring native operator reconciliation; absence of
 a container is not evidence that files are disposable. User files remain unpublished
 until pushed/uploaded, despite this lifecycle durability. Factory sandboxes are
@@ -235,8 +237,8 @@ identity through Hub's existing broker, Hub manages explicit live repository
 assignments and signs native claims, and unchanged Lore enforces its own contract.
 Each custody handoff gives the Computer's own Hub client a new secret in the
 gateway's `oauth2_client_credentials` refresh custody of the workspace-local
-`computer-lore` provider, created from global `vv-lore`, and rotates it before the
-sandbox starts. Each token is the owner's, with one native resource entry for every
+`computer-lore` provider, created from global `vv-lore`, and rotates it; a running
+sandbox's proxy uses the new token. Each token is the owner's, with one native resource entry for every
 repository the owner is assigned. The sandbox receives only the provider's
 placeholder in `LORE_ACCESS_TOKEN` and the owner's principal in `LORE_IDENTITY`,
 which the native Lore CLI reads; the proxy substitutes the token on the profile's
@@ -294,8 +296,9 @@ receipts. Existing source/image pins remain unchanged until coordinated review.
 ## Validation boundary
 
 Handbook changes are published through `computers.handbook` and reach clients on
-their next MCP connection; no image rebuild or restart is needed. Policy changes
-alone require no binary rebuild.
+their next MCP connection; no image rebuild or restart is needed. Template, policy and
+`computers` setting changes make a new Computer version, which each Computer takes at
+its owner's next restart; policy changes alone require no binary rebuild.
 
 Before promotion, validate the JSON with this fork's native OpenCode Config.Info
 schema after substituting synthetic opaque references; parse the policy through

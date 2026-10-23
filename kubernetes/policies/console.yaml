@@ -115,6 +115,23 @@ network_policies:
       - allow:
           method: POST
           path: /lore/*/repositories
+    # The caller's Computer, and the current Computer version, which the Hub serves to
+    # anyone and console names in the computer tool's description.
+    - host: veoveo.example.com
+      port: 443
+      path: /computer/**
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /computer/*/status
+      - allow:
+          method: POST
+          path: /computer/*/restart
+      - allow:
+          method: GET
+          path: /computer/version
     binaries:
     - path: /usr/local/bin/veoveo-mcp-console
   database:

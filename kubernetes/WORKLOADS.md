@@ -310,8 +310,22 @@ openshell profile import --global --from computer/providers
 openshell sandbox template create computer-v1 --workspace installation \
   --image "$COMPUTER_IMAGE_AT_DIGEST" --cpu 2 --memory 4Gi \
   --env SSL_CERT_DIR=/etc/ssl/certs \
-  --env VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337
+  --env VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337 \
+  --annotation "veoveo.ai/release-note=$COMPUTER_RELEASE_NOTE"
 ```
+
+The profiles and the template may come before or after Hub starts: Hub reads the
+template when a Computer is entered, and until it and the profiles exist, `/computer`
+says that Computers are unavailable and why. The template, the
+[policy](policies/computer-v1.yaml) and Hub's `computers` settings make the Computer
+version, a twelve-digit digest that `/computer`, the console's `computer` tool and
+each sandbox's `COMPUTER_VERSION` name. The optional `veoveo.ai/release-note`
+annotation is the version's release note; its first line is the summary agents tell
+the person. To publish a new version, delete the template and create it again under
+the same name with the new image, environment or note (OpenShell has no template
+update), or publish a new policy file or template name through the live control
+plane. Running Computers keep their version until their owners restart them; a new
+sandbox, such as the first one, starts at the current version.
 
 Each Computer's `computer-lore` provider uses the global `vv-lore` profile that
 `computers.loreProvider` names, imported with the
@@ -405,10 +419,10 @@ assignment through Hub's existing typed live control plane; no automatic grants.
 A factory sandbox reads its repository as the branch's latest pusher through its own
 per-instance Lore provider.
 
-Change templates/defaults by versioned native API references and live Hub
-publication. Existing Computers keep admitted snapshots unless explicitly replaced;
-adding/removing/registering services or changing grants does not restart Hub or
-unrelated workloads. Drain/reconnect active operations explicitly. Never replay a
+Change templates/defaults by native template replacement or versioned references and
+live Hub publication. Existing Computers keep their recorded version until their owner
+restarts them; adding/removing/registering services or changing grants does not
+restart Hub or unrelated workloads. Drain/reconnect active operations explicitly. Never replay a
 non-idempotent mutation automatically or promise zero downtime.
 
 ### Replacing one service image

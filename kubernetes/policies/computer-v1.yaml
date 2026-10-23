@@ -35,6 +35,27 @@ network_policies:
         allow_all_known_mcp_methods: true
     binaries:
     - path: /usr/local/bin/opencode
+  hub_computer:
+    # The Computer's own status and restart, for any program in it: the proxy puts the
+    # owner's Hub token in place of the COMPUTER_HUB_REFERENCE placeholder. The path's
+    # profile is the Hub's computers.profile.
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /computer/*/*
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: computer-hub
+      rules:
+      - allow:
+          method: GET
+          path: /computer/*/status
+      - allow:
+          method: POST
+          path: /computer/*/restart
+    binaries:
+    - path: /**
   model:
     endpoints:
     - host: api.deepinfra.com

@@ -30,8 +30,8 @@ must not inventory runtime sandboxes or force unrelated rollouts. Hub catalogs
 are database-authoritative: initial files seed only an empty installation. Live
 MCP request destinations, Computer defaults and explicit repository grants adopt
 through the admitted control-plane path, preserving active state on rejection.
-New versioned defaults affect future or explicitly replaced instances; existing
-Computers retain their admitted provisioning snapshot.
+New defaults make a new Computer version, which new sandboxes start at; an existing
+Computer keeps its recorded version until its owner restarts it.
 
 Trusted server configuration lives in operator-populated, admitted, workspace-local
 PVCs mounted read-only outside `/sandbox`. No caller Secret/ConfigMap/hostPath or
