@@ -255,7 +255,15 @@ never concatenate duplicate IDs or replace an existing active catalog with this
 bootstrap sample. Run the Hub binary's native validate/import commands against
 the **actual complete private input**, not a partial JSON subtree. Initial files
 seed only an empty installation; routine updates use the authenticated live
-`GET`/`PUT /admin/{profile}/control-plane` path and its current revision.
+`GET`/`PUT /admin/{profile}/control-plane` path and its current revision. A business
+admin role does not authorize that route: add an explicit rule to the complete
+input's `policies[].rules`, naming the route's `{profile}`:
+
+```json
+{"id": "installation-administration", "effect": "allow",
+ "actions": ["admin_read", "admin_write"], "profiles": ["local"],
+ "principalIds": ["<administrator principal>"], "tenantIds": ["<tenant>"]}
+```
 
 For a clean application database, keep the explicit default environment but seed
 its `components` as `{}` (or explicit unavailable selections). Concrete deployment

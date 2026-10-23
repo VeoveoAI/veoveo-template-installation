@@ -200,8 +200,19 @@ Tasks/Artifacts, configuration, native service credentials and unrelated service
 Routine repository/grant changes need no restart: read the current complete
 control plane through existing `GET /admin/{profile}/control-plane`, edit its typed
 records and publish through existing authenticated `PUT` on the same route. Use
-the installation's admitted administrative profile/client. For example, a trusted
-operator's private native curl config may hold its existing Authorization header:
+the installation's admitted administrative profile/client. A business admin role
+does not authorize these routes; the control plane needs an explicit Hub policy rule
+in `policies[].rules` whose `profiles` names the route's `{profile}` (`local` in the
+reference installation), for example:
+
+```json
+{"id": "installation-administration", "effect": "allow",
+ "actions": ["admin_read", "admin_write"], "profiles": ["local"],
+ "principalIds": ["<administrator principal>"], "tenantIds": ["<tenant>"]}
+```
+
+A trusted operator's private native curl config may hold its existing Authorization
+header:
 
 ```sh
 curl --config "$PRIVATE_HUB_ADMIN_CURL_CONFIG" --request PUT \
