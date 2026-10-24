@@ -302,14 +302,12 @@ needs an explicit rule in the complete input's `policies[].rules`, naming the ro
 Making someone an administrator is assigning them that Entra app role; Hub's `admin`
 installation role, with its risks, governs only server tool permissions.
 
-For a clean application database, keep the explicit default environment but seed
-its `components` as `{}` (or explicit unavailable selections). Concrete deployment
-selections must reference IDs already admitted by registration. The 2026-10-20
-reset exposed this ordering: preselecting unregistered deployment IDs caused Hub
-to exit with `selected deployment has not been admitted`, leaving the active
-revision unset. Start Hub from the trusted config claim, register the services,
-then enroll their actual admitted deployment IDs through the existing live
-control-plane revision/CAS path. This requires no Hub restart.
+There are no named environments and no enrollment step: a service that registers
+serves. Start Hub from the trusted config claim, then start the services; each
+registration routes its slug. When a new deployment of a slug registers beside an
+older one, the newest registration serves and Hub logs one WARN naming the deployment
+it set aside, so moving a service to a new deployment needs no gap. A redeploy that
+keeps its `VEOVEO_DEPLOYMENT_ID` stays the one deployment.
 
 ```sh
 openshell profile lint --global --from computer/providers
@@ -412,8 +410,8 @@ openshell sandbox create --workspace vv-services --name console --from "$CONSOLE
 ```
 
 `provider create --credential VEOVEO_REGISTRATION_SECRET` reads the namespace
-registration secret from the operator's environment, never from argv. Enroll the
-console's admitted deployment in the default environment like the other services.
+registration secret from the operator's environment, never from argv. Console serves
+once it registers, like the other services.
 
 Set `HUB_ORIGIN` to the Hub's actual public origin, such as
 `https://veoveo.example.com`. Console, Artifact and Media use that origin for

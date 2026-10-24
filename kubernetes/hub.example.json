@@ -73,18 +73,6 @@
     ]
   },
   "execution": {
-    "defaultEnvironment": "01900000-0000-7000-8000-000000000001",
-    "environments": {
-      "01900000-0000-7000-8000-000000000001": {
-        "owner": {
-          "tenant": "example",
-          "principal": "https://identity.veoveo.example.com#alice"
-        },
-        "displayName": "Installation",
-        "readers": [],
-        "components": {}
-      }
-    },
     "baseBranch": "main"
   },
   "factory": {
