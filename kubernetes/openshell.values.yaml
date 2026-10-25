@@ -3,9 +3,11 @@
 # published to the installation's local registry as
 # veoveo/openshell/{gateway,supervisor,sandbox}. The node pulls them through its
 # registries.yaml entry; no image-pull Secret is used.
-# Render privately: the three image digests, the identity provider's issuer and the
-# OpenShell resource application (the audience), shown here with the template's
-# example Entra identifiers, and the gateway name if changed.
+# The three digests come from component-lock.json's openshell-gateway,
+# openshell-supervisor and openshell-sandbox, which veoveo-installer fills in. Render
+# the identity provider's issuer and the OpenShell resource application (the
+# audience), shown here with the template's example Entra identifiers, and the gateway
+# name if changed.
 fullnameOverride: openshell
 replicaCount: 1
 workload:
@@ -15,13 +17,13 @@ global:
     registry: registry.veoveo-system.svc.cluster.local:5000/veoveo
 gateway:
   image:
-    digest: REPLACE_WITH_GATEWAY_SHA256
+    digest: "@digest:openshell-gateway@"
 supervisor:
   image:
-    digest: REPLACE_WITH_SUPERVISOR_SHA256
+    digest: "@digest:openshell-supervisor@"
 sandboxRuntime:
   image:
-    digest: REPLACE_WITH_SANDBOX_RUNTIME_SHA256
+    digest: "@digest:openshell-sandbox@"
 server:
   externalDbSecret: openshell-gateway-db
   extraVolumes:

@@ -420,10 +420,11 @@ a deleted sandbox's workspace for the next sandbox of its name and gives its roo
 the sandbox user; installs a credential refresh in place; and keeps the earlier
 Kubernetes destination-CA, admitted GPU propagation, terminal-runtime recovery and
 supervisor fixes and gRPC on sandbox service routes.
-[openshell.values.yaml](openshell.values.yaml) selects the registry; private values
-supply the three digests. Do not select stock images with the same tag. Record each
-image's digest in the installation's lock. Publishing a new supervisor does not move
-a running sandbox to it; each sandbox takes it at its next start.
+[openshell.values.yaml](openshell.values.yaml) selects the registry and takes the three
+digests from the lock's `openshell-gateway`, `openshell-supervisor` and
+`openshell-sandbox` (`@digest:<name>@`); private values supply only the identity
+provider. Do not select stock images with the same tag. Publishing a new supervisor
+does not move a running sandbox to it; each sandbox takes it at its next start.
 
 The supervisor retains the Kubernetes driver's declared ServiceAccount source.
 When either credential in the immutable launch bundle has expired, it uses native
@@ -517,7 +518,7 @@ rather than appending them. These inputs are not deployed TLS acceptance.
 ```sh
 helm upgrade --install openshell "$OPENSHELL_SOURCE/deploy/helm/openshell" \
   --namespace openshell -f kubernetes/openshell.values.yaml \
-  -f "$PRIVATE/openshell-images-and-identity.yaml"
+  -f "$PRIVATE/openshell-identity.yaml"
 ```
 
 The service endpoint is `https://openshell.openshell.svc.cluster.local:8080`.

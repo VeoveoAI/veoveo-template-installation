@@ -76,21 +76,34 @@ pub fn image(lock: &ComponentLock, name: &str) -> Result<String> {
         .ok_or_else(|| anyhow!("the component lock names no image {name}"))
 }
 
-/// Replaces every `@image:<name>@` with the lock's reference for `<name>`.
-pub fn fill(text: &str, lock: &ComponentLock) -> Result<String> {
-    const OPEN: &str = "@image:";
+fn replace(text: &str, open: &str, value: impl Fn(&str) -> Result<String>) -> Result<String> {
     let mut filled = String::with_capacity(text.len());
     let mut rest = text;
-    while let Some(start) = rest.find(OPEN) {
+    while let Some(start) = rest.find(open) {
         filled.push_str(&rest[..start]);
-        let after = &rest[start + OPEN.len()..];
+        let after = &rest[start + open.len()..];
         let end = after
             .find('@')
-            .ok_or_else(|| anyhow!("an @image: placeholder is not closed"))?;
-        filled.push_str(&image(lock, &after[..end])?);
+            .ok_or_else(|| anyhow!("an {open} placeholder is not closed"))?;
+        filled.push_str(&value(&after[..end])?);
         rest = &after[end + 1..];
     }
     filled.push_str(rest);
+    Ok(filled)
+}
+
+/// Replaces every `@image:<name>@` with the lock's reference for `<name>`, and every
+/// `@digest:<name>@` with its digest alone, for a file such as a chart's values that
+/// names an image's repository and digest apart.
+pub fn fill(text: &str, lock: &ComponentLock) -> Result<String> {
+    let filled = replace(text, "@image:", |name| image(lock, name))?;
+    let filled = replace(&filled, "@digest:", |name| {
+        let reference = image(lock, name)?;
+        Ok(reference
+            .split_once('@')
+            .map(|(_, digest)| digest.to_owned())
+            .unwrap_or(reference))
+    })?;
     if let Some(line) = filled.lines().find(|line| line.contains(RENDER_MARKER)) {
         bail!("it holds the unrendered marker in {:?}", line.trim());
     }
@@ -132,6 +145,19 @@ pub(crate) mod tests {
             format!(
                 r#"{{"lore": "registry.example.com:5000/veoveo/lore@{DIGEST}", "cli": "registry.example.com:5000/veoveo/hub-sdk-cli@{DIGEST}"}}"#
             )
+        );
+    }
+
+    #[test]
+    fn a_digest_placeholder_takes_the_locked_digest_alone() {
+        let filled = fill(
+            "gateway:\n  image:\n    digest: \"@digest:lore@\"\n",
+            &lock(),
+        )
+        .unwrap();
+        assert_eq!(
+            filled,
+            format!("gateway:\n  image:\n    digest: \"{DIGEST}\"\n")
         );
     }
 

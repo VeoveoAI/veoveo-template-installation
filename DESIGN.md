@@ -313,7 +313,8 @@ repository files, a Helm release and its values files, OpenShell workspaces, pro
 profiles, templates and sandboxes, and last Hub's control plane with the files of Hub's
 trusted claim that come from this repository. The order is the dependency order apply
 takes. A file names an image as `@image:<name>@`, which the installer fills from the
-lock; a file still holding a `REPLACE_WITH_` marker is not ready and is not compared.
+lock, or its digest alone as `@digest:<name>@`, as a chart's values do; a file still
+holding a `REPLACE_WITH_` marker is not ready and is not compared.
 The private directory, mode `0700`, holds `private.toml`: the Kubernetes context and
 OpenShell CLI sign-in the operator uses, where the Hub sign-in is kept (the Hub SDK
 CLI's grant directory unless it names another), the private values files layered over
