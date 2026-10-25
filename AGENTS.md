@@ -9,6 +9,10 @@
 - The installation's design is in [DESIGN.md](DESIGN.md) and the platform's in the
   [architecture](https://github.com/VeoveoAI/veoveo-docs/blob/main/ARCHITECTURE.md). Change the design in the same change as the
   configuration it describes.
+- The substrate, what `installation.toml` declares, changes only through
+  `veoveo-installer plan` and `apply` ([installer/README.md](installer/README.md)),
+  never by hand with `kubectl`, `helm` or `openshell`. Run `plan` first. Only the
+  manual steps the [Kubernetes guide](kubernetes/README.md) keeps are done by hand.
 - Linux deployment uses K3s foundation controllers and OpenShell's native Kubernetes
   driver for Hub/MCP, Computer and factory workloads. Mac remains ordinary source
   development/testing with local fixtures; do not provision a Mac cluster. Use native
