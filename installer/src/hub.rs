@@ -122,7 +122,7 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
     let subject = format!("Hub's trusted files in {}", claim.directory);
     let files = match claim_files(inputs, claim) {
         Ok(files) => files,
-        Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
+        Err(error) => return vec![Item::unusable(subject, &error)],
     };
     let present = match gateway
         .sandbox_exists(&claim.workspace, &claim.sandbox)
@@ -809,21 +809,11 @@ pub(crate) async fn compare_with_hub(
 pub async fn plan(inputs: &Inputs, hub: &Hub, gateway: Option<&Gateway>) -> Vec<Item> {
     let seed = match declared_seed(inputs, hub) {
         Ok(seed) => seed,
-        Err(error) => {
-            return vec![Item::new(
-                "control plane",
-                State::NotCompared(format!("{error:#}")),
-            )];
-        }
+        Err(error) => return vec![Item::unusable("control plane", &error)],
     };
     let origin = match origin(&seed, &hub.profile) {
         Ok(origin) => origin,
-        Err(error) => {
-            return vec![Item::new(
-                "control plane",
-                State::NotCompared(format!("{error:#}")),
-            )];
-        }
+        Err(error) => return vec![Item::unusable("control plane", &error)],
     };
     let subject = format!("control plane at {origin}");
     let Some(gateway) = gateway else {
@@ -918,14 +908,14 @@ pub async fn plan(inputs: &Inputs, hub: &Hub, gateway: Option<&Gateway>) -> Vec<
             Some(revision) => format!("control plane at {origin}, active revision {revision}"),
             None => subject,
         };
-        let item = Item::new(
+        let item = Item::deferred(
             subject,
-            State::NotCompared(format!(
+            format!(
                 "Hub reads the files the declared control plane names when it validates it, and the claim step writes {} first; apply has Hub validate the document then, and publishes it unless Hub refuses it",
                 unwritten.join(", ")
-            )),
-        )
-        .with_action(publish);
+            ),
+            publish,
+        );
         (active, item)
     };
     let mut items = vec![item];

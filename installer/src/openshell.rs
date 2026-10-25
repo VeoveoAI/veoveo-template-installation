@@ -178,12 +178,7 @@ impl Gateway {
                 .map_err(|error| anyhow!("{error}"))
         }) {
             Ok(stored) => stored,
-            Err(error) => {
-                return Item::new(
-                    profile.file.display().to_string(),
-                    State::NotCompared(format!("{error:#}")),
-                );
-            }
+            Err(error) => return Item::unusable(profile.file.display().to_string(), &error),
         };
         let source = profile.file.display().to_string();
         // Through the protobuf form the gateway stores, so defaults compare as stored.
@@ -254,7 +249,7 @@ impl Gateway {
         let subject = format!("template {}/{}", template.workspace, template.name);
         let declared = match template_proto(inputs, template, None) {
             Ok(declared) => declared,
-            Err(error) => return Item::new(subject, State::NotCompared(format!("{error:#}"))),
+            Err(error) => return Item::unusable(subject, &error),
         };
         let request = proto::GetSandboxTemplateRequest {
             name: template.name.clone(),
@@ -304,9 +299,7 @@ impl Gateway {
             .and_then(|create| requested_sandbox(&create).map(|declared| (create, declared)))
         {
             Ok(declared) => declared,
-            Err(error) => {
-                return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))];
-            }
+            Err(error) => return vec![Item::unusable(subject, &error)],
         };
         let replace = |exists| Action::ReplaceSandbox {
             workspace: sandbox.workspace.clone(),

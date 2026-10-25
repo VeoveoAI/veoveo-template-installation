@@ -121,21 +121,14 @@ pub fn check_matches(step: &StepPlan) -> Result<()> {
     let left: Vec<&Item> = step
         .items
         .iter()
-        .filter(|item| {
-            matches!(
-                item.state,
-                State::Absent { .. } | State::Differs { .. } | State::Unread(_) | State::Refused(_)
-            )
-        })
+        // What runs but is not declared is not this step's.
+        .filter(|item| !item.matches() && !matches!(item.state, State::Undeclared(_)))
         .collect();
     if left.is_empty() {
         return Ok(());
     }
     let mut evidence = StepPlan::new(step.position, &step.name, step.owner, Vec::new());
-    evidence.items = left
-        .into_iter()
-        .map(|item| Item::new(item.subject.clone(), clone_state(&item.state)))
-        .collect();
+    evidence.items = left.into_iter().cloned().collect();
     let rendered = crate::plan::Plan {
         steps: vec![evidence],
     }
@@ -144,21 +137,6 @@ pub fn check_matches(step: &StepPlan) -> Result<()> {
         "after its changes, step {} still does not match:\n{rendered}",
         step.name
     )
-}
-
-fn clone_state(state: &State) -> State {
-    match state {
-        State::Same => State::Same,
-        State::Absent { note } => State::Absent { note: note.clone() },
-        State::Differs { differences, note } => State::Differs {
-            differences: differences.clone(),
-            note: note.clone(),
-        },
-        State::Refused(reason) => State::Refused(reason.clone()),
-        State::Undeclared(note) => State::Undeclared(note.clone()),
-        State::Unread(reason) => State::Unread(reason.clone()),
-        State::NotCompared(reason) => State::NotCompared(reason.clone()),
-    }
 }
 
 async fn execute(inputs: &Inputs, connections: &mut Connections, action: &Action) -> Result<()> {
@@ -376,5 +354,35 @@ mod tests {
             error.contains("image: declared \"computer@sha256:2\", active \"computer@sha256:1\""),
             "{error}"
         );
+    }
+
+    #[test]
+    fn a_step_whose_change_is_still_deferred_or_unusable_stops_apply() {
+        let deferred = StepPlan::new(
+            19,
+            "hub-control-plane",
+            "Hub",
+            vec![Item::deferred(
+                "control plane at https://hub.example",
+                "the claim step writes factory-base-0123456789ab.yaml first",
+                Action::CreateWorkspace("vv-control".into()),
+            )],
+        );
+        let error = check_matches(&deferred).unwrap_err().to_string();
+        assert!(
+            error.contains("not compared: the claim step writes"),
+            "{error}"
+        );
+        let unusable = StepPlan::new(
+            9,
+            "templates",
+            "OpenShell",
+            vec![Item::new(
+                "template installation/computer-v1",
+                State::Unusable("kubernetes/computer-driver-config.json is not JSON".into()),
+            )],
+        );
+        let error = check_matches(&unusable).unwrap_err().to_string();
+        assert!(error.contains("declaration not usable"), "{error}");
     }
 }

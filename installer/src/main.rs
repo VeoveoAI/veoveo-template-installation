@@ -26,9 +26,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Show, in apply's order, what differs between this repository and what runs, and
-    /// what could not be read. Changes nothing. Exits 0 when everything was read and
-    /// matches, 2 otherwise.
+    /// Show, in apply's order, what differs between this repository and what runs, what
+    /// could not be read and what apply still has to do. Changes nothing. Exits 0 when
+    /// everything was read and matches, what it deliberately does not compare, such as
+    /// a seed Job, counting as matching; 2 otherwise.
     Plan {
         /// Plan only this step; repeat for several.
         #[arg(long = "step")]

@@ -340,9 +340,16 @@ keys and the handbook, leaving out the members people change (grants, Work Conte
 memberships, output owners and initial grants, repositories and assignments), which a
 publication carries from the active revision, so the seed's example people, such as
 its example output owner, are never published; and Hub's trusted files, read in Hub's
-sandbox through native exec. It lists, in step order, what differs and what it could
-not read, and succeeds only when everything was read and matches. A seed Job runs
-once and is deleted, so plan does not read the claim it fills.
+sandbox through native exec. It lists, in step order, what differs, what it could not
+read and what apply still has to do, and succeeds only when everything was read and
+matches. What plan deliberately does not compare counts as matching and is not listed:
+a seed Job, which runs once and is deleted, so plan does not read the claim it fills;
+a file still holding a `REPLACE_WITH_` marker; and the control plane of a first
+installation, whose Hub does not run yet. The control plane while the claim step has
+still to write a file it names is not compared either, but apply still has its
+publication to make, so it is listed and its step does not match. An error never
+counts as matching: a declaration that cannot be read or filled, or a piece whose
+running state cannot be read, fails plan and keeps apply from changing anything.
 
 `veoveo-installer apply` makes only those changes, in dependency order, checks each one
 (readiness, registration with Hub, the standard probes) and stops at the first failure

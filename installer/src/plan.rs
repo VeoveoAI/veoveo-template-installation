@@ -1,5 +1,11 @@
 //! A plan: for each declared step, in order, what differs between this repository and
-//! what runs. Rendering shows only what differs or could not be read.
+//! what runs. Rendering shows only what differs, what could not be read and what apply
+//! still has to do.
+//!
+//! What plan deliberately does not compare (a seed Job, a file still holding a render
+//! marker, a first installation's control plane) counts as matching, unless apply still
+//! has work for it. An error, in reading or filling this repository's declaration or in
+//! reading what runs, never does: it fails plan and keeps apply from changing anything.
 
 use std::fmt::Write as _;
 
@@ -22,7 +28,7 @@ pub struct StepPlan {
 }
 
 /// One declared thing and how it stands.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Item {
     /// What it is, such as `StatefulSet veoveo-system/registry` or `sandbox vv-control/hub`.
     pub subject: String,
@@ -31,7 +37,7 @@ pub struct Item {
     pub action: Option<Action>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum State {
     /// What runs is what this repository declares.
     Same,
@@ -48,7 +54,12 @@ pub enum State {
     Undeclared(String),
     /// What runs could not be read, so it was not compared.
     Unread(String),
-    /// Deliberately not compared, and why.
+    /// This repository's declaration of it could not be read or filled, so it was not
+    /// compared.
+    Unusable(String),
+    /// Deliberately not compared, and why: a seed Job, a file still holding a render
+    /// marker, Hub's control plane before Hub first runs, or before the claim step has
+    /// written a file it names. Never an error.
     NotCompared(String),
 }
 
@@ -69,15 +80,36 @@ impl Item {
         self
     }
 
+    /// Not compared yet, since an earlier step's change must come first, but with work
+    /// for apply, which makes it once that change is made: its step does not match.
+    pub fn deferred(subject: impl Into<String>, reason: impl Into<String>, action: Action) -> Self {
+        Self {
+            subject: subject.into(),
+            state: State::NotCompared(reason.into()),
+            action: Some(action),
+        }
+    }
+
     /// Why apply cannot go ahead with this item, if it cannot.
     pub fn blocker(&self) -> Option<String> {
         match (&self.state, &self.action) {
             (State::Unread(reason), _) => Some(format!("not read: {reason}")),
+            (State::Unusable(reason), _) => Some(format!("declaration not usable: {reason}")),
             (State::Refused(reason), _) => Some(format!("refused: {reason}")),
             (State::Absent { .. } | State::Differs { .. }, None) => {
                 Some("it differs and apply has no change for it".to_owned())
             }
             _ => None,
+        }
+    }
+
+    /// Whether it counts as matching: what runs is what this repository declares, or it
+    /// is deliberately not compared and apply has nothing to do for it.
+    pub fn matches(&self) -> bool {
+        match self.state {
+            State::Same => true,
+            State::NotCompared(_) => self.action.is_none(),
+            _ => false,
         }
     }
 
@@ -99,8 +131,16 @@ impl Item {
         Self::new(subject, State::Unread(reason.to_string()))
     }
 
-    fn reported(&self) -> bool {
-        !matches!(self.state, State::Same)
+    /// A declaration that could not be read or filled. A file that still holds a render
+    /// marker is not ready and deliberately not compared; anything else is an error.
+    pub fn unusable(subject: impl Into<String>, error: &anyhow::Error) -> Self {
+        let reason = format!("{error:#}");
+        let state = if crate::inputs::is_unrendered(error) {
+            State::NotCompared(reason)
+        } else {
+            State::Unusable(reason)
+        };
+        Self::new(subject, state)
     }
 }
 
@@ -115,9 +155,7 @@ impl StepPlan {
     }
 
     pub fn matches(&self) -> bool {
-        self.items
-            .iter()
-            .all(|item| matches!(item.state, State::Same))
+        self.items.iter().all(Item::matches)
     }
 }
 
@@ -140,7 +178,8 @@ impl Plan {
             .collect()
     }
 
-    /// The ordered list of what differs and what could not be read.
+    /// The ordered list of what differs, what could not be read and what apply still
+    /// has to do.
     pub fn render(&self) -> String {
         let mut out = String::new();
         let total = self.steps.len();
@@ -149,7 +188,7 @@ impl Plan {
                 continue;
             }
             let _ = writeln!(out, "{}. {} ({})", step.position, step.name, step.owner);
-            for item in step.items.iter().filter(|item| item.reported()) {
+            for item in step.items.iter().filter(|item| !item.matches()) {
                 render_item(&mut out, item);
             }
             out.push('\n');
@@ -187,6 +226,9 @@ fn render_item(out: &mut String, item: &Item) {
         }
         State::Unread(reason) => {
             let _ = writeln!(out, "   ! {subject}: not read: {reason}");
+        }
+        State::Unusable(reason) => {
+            let _ = writeln!(out, "   ! {subject}: declaration not usable: {reason}");
         }
         State::NotCompared(reason) => {
             let _ = writeln!(out, "   - {subject}: not compared: {reason}");
@@ -433,6 +475,7 @@ mod tests {
                     Item::compared("unchangeable", differs(), None),
                     Item::unread("control plane", "no sign-in"),
                     Item::new("object", State::Refused("immutable field".into())),
+                    Item::new("Hub seed", State::Unusable("the seed is not JSON".into())),
                 ],
             )],
         };
@@ -453,6 +496,10 @@ mod tests {
                     "not read: no sign-in".to_owned()
                 ),
                 ("object".to_owned(), "refused: immutable field".to_owned()),
+                (
+                    "Hub seed".to_owned(),
+                    "declaration not usable: the seed is not JSON".to_owned()
+                ),
             ]
         );
         assert!(
@@ -469,11 +516,184 @@ mod tests {
             plan.render(),
             "2. registry (Kubernetes)\n   \
              ~ StatefulSet veoveo-system/registry\n       \
-             image: declared \"registry@sha256:1\", active \"registry@sha256:2\"\n   \
-             - Job veoveo-system/seed: not compared: a Job runs once\n\n\
+             image: declared \"registry@sha256:1\", active \"registry@sha256:2\"\n\n\
              3. hub (Hub)\n   \
              ! control plane: not read: no sign-in to https://hub.example for profile local\n\n\
              1 of 3 steps match this repository.\n"
+        );
+    }
+
+    /// Step 12 of Bioma's installation as plan reported it, with every claim the same:
+    /// it listed only its eight seed Jobs, which plan does not compare.
+    fn recorded_workspace_storage() -> StepPlan {
+        let deleted = "a seed Job runs once and is deleted; plan does not read its claim";
+        let mut items: Vec<Item> = [
+            "openshell-openshell-vv-control/hub-config-v1",
+            "openshell-openshell-vv-control/postgres-client-ca-v1",
+            "openshell-openshell-vv-services/postgres-client-ca-v1",
+            "openshell-openshell-vv-services/console-state-v1",
+            "openshell-openshell-vv-services/artifact-state-v1",
+            "openshell-openshell-vv-services/artifact-config-v1",
+            "openshell-openshell-vv-services/media-state-v1",
+            "openshell-openshell-vv-services/media-config-v1",
+            "openshell-openshell-vv-services/media-provider-config-v1",
+            "openshell-openshell-vv-services/embedding-state-v1",
+            "openshell-openshell-vv-services/embedding-runtime-config-v1",
+            "openshell-openshell-vv-services/embedding-model-cache-v1",
+        ]
+        .into_iter()
+        .map(|claim| Item::compared(format!("PersistentVolumeClaim {claim}"), vec![], None))
+        .collect();
+        items.extend(
+            [
+                "openshell-openshell-vv-control/seed-hub-config-v1",
+                "openshell-openshell-vv-control/seed-postgres-client-ca-v1",
+                "openshell-openshell-vv-services/seed-postgres-client-ca-v1",
+                "openshell-openshell-vv-services/seed-artifact-config-v1",
+                "openshell-openshell-vv-services/seed-media-config-v1",
+                "openshell-openshell-vv-services/seed-media-provider-config-v1",
+                "openshell-openshell-vv-services/seed-embedding-runtime-config-v1",
+                "openshell-openshell-vv-services/seed-embedding-model-cache-v1",
+            ]
+            .into_iter()
+            .map(|job| Item::new(format!("Job {job}"), State::NotCompared(deleted.into()))),
+        );
+        StepPlan::new(12, "workspace-storage", "Kubernetes", items)
+    }
+
+    #[test]
+    fn seed_jobs_alone_match() {
+        let step = recorded_workspace_storage();
+        assert!(step.matches());
+        let plan = Plan { steps: vec![step] };
+        assert!(plan.matches());
+        assert!(plan.blockers().is_empty());
+        assert_eq!(plan.render(), "1 of 1 steps match this repository.\n");
+        // A seed Job takes no action: apply never runs one as an ordinary object.
+        let job = Item::new("Job x/seed", State::NotCompared("a seed Job".into())).with_action(
+            Action::ApplyObject {
+                object: json!({}),
+                remove: Vec::new(),
+                restart: Vec::new(),
+            },
+        );
+        assert!(job.action.is_none() && job.matches());
+    }
+
+    #[test]
+    fn an_error_blocks_apply_and_fails_plan() {
+        let mut storage = recorded_workspace_storage();
+        // A manifest that cannot be read, beside the seed Jobs.
+        storage.items.push(Item::unusable(
+            "kubernetes/seed-embedding-cache.yaml",
+            &anyhow::anyhow!("No such file or directory (os error 2)")
+                .context("cannot read kubernetes/seed-embedding-cache.yaml"),
+        ));
+        let plan = Plan {
+            steps: vec![
+                StepPlan::new(
+                    2,
+                    "cilium",
+                    "Helm",
+                    vec![Item::unusable(
+                        "release kube-system/cilium",
+                        &anyhow::anyhow!(
+                            "cannot read the private values file /private/cilium-node.yaml"
+                        ),
+                    )],
+                ),
+                StepPlan::new(
+                    11,
+                    "workspaces",
+                    "OpenShell",
+                    vec![Item::compared("workspace vv-control", vec![], None)],
+                ),
+                storage,
+                StepPlan::new(
+                    13,
+                    "profiles",
+                    "OpenShell",
+                    vec![Item::unread(
+                        "global profile vv-lore",
+                        "the stored profile is not a provider profile",
+                    )],
+                ),
+            ],
+        };
+        assert!(!plan.matches());
+        let blockers: Vec<(String, String)> = plan
+            .blockers()
+            .into_iter()
+            .map(|(step, subject, _)| (step, subject))
+            .collect();
+        assert_eq!(
+            blockers,
+            [
+                ("cilium".to_owned(), "release kube-system/cilium".to_owned()),
+                (
+                    "workspace-storage".to_owned(),
+                    "kubernetes/seed-embedding-cache.yaml".to_owned()
+                ),
+                ("profiles".to_owned(), "global profile vv-lore".to_owned()),
+            ]
+        );
+        // The seed Jobs stay out of the list; the error is in it.
+        assert_eq!(
+            plan.render(),
+            "2. cilium (Helm)\n   \
+             ! release kube-system/cilium: declaration not usable: cannot read the private values file /private/cilium-node.yaml\n\n\
+             12. workspace-storage (Kubernetes)\n   \
+             ! kubernetes/seed-embedding-cache.yaml: declaration not usable: cannot read kubernetes/seed-embedding-cache.yaml: No such file or directory (os error 2)\n\n\
+             13. profiles (OpenShell)\n   \
+             ! global profile vv-lore: not read: the stored profile is not a provider profile\n\n\
+             1 of 4 steps match this repository.\n"
+        );
+    }
+
+    #[test]
+    fn a_file_still_holding_a_marker_is_not_compared_and_matches() {
+        let error = crate::inputs::fill(
+            "image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256\n",
+            &crate::inputs::tests::lock(),
+        )
+        .unwrap_err()
+        .context("kubernetes/hub-config-pvc.yaml cannot be filled");
+        let item = Item::unusable("kubernetes/hub-config-pvc.yaml", &error);
+        assert!(matches!(item.state, State::NotCompared(_)), "{item:?}");
+        assert!(item.matches() && item.blocker().is_none());
+        // Any other failure to fill a file is an error.
+        let error = crate::inputs::fill("image: @image:postgres@\n", &crate::inputs::tests::lock())
+            .unwrap_err();
+        let item = Item::unusable("kubernetes/postgres.yaml", &error);
+        assert!(matches!(item.state, State::Unusable(_)), "{item:?}");
+        assert_eq!(
+            item.blocker().as_deref(),
+            Some("declaration not usable: the component lock names no image postgres")
+        );
+    }
+
+    #[test]
+    fn a_deferred_item_is_not_compared_but_its_step_does_not_match() {
+        let publish = Action::CreateWorkspace("vv-control".into());
+        let step = StepPlan::new(
+            19,
+            "hub-control-plane",
+            "Hub",
+            vec![Item::deferred(
+                "control plane at https://hub.example, active revision r1",
+                "the claim step writes factory-base-0123456789ab.yaml first",
+                publish,
+            )],
+        );
+        assert!(!step.matches());
+        let plan = Plan { steps: vec![step] };
+        assert!(plan.blockers().is_empty());
+        assert_eq!(
+            plan.render(),
+            "19. hub-control-plane (Hub)\n   \
+             - control plane at https://hub.example, active revision r1: not compared: the claim step writes factory-base-0123456789ab.yaml first\n       \
+             -> apply: create workspace vv-control\n\n\
+             0 of 1 steps match this repository.\n"
         );
     }
 

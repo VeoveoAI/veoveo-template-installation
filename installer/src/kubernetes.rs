@@ -46,7 +46,10 @@ const SERVER_ANNOTATIONS: [&str; 2] = [
 #[derive(Debug)]
 pub enum Declared {
     Object(Value),
-    Unusable { subject: String, reason: String },
+    Unusable {
+        subject: String,
+        error: anyhow::Error,
+    },
 }
 
 /// The objects a step declares, in file order.
@@ -57,7 +60,7 @@ pub fn declared(inputs: &Inputs, objects: &KubernetesObjects) -> Vec<Declared> {
             Ok(object) => declared.push(Declared::Object(object)),
             Err(error) => declared.push(Declared::Unusable {
                 subject: format!("ConfigMap {}/{}", config_map.namespace, config_map.name),
-                reason: format!("{error:#}"),
+                error,
             }),
         }
     }
@@ -69,7 +72,7 @@ pub fn declared(inputs: &Inputs, objects: &KubernetesObjects) -> Vec<Declared> {
             Ok(objects) => declared.extend(objects.into_iter().map(Declared::Object)),
             Err(error) => declared.push(Declared::Unusable {
                 subject: manifest.display().to_string(),
-                reason: format!("{error:#}"),
+                error,
             }),
         }
     }
@@ -78,7 +81,7 @@ pub fn declared(inputs: &Inputs, objects: &KubernetesObjects) -> Vec<Declared> {
             Ok(objects) => declared.extend(objects.into_iter().map(Declared::Object)),
             Err(error) => declared.push(Declared::Unusable {
                 subject: directory.display().to_string(),
-                reason: format!("{error:#}"),
+                error,
             }),
         }
     }
@@ -183,9 +186,7 @@ impl Cluster {
                     let restart = restart.get(&subject(&object)).cloned().unwrap_or_default();
                     self.plan_object(object, restart).await
                 }
-                Declared::Unusable { subject, reason } => {
-                    Item::new(subject, State::NotCompared(reason))
-                }
+                Declared::Unusable { subject, error } => Item::unusable(subject, &error),
             });
         }
         items

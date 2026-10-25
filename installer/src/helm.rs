@@ -28,15 +28,15 @@ pub async fn plan(inputs: &Inputs, release: &HelmRelease) -> Vec<Item> {
     let subject = format!("release {}/{}", release.namespace, release.release);
     let (layers, files) = match layers(inputs, release) {
         Ok(layers) => layers,
-        Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
+        Err(error) => return vec![Item::unusable(subject, &error)],
     };
     let declared = match declared_values(&layers) {
         Ok(values) => values,
-        Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
+        Err(error) => return vec![Item::unusable(subject, &error)],
     };
     let unfilled = match unfilled(inputs, release) {
         Ok(values) => values,
-        Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
+        Err(error) => return vec![Item::unusable(subject, &error)],
     };
     // The chart composes each image from the values and its own defaults, which the values
     // do not repeat.

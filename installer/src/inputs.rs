@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Context, Result, anyhow};
 use veoveo_installation_contract::{ComponentLock, ImageName};
 
 use crate::{declaration::Declaration, private::Private};
@@ -15,6 +15,30 @@ pub const LOCK_FILE: &str = "component-lock.json";
 /// A marker the template leaves for the operator to render; a file holding one is not
 /// ready to compare.
 const RENDER_MARKER: &str = "REPLACE_WITH_";
+
+/// A file that still holds a render marker: not ready, so deliberately not compared,
+/// unlike a file that cannot be read or filled.
+#[derive(Debug)]
+pub struct Unrendered {
+    pub line: String,
+}
+
+impl std::fmt::Display for Unrendered {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "it holds the unrendered marker in {:?}, so it is not ready",
+            self.line
+        )
+    }
+}
+
+impl std::error::Error for Unrendered {}
+
+/// Whether `error` is, or was caused by, a file that still holds a render marker.
+pub fn is_unrendered(error: &anyhow::Error) -> bool {
+    error.chain().any(|cause| cause.is::<Unrendered>())
+}
 
 pub struct Inputs {
     pub repository: PathBuf,
@@ -105,7 +129,10 @@ pub fn fill(text: &str, lock: &ComponentLock) -> Result<String> {
             .unwrap_or(reference))
     })?;
     if let Some(line) = filled.lines().find(|line| line.contains(RENDER_MARKER)) {
-        bail!("it holds the unrendered marker in {:?}", line.trim());
+        return Err(Unrendered {
+            line: line.trim().to_owned(),
+        }
+        .into());
     }
     Ok(filled)
 }
@@ -178,5 +205,11 @@ pub(crate) mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("unrendered marker"), "{error}");
+        // Through the context a file adds, it is still a file that is not ready.
+        let error = error.context("kubernetes/postgres.yaml cannot be filled");
+        assert!(is_unrendered(&error));
+        assert!(!is_unrendered(&anyhow!(
+            "cannot read kubernetes/postgres.yaml"
+        )));
     }
 }
