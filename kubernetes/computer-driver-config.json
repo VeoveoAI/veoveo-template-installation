@@ -1,0 +1,34 @@
+{
+  "kubernetes": {
+    "volumes": [
+      {
+        "name": "lore",
+        "image": {
+          "reference": "@image:lore@"
+        }
+      },
+      {
+        "name": "hub-sdk-cli",
+        "image": {
+          "reference": "@image:hub-sdk-cli@"
+        }
+      }
+    ],
+    "containers": {
+      "agent": {
+        "volume_mounts": [
+          {
+            "name": "lore",
+            "mount_path": "/opt/veoveo/lore",
+            "read_only": true
+          },
+          {
+            "name": "hub-sdk-cli",
+            "mount_path": "/opt/veoveo/hub-sdk-cli",
+            "read_only": true
+          }
+        ]
+      }
+    }
+  }
+}

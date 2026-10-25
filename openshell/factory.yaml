@@ -23,4 +23,4 @@ network_policies:
           - allow: {method: POST, path: /lore.storage.v1.StorageService/MutableLoad}
           - allow: {method: POST, path: /urc.rpc.RepositoryService/Info}
     binaries:
-      - path: /usr/local/bin/lore
+      - path: /opt/veoveo/lore/usr/local/bin/lore

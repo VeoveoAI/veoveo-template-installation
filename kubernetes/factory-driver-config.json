@@ -1,0 +1,23 @@
+{
+  "kubernetes": {
+    "volumes": [
+      {
+        "name": "lore",
+        "image": {
+          "reference": "@image:lore@"
+        }
+      }
+    ],
+    "containers": {
+      "agent": {
+        "volume_mounts": [
+          {
+            "name": "lore",
+            "mount_path": "/opt/veoveo/lore",
+            "read_only": true
+          }
+        ]
+      }
+    }
+  }
+}

@@ -16,15 +16,19 @@ forks, not upstream release versions. Source selection alone is not build or
 deployment acceptance.
 
 - Factory toolchain: this revision's [factory Dockerfile](../factory/Dockerfile),
-  UID/GID 10001, with the Hub SDK CLI at `b2304759b07f3e1d07cd1bf9ec9a182c6dcddd65`.
-  Rebuild it when that pin changes and select its inspected immutable image digest.
+  UID/GID 10001. Select its inspected immutable image digest.
 - Native Lore: source commit `bd9da2128acd83963b7168d63af7401409867bc7`, retaining
   native OIDC refresh and S3/PostgreSQL storage, ending a lagging subscriber's
   notification stream and reading `LORE_ACCESS_TOKEN` and `LORE_IDENTITY` when their
   flags are absent, which Computers and factory sandboxes need. Build with the existing
   [Lore Dockerfile](../factory/Lore.Dockerfile)
-  and the selected source/CA named contexts. Use the resulting immutable image ID;
-  the same image is Hub's and every factory build's `lore` context.
+  and the selected source/CA named contexts. It is no build context of the Computer
+  image: the Computer template mounts the Lore image read-only, as Hub and every
+  factory sandbox do, and the installation names it once in
+  [component-lock.json](../component-lock.json).
+- Hub SDK CLI: the `cli` target of the SDK's Dockerfile, an image holding only
+  `/usr/local/bin/veoveo-hub-sdk-cli`, which the Computer template mounts read-only
+  beside Lore and the lock names the same way.
 - OpenCode: source commit `c5fb62662c9c6fcb5064ef191956ca0da14e1af9`, including
   runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
   online-only UI, mounted-router navigation and route-relative titlebar history.
@@ -66,7 +70,6 @@ With the reviewed IDs and package directory supplied in the operator environment
 ```sh
 docker buildx build --platform "$COMPUTER_PLATFORM" --load \
   --build-context "factory=docker-image://$COMPUTER_FACTORY_IMAGE" \
-  --build-context "lore=docker-image://$COMPUTER_LORE_IMAGE" \
   --build-context "opencode=$COMPUTER_OPENCODE_PACKAGE" \
   -f computer/Dockerfile -t veoveo/computer:reviewed .
 docker image inspect --format '{{.Id}}' veoveo/computer:reviewed
@@ -106,7 +109,10 @@ The operator imports the global, nonsecret native provider profiles and creates 
 trusted workload template using the existing authenticated native CLI. The example
 below selects the **Mac Docker development fixture**; Linux Kubernetes uses the
 [automatic-PVC template command](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
-without the Docker driver-config flag:
+with its [Kubernetes driver configuration](../kubernetes/computer-driver-config.json),
+which mounts Lore at `/opt/veoveo/lore` and the Hub SDK CLI at
+`/opt/veoveo/hub-sdk-cli`. OpenShell's Docker driver has no image volumes, so the
+Mac fixture's Computer has neither CLI:
 
 ```sh
 openshell profile lint --global --from computer/providers

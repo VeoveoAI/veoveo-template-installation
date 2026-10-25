@@ -196,8 +196,9 @@ Computer exists, or that an unavailable CLI evaluator/prover was executed.
 
 The current Kubernetes Hub policy also admits BuildKit at
 `buildkitd.veoveo-system.svc.cluster.local:1234` for `/usr/local/bin/buildctl`, and
-Lore for both the Hub binary and `/usr/local/bin/lore`, which reads a pushed
-revision's `openshell/` as its pusher. It admits no `ExecSandbox`: Hub never runs a
+Lore for both the Hub binary and `/opt/veoveo/lore/usr/local/bin/lore`, the Lore image
+mounted read-only into Hub's sandbox, which reads a pushed revision's `openshell/` as
+its pusher. It admits no `ExecSandbox`: Hub never runs a
 command in, or writes into, a Computer, whose `/sandbox` is its owner's home. The
 Mac forwarder/provisioner fixtures keep their RPC list; select the actual native
 endpoint/policy together.

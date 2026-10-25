@@ -2,8 +2,9 @@
 # branch's latest pusher or the Computer's owner. The gateway refreshes it with the
 # instance's or the Computer's own Hub client, which issues tokens for that person
 # and the instance's repository or every repository the owner is assigned; Lore
-# decides what each call may do. Lore's command line reads the placeholder from
-# LORE_ACCESS_TOKEN. Replace veoveo.example.com with Hub's host.
+# decides what each call may do. Lore's command line, mounted read-only from the Lore
+# image at /opt/veoveo/lore, reads the placeholder from LORE_ACCESS_TOKEN; only that
+# binary receives the credential. Replace veoveo.example.com with Hub's host.
 id: vv-lore
 display_name: Lore access as a person
 credentials:
@@ -31,4 +32,4 @@ endpoints:
     rules:
       - allow: {method: POST, path: /**}
 binaries:
-  - /usr/local/bin/lore
+  - /opt/veoveo/lore/usr/local/bin/lore

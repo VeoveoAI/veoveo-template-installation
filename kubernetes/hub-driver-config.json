@@ -14,6 +14,12 @@
           "claim_name": "postgres-client-ca-v1",
           "read_only": true
         }
+      },
+      {
+        "name": "lore",
+        "image": {
+          "reference": "@image:lore@"
+        }
       }
     ],
     "containers": {
@@ -27,6 +33,11 @@
           {
             "name": "postgres-ca",
             "mount_path": "/etc/veoveo/tls",
+            "read_only": true
+          },
+          {
+            "name": "lore",
+            "mount_path": "/opt/veoveo/lore",
             "read_only": true
           }
         ]

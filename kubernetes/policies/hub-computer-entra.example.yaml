@@ -12,6 +12,7 @@ filesystem_policy:
   - /dev/urandom
   - /var/log
   - /var/lib/veoveo
+  - /opt/veoveo/lore
   read_write:
   - /tmp
   - /dev/null
@@ -83,7 +84,8 @@ network_policies:
     binaries:
     - path: /usr/local/bin/veoveo-hub
   # Lore for repository creation and factory watches (the Hub binary) and for reading a
-  # pushed revision's openshell/ as its pusher (Lore's command line in the Hub image).
+  # pushed revision's openshell/ as its pusher (Lore's command line, the read-only image
+  # volume of hub-driver-config.json).
   native_workspace:
     endpoints:
     - host: lore.veoveo-system.svc.cluster.local
@@ -92,7 +94,7 @@ network_policies:
       tls: skip
     binaries:
     - path: /usr/local/bin/veoveo-hub
-    - path: /usr/local/bin/lore
+    - path: /opt/veoveo/lore/usr/local/bin/lore
   # BuildKit builds each branch's openshell/image/; buildctl runs as its own executable.
   image_builder:
     endpoints:

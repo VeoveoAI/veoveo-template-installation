@@ -171,7 +171,8 @@ Our own (Veoveo-built) images come only from this registry; public third-party
 images stay at their upstream registries, pinned by digest. Every Veoveo image is
 rebuilt from source and published under `veoveo/`: the OpenShell gateway, supervisor
 and sandbox runtime (`veoveo/openshell/{gateway,supervisor,sandbox}`, all from one
-OpenShell revision), Hub, Lore, the PostgreSQL extension image, the factory base,
+OpenShell revision), Hub, Lore, the Hub SDK CLI (`veoveo/hub-sdk-cli`, the SDK
+Dockerfile's `cli` target), the PostgreSQL extension image, the factory base,
 Computer, Artifact, Media, the Media fixture provider, Embedding and its runtime.
 Hub pushes environment images under `factory/`; registry cleanup touches only those.
 Push from the build host through a port-forward; the `localhost:5000` push is the
@@ -186,9 +187,46 @@ docker push "localhost:5000/veoveo/$NAME:$REVISION"   # prints the digest
 
 Local-registry pulls need no credentials, so no image-pull Secret exists in any
 namespace. Apply this registry and the node entry before any Veoveo workload,
-PostgreSQL included. Hub's own policy admits BuildKit for `/usr/local/bin/buildctl`;
-the Lore CLI image that factory builds copy as their `lore` context is
-`veoveo/lore` in this registry, pinned by digest in Hub's `factory.imageBuilder.lore`.
+PostgreSQL included. Hub's own policy admits BuildKit for `/usr/local/bin/buildctl`,
+which builds each branch's environment image from its `openshell/image/` alone.
+
+### Naming each image once
+
+Lore's command line and the Hub SDK CLI reach the workloads that use them only from
+their own images, mounted read-only as Kubernetes image volumes: the Lore image
+(`veoveo/lore`, [Lore.Dockerfile](../factory/Lore.Dockerfile)'s `runtime` target,
+which the Lore server also runs) at `/opt/veoveo/lore` in Hub, every Computer and every
+factory sandbox, and the SDK CLI image at `/opt/veoveo/hub-sdk-cli` in Computers. Their
+binaries are `/opt/veoveo/lore/usr/local/bin/lore` and
+`/opt/veoveo/hub-sdk-cli/usr/local/bin/veoveo-hub-sdk-cli`, the paths the policies and
+the `vv-lore` profile name.
+
+[component-lock.json](../component-lock.json) names each of these images once, under
+`images`, by digest in the local registry. The files that use one carry its
+placeholder, `@image:lore@` or `@image:hub-sdk-cli@`: [lore.yaml](lore.yaml) and the
+[Hub](hub-driver-config.json), [Computer](computer-driver-config.json) and
+[factory](factory-driver-config.json) driver configurations. Fill them into private
+copies; this is the only way a digest enters them, and it refuses an image that is not
+pinned by digest:
+
+```sh
+jq -er '.images | to_entries[] |
+  if (.value | test("^[^@]+@sha256:[0-9a-f]{64}$")) then "s|@image:\(.key)@|\(.value)|g"
+  else error("\(.key) is not pinned by digest in component-lock.json") end' \
+  component-lock.json > "$PRIVATE/images.sed"
+for file in lore.yaml hub-driver-config.json computer-driver-config.json factory-driver-config.json; do
+  sed -f "$PRIVATE/images.sed" "kubernetes/$file" > "$PRIVATE/$file"
+done
+! grep -n '@image:' "$PRIVATE/lore.yaml" "$PRIVATE"/*-driver-config.json
+```
+
+Upgrading Lore builds and publishes one image, puts its digest in the lock and fills
+the files again. Then apply `lore.yaml`, recreate Hub with the new Hub driver
+configuration, and publish the Computer and factory templates again: Hub uses the new
+Lore when it restarts, each Computer as a new Computer version when its owner restarts
+it, and each factory instance when its next push recreates its sandbox. OpenShell's
+resource admission refuses image volumes, so the installation's gateway runs with it
+disabled ([openshell.values.yaml](openshell.values.yaml)) and with `allow_driver_config`.
 
 ## Factory sandbox policy and providers
 

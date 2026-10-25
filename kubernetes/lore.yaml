@@ -37,7 +37,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: lore
-          image: REPLACE_WITH_NATIVE_LORE_IMAGE_AT_SHA256
+          # Filled from component-lock.json; see README.md#naming-each-image-once.
+          image: "@image:lore@"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

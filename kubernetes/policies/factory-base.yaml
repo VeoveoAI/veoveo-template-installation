@@ -1,14 +1,16 @@
 # Base policy of every factory sandbox. The branch's checkout lives in /sandbox/src,
 # where its build puts the server it runs. The Lore and registration endpoints, with
 # their credentials, come from the attached providers of the vv-lore and
-# vv-factory-registration profiles. Factory sandboxes have open internet access: every name of three or more
-# labels plus the two-label names in use, on ports 80 and 443. Inspected rules for
-# exact hosts, such as Hub's, still apply to those hosts, and OpenShell keeps private
-# addresses closed to wildcard rules. Replace veoveo.example.com with Hub's host.
+# vv-factory-registration profiles; Lore's command line is the read-only image volume
+# of factory-driver-config.json. Factory sandboxes have open internet access: every
+# name of three or more labels plus the two-label names in use, on ports 80 and 443.
+# Inspected rules for exact hosts, such as Hub's, still apply to those hosts, and
+# OpenShell keeps private addresses closed to wildcard rules. Replace
+# veoveo.example.com with Hub's host.
 version: 1
 filesystem_policy:
   include_workdir: true
-  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log]
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log, /opt/veoveo/lore]
   read_write: [/sandbox, /tmp, /dev/null]
 network_policies:
   hub_metadata:

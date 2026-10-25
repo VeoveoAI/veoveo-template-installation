@@ -74,8 +74,9 @@ kubectl -n veoveo-system create secret generic lore-storage \
 kubectl apply -f "$PRIVATE/lore.yaml"
 ```
 
-The private manifest replaces only the explicit image marker with the verified
-Linux image digest. A single Lore process owns its native local locks; the small
+The private manifest is `lore.yaml` with its image
+[filled](README.md#naming-each-image-once) from the lock, the same Lore image that Hub,
+Computers and factory sandboxes mount. A single Lore process owns its native local locks; the small
 PVC holds its HOME/temp/local lock paths. Repository storage stays in native
 S3/PostgreSQL. A TCP readiness probe proves only a listening socket.
 
@@ -314,11 +315,15 @@ openshell profile lint --global --from computer/providers
 openshell profile import --global --from computer/providers
 openshell sandbox template create computer-v1 --workspace installation \
   --image "$COMPUTER_IMAGE_AT_DIGEST" --cpu 2 --memory 4Gi \
+  --driver-config-json "$(cat "$PRIVATE/computer-driver-config.json")" \
   --env SSL_CERT_DIR=/etc/ssl/certs \
   --env VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337 \
   --annotation "veoveo.ai/release-note=$COMPUTER_RELEASE_NOTE"
 ```
 
+The template's driver configuration, [filled](README.md#naming-each-image-once) from
+the lock, mounts the Lore and Hub SDK CLI images read-only at `/opt/veoveo/lore` and
+`/opt/veoveo/hub-sdk-cli`, whose binary directories the Computer image puts on `PATH`.
 The profiles and the template may come before or after Hub starts: Hub reads the
 template when a Computer is entered, and until it and the profiles exist, `/computer`
 says that Computers are unavailable and why. The template, the
@@ -332,8 +337,8 @@ lets any program in a Computer call them with the owner's Hub token, and
 caller and read the public `GET /computer/version`. The optional `veoveo.ai/release-note`
 annotation is the version's release note; its first line is the summary agents tell
 the person. To publish a new version, delete the template and create it again under
-the same name with the new image, environment or note (OpenShell has no template
-update), or publish a new policy file or template name through the live control
+the same name with the new image, environment, mounts or note (OpenShell has no
+template update), or publish a new policy file or template name through the live control
 plane. Running Computers keep their version until their owners restart them; a new
 sandbox, such as the first one, starts at the current version.
 
@@ -359,7 +364,9 @@ each clone with native ownership. Hub checks the actual selected driver through
 read-only config claims outside `/sandbox` remain supported.
 
 Start Hub using the reviewed Hub image/policy/provider and
-`--driver-config-json "$(cat kubernetes/hub-driver-config.json)"`, retaining the
+`--driver-config-json "$(cat "$PRIVATE/hub-driver-config.json")"`, the
+[filled](README.md#naming-each-image-once) configuration that also mounts the Lore image
+Hub reads pushed revisions with, retaining the
 existing trusted native command that loads `/etc/veoveo/hub/hub.env` and execs the
 Hub binary. Long-running Hub/MCP sandboxes explicitly select
 `--restart-policy always`; native default `Never` is unsuitable. Expose the same
@@ -392,7 +399,7 @@ launch path uses these installation inputs:
 openshell sandbox create --workspace vv-control --name hub --from "$HUB_IMAGE_AT_DIGEST" \
   --policy kubernetes/policies/hub-computer-entra.example.yaml \
   --provider vv-hub-native-control --no-auto-providers \
-  --driver-config-json "$(cat kubernetes/hub-driver-config.json)" \
+  --driver-config-json "$(cat "$PRIVATE/hub-driver-config.json")" \
   --restart-policy always --detach --env SSL_CERT_DIR=/etc/veoveo/tls -- \
   /bin/sh -ec 'set -a; . /etc/veoveo/hub/hub.env; set +a; exec /usr/local/bin/veoveo-hub serve --allow-loopback-hosts'
 openshell service expose --workspace vv-control hub 8080 http \

@@ -121,8 +121,11 @@ and selected-backend fresh-process reopen before claiming upgrade acceptance. Do
 payloads and verifies remote fetches by default. No data reset or migration is
 performed by these source/build instructions.
 
-Build the Lore CLI from the same shared source export created above, then package
-it with the Rust toolchain and scoped Hub SDK client selected by `factory/Dockerfile`:
+Build the Lore CLI image from the same shared source export created above, and the
+Rust toolchain selected by `factory/Dockerfile`. The factory image no longer carries
+Lore or the Hub SDK client: on Kubernetes, workloads mount their images read-only, and
+OpenShell's Docker driver has no image volumes, so this superseded native-Docker path
+has no Lore in its factory or Computer images:
 
 ```bash
 (
@@ -132,7 +135,6 @@ docker build -f factory/Lore.Dockerfile --target runtime \
   --build-context lore-source=./state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3 \
   --build-context ca=./tls/ca -t veoveo/lore-client:local .
 docker build -f factory/Dockerfile \
-  --build-context lore=docker-image://veoveo/lore-client:local \
   --build-context ca=./tls/ca -t veoveo/factory:local factory
 )
 ```

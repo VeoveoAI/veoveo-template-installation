@@ -21,5 +21,9 @@
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-media",
       "revision": "392c2c1000c2b96fb8ee823bbf0996444c547623"
     }
-  ]
+  ],
+  "images": {
+    "lore": "registry.veoveo-system.svc.cluster.local:5000/veoveo/lore@sha256:REPLACE_WITH_LORE_IMAGE_DIGEST",
+    "hub-sdk-cli": "registry.veoveo-system.svc.cluster.local:5000/veoveo/hub-sdk-cli@sha256:REPLACE_WITH_HUB_SDK_CLI_IMAGE_DIGEST"
+  }
 }

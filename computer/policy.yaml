@@ -59,7 +59,7 @@ network_policies:
         # Lore starts TLS immediately; preserve its end-to-end gRPC handshake.
         tls: skip
     binaries:
-      - path: /usr/local/bin/lore
+      - path: /opt/veoveo/lore/usr/local/bin/lore
   lore_identity:
     # Native public-client OAuth through Hub's existing issuer. These REST paths
     # are disjoint from managed /mcp/computer; no transparent TCP to this authority.
@@ -94,4 +94,4 @@ network_policies:
         rules:
           - allow: {method: GET, path: /oauth/jwks.json}
     binaries:
-      - path: /usr/local/bin/lore
+      - path: /opt/veoveo/lore/usr/local/bin/lore

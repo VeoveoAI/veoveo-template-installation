@@ -44,8 +44,8 @@ workload egress follows native OpenShell policy and credential mediation.
 A fresh installation must first provision identity credentials and external volumes.
 No agent joins bootstrap networks, mounts operator state or accesses Docker.
 
-`factory/` packages the native Lore CLI, a pinned Rust toolchain and the scoped
-Hub SDK client as the base of user Computers. A pushed Lore branch of a server
+`factory/` packages a pinned Rust toolchain as the base of user Computers, which mount
+the Lore CLI and the Hub SDK client from their own images. A pushed Lore branch of a server
 repository with `openshell/run` is served from its own factory sandbox, built from
 that repository's `openshell/image/`; the installation supplies the
 [base policy, provider profiles, log store, image builder and registry](kubernetes/README.md#factory-sandbox-policy-and-providers).

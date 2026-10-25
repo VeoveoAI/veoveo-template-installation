@@ -56,4 +56,4 @@ network_policies:
           method: POST
           path: /urc.rpc.RepositoryService/Info
     binaries:
-    - path: /usr/local/bin/lore
+    - path: /opt/veoveo/lore/usr/local/bin/lore
