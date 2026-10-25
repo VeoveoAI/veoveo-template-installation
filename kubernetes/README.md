@@ -95,8 +95,8 @@ newline, and use the same credential in the Secret and in application input.
 URI-encode it when building a database URL:
 
 ```sh
-python3 -c 'import pathlib, secrets, sys; pathlib.Path(sys.argv[1]).write_bytes(secrets.token_urlsafe(48).encode("ascii"))' \
-  "$PRIVATE/lore-db.password"
+(umask 077; openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n' \
+  > "$PRIVATE/lore-db.password")
 ```
 
 Check each file before creating its Secret: `tail -c1 "$PRIVATE/lore-db.password" | od -An -c`
