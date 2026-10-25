@@ -1,5 +1,8 @@
 # Native Media preparation
 
+**Mac development fixture.** This guide runs on the Mac's native OpenShell gateway
+with its Docker driver. The Linux path is K3s only: [K3s foundation](../kubernetes/README.md) and [native workload bootstrap](../kubernetes/WORKLOADS.md).
+
 These are installation and qualification instructions; the
 [Media execution record](https://github.com/VeoveoAI/veoveo-docs/blob/main/records/OPENSHELL_HARDCUT_PLAN.md#media-native-integration-plan)
 records actual deployed evidence and remaining gates. Preserve the qualified Time/Artifact paths, existing

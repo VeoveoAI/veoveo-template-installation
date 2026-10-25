@@ -392,20 +392,21 @@ tunnel, and never rewrite the public host to Service DNS.
 
 ## Native OpenShell gateway
 
-Build the gateway, supervisor and sandbox runtime from maintained OpenShell source
-`a6ed0ab4119208d99fb3211fe64fb1d0e52adf10` with OpenShell's own image workflow and
-publish all three to the [local registry](#logs-image-builder-and-registry) as
+Build the chart's gateway, supervisor and sandbox runtime from maintained OpenShell
+source `491b3503d39f3ba83a25a309f52e52e20e304b03` with OpenShell's own image workflow
+and publish all three to the [local registry](#logs-image-builder-and-registry) as
 `veoveo/openshell/gateway`, `veoveo/openshell/supervisor` and
-`veoveo/openshell/sandbox`. That revision is `53e3665811a72dd1555edb18aeb4fedef4158dbd`
-plus gRPC on sandbox service routes, a change to `openshell-server` only; it contains
-the Kubernetes destination-CA, admitted GPU propagation and terminal-runtime recovery
-fixes, the supervisor fixes of `d7a990083214e8a618f05b1b471aeeac6d9aa82a` and the
-chart/runtime base `846de5fa01234a22827915b3f4e5b9092367078b`.
+`veoveo/openshell/sandbox`. That revision mounts digest-pinned images from listed
+repositories as read-only image volumes, which the Lore and Hub SDK CLI mounts need;
+records each sandbox's last network activity, which Computer collection reads; keeps
+a deleted sandbox's workspace for the next sandbox of its name and gives its root to
+the sandbox user; installs a credential refresh in place; and keeps the earlier
+Kubernetes destination-CA, admitted GPU propagation, terminal-runtime recovery and
+supervisor fixes and gRPC on sandbox service routes.
 [openshell.values.yaml](openshell.values.yaml) selects the registry; private values
 supply the three digests. Do not select stock images with the same tag. Record each
-image's digest. The 2026-10-20 reference ran gateway `53e3665`, supervisor `d7a99008`
-and sandbox runtime `846de5fa`, built separately. Source selection or publication
-does not prove that every existing generation has adopted the selected supervisor.
+image's digest in the installation's lock. Publishing a new supervisor does not move
+a running sandbox to it; each sandbox takes it at its next start.
 
 The supervisor retains the Kubernetes driver's declared ServiceAccount source.
 When either credential in the immutable launch bundle has expired, it uses native
@@ -417,7 +418,7 @@ Docker/standalone credentials keep their existing path. This changes neither
 native Lore authentication nor its Hub-issued grants.
 
 The earlier reboot attempts exposed driver-written suspension of running workloads.
-The `53e3665` gateway was deployed at reference Helm revision 9. Temporarily Pending
+Temporarily Pending
 Pods preserve running intent; a terminal supervisor with admitted Pod identities
 and enforcement fences intact enters native `always`/`on-failure` replacement.
 Before loss publication, stale v1beta1 `Suspended` status projects as unavailable
@@ -547,8 +548,8 @@ Builder owns chart rendering, schema checks, immutable image verification and
 deployed probes. These source inputs alone do not prove PostgreSQL extension-image
 compatibility, Seaweed TLS/IAM, signed bytes, service recovery or a Kubernetes
 Computer. Keep deterministic checks, deployed checks and final exact MiMo
-acceptance separate. Remove obsolete Linux platform Compose launch paths only
-after replacement acceptance; preserve Mac test fixtures and external identity.
+acceptance separate. Compose recipes serve only the Mac fixtures; no Linux step uses
+them.
 
 
 ## Reference qualification checkpoint — 2026-10-20

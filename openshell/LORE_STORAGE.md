@@ -1,5 +1,9 @@
 # Native Lore storage in existing PostgreSQL and SeaweedFS
 
+**Mac development fixture.** This guide prepares the storage of the Mac fixtures'
+Compose Lore. On Linux, [postgres-platform.sql](../kubernetes/postgres-platform.sql)
+and [lore.yaml](../kubernetes/lore.yaml) hold the same choices. The Linux path is K3s only: [K3s foundation](../kubernetes/README.md) and [native workload bootstrap](../kubernetes/WORKLOADS.md).
+
 This template selects the `s3_postgres` plugin in the maintained Lore fork.
 Reviewed source `7785408e70ed302296a24383ae302c3a606e78c3` passes native
 immutable/mutable conformance against real PostgreSQL/SeaweedFS, focused

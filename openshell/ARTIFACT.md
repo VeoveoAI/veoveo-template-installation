@@ -1,5 +1,8 @@
 # Private native Artifact
 
+**Mac development fixture.** This guide runs on the Mac's native OpenShell gateway
+with its Docker driver. The Linux path is K3s only: [K3s foundation](../kubernetes/README.md) and [native workload bootstrap](../kubernetes/WORKLOADS.md).
+
 Run from the installation root after the qualified [Hub + Time setup](HUB_TIME.md).
 This adds private `vv-services/artifact`, port 8801, using the existing Hub, PostgreSQL
 and SeaweedFS. It does not expose a public Artifact/share route, migrate storage,

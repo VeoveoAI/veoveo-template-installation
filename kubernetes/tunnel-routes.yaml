@@ -3,7 +3,7 @@
 # tunnel's published application routes as the dashboard holds them, recorded in
 # the shape of Cloudflare's tunnel configuration API body. Render the public host.
 # cloudflared serves a request by the first route whose hostname and path (a Go
-# regular expression) match, so the /artifacts/ route precedes Hub's.
+# regular expression) match, so the /artifacts/ and Media callback routes precede Hub's.
 config:
   ingress:
     # Signed S3 objects: Artifact signs path-style URLs for the bucket `artifacts`.
@@ -16,6 +16,18 @@ config:
       originRequest:
         originServerName: seaweedfs-s3.veoveo-system.svc.cluster.local
         caPool: /etc/cloudflared-ca/storage.crt
+    # Media's provider callbacks, only when Media completes runs by webhooks
+    # (VEOVEO_PUBLIC_ORIGIN set), through Media's native exposure of port 8802. Only
+    # /media/operations/{operation_id}/{token}, where Media accepts POST, is public;
+    # Media's MCP stays private.
+    # An installation whose Media checks run status leaves this route out.
+    - hostname: veoveo.example.com
+      path: ^/media/operations/[^/]+/[^/]+$
+      service: https://openshell.openshell.svc.cluster.local:8080
+      originRequest:
+        httpHostHeader: vv-services--media--http.openshell.localhost
+        originServerName: openshell.openshell.svc.cluster.local
+        caPool: /etc/cloudflared-ca/gateway.crt
     # Everything else on the host is Hub, through OpenShell's native exposure,
     # which selects vv-control/hub service http from Host.
     - hostname: veoveo.example.com

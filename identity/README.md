@@ -1,5 +1,13 @@
 # Installation identity
 
+Local Keycloak, its Compose services and the helpers `configure-openshell` and
+`provision` are **Mac development fixtures**; `configure-hub` prepares Hub's trusted
+files from local Keycloak or an existing Entra registration. Linux uses Entra and
+needs no Keycloak: its Hub seed is [entra.example.json](entra.example.json)
+merged with the [K3s Hub fragment](../kubernetes/hub.example.json), as the
+[workload bootstrap](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
+describes.
+
 Local development uses persistent Keycloak. The remote Linux reference uses
 Microsoft Entra ID. Installers may keep the bundled Keycloak service or configure
 another OIDC provider; Hub authorization, roles and resource tokens remain
@@ -247,8 +255,8 @@ Hub broker application remains confidential and its credential stays trusted.
 Native Lore's secretless public client and distinct factory client are registered
 with Hub, not provisioned as directory repository-role/resource mappers. Hub's
 revisioned control plane owns exact native repository registrations and explicit
-tenant/principal/action assignments. Follow [Hub-issued native Lore](../computer/LORE_HUB.md)
-for public-client, issuer, factory custody and live publication settings.
+tenant/principal/action assignments. Hub's [Lore credentials](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle)
+describe the public client, issuer, factory custody and live publication.
 
 The retired `configure-lore` direct-issuer helper and its helper-only tests have
 been removed. Do not regenerate its local client/grant bookkeeping. Retain any

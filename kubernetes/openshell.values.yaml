@@ -1,12 +1,11 @@
-# Maintained chart schema from 846de5fa01234a22827915b3f4e5b9092367078b.
-# Gateway, supervisor and sandbox runtime are all built from OpenShell
-# a6ed0ab4119208d99fb3211fe64fb1d0e52adf10, which contains the additional_ca_bundle,
-# admitted terminal-runtime recovery, GPU propagation and expired-bundle supervisor
-# fixes, and are published to the installation's local registry as
+# The chart, gateway, supervisor and sandbox runtime all come from the maintained
+# OpenShell revision 491b3503d39f3ba83a25a309f52e52e20e304b03; the three images are
+# published to the installation's local registry as
 # veoveo/openshell/{gateway,supervisor,sandbox}. The node pulls them through its
 # registries.yaml entry; no image-pull Secret is used.
-# REQUIRED private override: the three image digests, OIDC issuer/audience/claim
-# mappings, and installation gateway name if changed.
+# Render privately: the three image digests, the identity provider's issuer and the
+# OpenShell resource application (the audience), shown here with the template's
+# example Entra identifiers, and the gateway name if changed.
 fullnameOverride: openshell
 replicaCount: 1
 workload:
@@ -84,8 +83,15 @@ gatewayConfig:
   openshell.gateway.auth:
     allow_unauthenticated_users: false
   openshell.gateway.oidc:
-    issuer: https://identity.example.com/REPLACE_WITH_ISSUER
-    audience: REPLACE_WITH_MANAGEMENT_AUDIENCE
+    issuer: https://login.microsoftonline.com/11111111-1111-4111-8111-111111111111/v2.0
+    # The aud of the OpenShell resource application's access tokens, not its .default scope.
+    audience: 22222222-2222-4222-8222-222222222222
+    # Entra carries app roles in roles, and app-only tokens carry their application
+    # permissions there too.
+    roles_claim: roles
+    scopes_claim: roles
+    admin_role: openshell-admin
+    user_role: openshell-user
   openshell.drivers.kubernetes:
     additional_ca_bundle: /etc/openshell/platform-ca/ca.crt
     allow_driver_config: true
