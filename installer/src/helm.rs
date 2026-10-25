@@ -34,6 +34,10 @@ pub async fn plan(inputs: &Inputs, release: &HelmRelease) -> Vec<Item> {
         Ok(values) => values,
         Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
     };
+    match unfilled(inputs, release).and_then(|values| digest_checks(&values, &inputs.lock)) {
+        Ok(()) => {}
+        Err(error) => return vec![Item::new(subject, State::Refused(format!("{error:#}")))],
+    }
     let upgrade = Action::UpgradeRelease {
         release: release.clone(),
         values: files,
@@ -108,6 +112,95 @@ fn layers(inputs: &Inputs, release: &HelmRelease) -> Result<(Layers, Vec<ValuesF
         files.push(ValuesFile::Private { path: file });
     }
     Ok((layers, files))
+}
+
+/// The release's values merged before the lock fills them.
+fn unfilled(inputs: &Inputs, release: &HelmRelease) -> Result<Value> {
+    let mut layers = Vec::new();
+    for file in &release.values {
+        layers.push((file.display().to_string(), inputs.text(file)?));
+    }
+    for file in inputs.private.helm_values(&release.release) {
+        let text = std::fs::read_to_string(&file)
+            .with_context(|| format!("cannot read the private values file {}", file.display()))?;
+        layers.push((file.display().to_string(), text));
+    }
+    declared_values(&layers)
+}
+
+/// Each image the values name by `@digest:<name>@` beside its `repository`, and the
+/// image's own `registry` or `global.image.registry`, is the lock entry's repository as
+/// a chart composes it, `<registry>/<repository>`; the digest alone cannot say so.
+pub fn digest_checks(
+    values: &Value,
+    lock: &veoveo_installation_contract::ComponentLock,
+) -> Result<()> {
+    let global = values
+        .pointer("/global/image/registry")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let mut problems = Vec::new();
+    collect_digests(values, "", &mut |path, image| {
+        let Some(name) = image["digest"]
+            .as_str()
+            .and_then(|digest| digest.strip_prefix("@digest:"))
+            .and_then(|rest| rest.strip_suffix('@'))
+        else {
+            return;
+        };
+        let locked = match crate::inputs::image(lock, name) {
+            Ok(reference) => reference
+                .split_once('@')
+                .map(|(repository, _)| repository.to_owned())
+                .unwrap_or(reference),
+            Err(error) => return problems.push(format!("{path}: {error}")),
+        };
+        let Some(repository) = image["repository"]
+            .as_str()
+            .filter(|repository| !repository.is_empty())
+        else {
+            return problems.push(format!("{path} names no repository beside @digest:{name}@"));
+        };
+        let registry = image["registry"]
+            .as_str()
+            .filter(|registry| !registry.is_empty())
+            .unwrap_or(global);
+        let written = if registry.is_empty() {
+            repository.to_owned()
+        } else {
+            format!("{registry}/{repository}")
+        };
+        if written != locked {
+            problems.push(format!(
+                "{path} names {written}, but the lock's {name} is {locked}"
+            ));
+        }
+    });
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        bail!("{}", problems.join("; "))
+    }
+}
+
+fn collect_digests(value: &Value, path: &str, found: &mut impl FnMut(&str, &Value)) {
+    if let Value::Object(members) = value {
+        if members
+            .get("digest")
+            .and_then(Value::as_str)
+            .is_some_and(|digest| digest.starts_with("@digest:"))
+        {
+            found(path, value);
+        }
+        for (name, member) in members {
+            let path = if path.is_empty() {
+                name.clone()
+            } else {
+                format!("{path}.{name}")
+            };
+            collect_digests(member, &path, found);
+        }
+    }
 }
 
 /// The chart argument of `helm upgrade`: a repository chart's name, or a chart directory
@@ -397,6 +490,40 @@ mod upgrade_tests {
             !arguments
                 .iter()
                 .any(|argument| argument == "--repo" || argument == "--reuse-values")
+        );
+    }
+}
+
+#[cfg(test)]
+mod digest_tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn a_digest_names_the_lock_entrys_repository_as_the_chart_composes_it() {
+        let lock = crate::inputs::tests::lock();
+        let values = json!({
+            "global": {"image": {"registry": "registry.example.com:5000/veoveo"}},
+            "gateway": {"image": {"repository": "lore", "digest": "@digest:lore@"}},
+            "supervisor": {"image": {"registry": "registry.example.com:5000", "repository": "veoveo/hub-sdk-cli", "digest": "@digest:hub-sdk-cli@"}},
+        });
+        assert!(digest_checks(&values, &lock).is_ok());
+        let wrong = json!({
+            "global": {"image": {"registry": "registry.example.com:5000/veoveo"}},
+            "gateway": {"image": {"repository": "openshell/gateway", "digest": "@digest:lore@"}},
+        });
+        let error = digest_checks(&wrong, &lock).unwrap_err().to_string();
+        assert_eq!(
+            error,
+            "gateway.image names registry.example.com:5000/veoveo/openshell/gateway, but the lock's lore is registry.example.com:5000/veoveo/lore"
+        );
+        let missing = json!({"gateway": {"image": {"digest": "@digest:lore@"}}});
+        assert!(
+            digest_checks(&missing, &lock)
+                .unwrap_err()
+                .to_string()
+                .contains("names no repository")
         );
     }
 }

@@ -313,8 +313,9 @@ repository files, a Helm release and its values files, OpenShell workspaces, pro
 profiles, templates and sandboxes, and last Hub's control plane with the files of Hub's
 trusted claim that come from this repository. The order is the dependency order apply
 takes. A file names an image as `@image:<name>@`, which the installer fills from the
-lock, or its digest alone as `@digest:<name>@`, as a chart's values do; a file still
-holding a `REPLACE_WITH_` marker is not ready and is not compared.
+lock, or its digest alone as `@digest:<name>@`, as a chart's values do, beside a
+registry and repository that plan requires to be the lock entry's repository; a file
+still holding a `REPLACE_WITH_` marker is not ready and is not compared.
 The private directory, mode `0700`, holds `private.toml`: the Kubernetes context and
 OpenShell CLI sign-in the operator uses, where the Hub sign-in is kept (the Hub SDK
 CLI's grant directory unless it names another), the private values files layered over
@@ -370,7 +371,9 @@ its Rust SDK as the operator's OpenShell identity, and Hub's live control plane 
 Hub's administrative route. It publishes only what differs from the active revision and
 never resets the control plane, so what people created since the seed, such as their
 repositories, survives every apply: a publication takes the members people change from
-the revision active at that moment. Hub reads its `factory` section only when it
+the revision active at that moment and names that revision in `If-Match`, so Hub
+refuses it (412) when another became active first, and apply reads and publishes
+again, three times at most. Hub reads its `factory` section only when it
 starts, so a publication that changes it restarts Hub. To read or publish it, the
 operator signs in to Hub in the browser as themselves, an installation administrator,
 with `veoveo-installer login` (the Hub SDK's sign-in, as its `veoveo-hub-sdk-cli`

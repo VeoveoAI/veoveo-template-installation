@@ -206,3 +206,30 @@ fn the_seed_names_each_claim_file_by_its_content() {
     }
     assert!(!seed.to_string().contains("@claim:"));
 }
+
+#[test]
+fn the_helm_values_name_the_lock_repository_of_each_digest() {
+    use veoveo_installer::{declaration::StepKind, helm, inputs::read_lock};
+    let lock = read_lock(repository()).unwrap();
+    let declaration = Declaration::read(repository()).unwrap();
+    for step in &declaration.steps {
+        let StepKind::Helm(release) = &step.kind else {
+            continue;
+        };
+        let mut values = serde_json::json!({});
+        for file in &release.values {
+            let text = std::fs::read_to_string(repository().join(file)).unwrap();
+            veoveo_installer::difference::merge_values(
+                &mut values,
+                veoveo_installer::yaml::value(&text).unwrap(),
+            );
+        }
+        let digests = values.to_string().matches("@digest:").count();
+        // A lock that names no image yet, as the template's, cannot be checked.
+        if digests == 0 || lock.images().is_empty() {
+            continue;
+        }
+        helm::digest_checks(&values, &lock)
+            .unwrap_or_else(|error| panic!("{}: {error:#}", release.release));
+    }
+}

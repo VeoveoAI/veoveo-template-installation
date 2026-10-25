@@ -419,13 +419,25 @@ impl Administrator {
         Ok(address)
     }
 
-    /// One administrative request, renewing the sign-in once when Hub does not admit it.
+    /// One administrative request; its answer must be 200 with JSON.
     async fn request(
         &self,
         method: reqwest::Method,
         route: &str,
         body: Option<&Value>,
     ) -> Result<Value> {
+        let response = self.send(method.clone(), route, body, None).await?;
+        answer(response, &method).await
+    }
+
+    /// One administrative request, renewing the sign-in once when Hub does not admit it.
+    async fn send(
+        &self,
+        method: reqwest::Method,
+        route: &str,
+        body: Option<&Value>,
+        if_match: Option<&str>,
+    ) -> Result<reqwest::Response> {
         let address = self.address(route)?;
         for attempt in 0..2 {
             let token = self
@@ -441,31 +453,18 @@ impl Administrator {
             if let Some(body) = body {
                 request = request.json(body);
             }
+            if let Some(revision) = if_match {
+                request = request.header(reqwest::header::IF_MATCH, format!("\"{revision}\""));
+            }
             let response = request
                 .send()
                 .await
                 .with_context(|| format!("cannot reach {address}"))?;
-            let status = response.status();
-            if status == reqwest::StatusCode::UNAUTHORIZED && attempt == 0 {
+            if response.status() == reqwest::StatusCode::UNAUTHORIZED && attempt == 0 {
                 self.bearer.forget_caller();
                 continue;
             }
-            match status.as_u16() {
-                200 => return response.json().await.context("Hub answered no JSON"),
-                401 => bail!(
-                    "Hub does not admit the stored sign-in (HTTP 401); sign in again with `veoveo-installer login`"
-                ),
-                403 => bail!(
-                    "Hub refused the signed-in person (HTTP 403): this needs an installation administrator"
-                ),
-                code => {
-                    let text = response.text().await.unwrap_or_default();
-                    bail!(
-                        "Hub answered HTTP {code} for {method} {address}: {}",
-                        text.trim()
-                    )
-                }
-            }
+            return Ok(response);
         }
         unreachable!("the second attempt returns")
     }
@@ -484,18 +483,61 @@ impl Administrator {
         })
     }
 
-    /// Publishes a complete control plane; Hub validates it and keeps its active revision
-    /// when it refuses it.
-    pub async fn publish(&self, document: &Value) -> Result<String> {
-        let body = self
-            .request(reqwest::Method::PUT, "control-plane", Some(document))
+    /// Publishes a complete control plane as the successor of `based_on`, the revision
+    /// it was made from. Hub validates it and keeps its active revision when it refuses
+    /// it; it answers 412 when another revision became active meanwhile.
+    pub async fn publish(&self, document: &Value, based_on: &str) -> Result<Publication> {
+        let method = reqwest::Method::PUT;
+        let response = self
+            .send(
+                method.clone(),
+                "control-plane",
+                Some(document),
+                Some(based_on),
+            )
             .await?;
-        Ok(body["revisionId"].as_str().unwrap_or_default().to_owned())
+        if response.status() == reqwest::StatusCode::PRECONDITION_FAILED {
+            return Ok(Publication::Moved);
+        }
+        let body = answer(response, &method).await?;
+        Ok(Publication::Active(
+            body["revisionId"].as_str().unwrap_or_default().to_owned(),
+        ))
     }
 
     pub async fn server_health(&self) -> Result<Value> {
         self.request(reqwest::Method::GET, "server-health", None)
             .await
+    }
+}
+
+/// What a publication did.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Publication {
+    /// The revision it made is active.
+    Active(String),
+    /// Another revision became active since the one it was based on; nothing changed.
+    Moved,
+}
+
+/// A 200 answer's JSON, or the reason Hub gave.
+async fn answer(response: reqwest::Response, method: &reqwest::Method) -> Result<Value> {
+    let address = response.url().clone();
+    match response.status().as_u16() {
+        200 => response.json().await.context("Hub answered no JSON"),
+        401 => bail!(
+            "Hub does not admit the stored sign-in (HTTP 401); sign in again with `veoveo-installer login`"
+        ),
+        403 => bail!(
+            "Hub refused the signed-in person (HTTP 403): this needs an installation administrator"
+        ),
+        code => {
+            let text = response.text().await.unwrap_or_default();
+            bail!(
+                "Hub answered HTTP {code} for {method} {address}: {}",
+                text.trim()
+            )
+        }
     }
 }
 
@@ -818,8 +860,13 @@ fn parse_yaml(text: &str) -> Option<Value> {
 
 // ----- apply -----
 
-/// Publishes the declared members over the revision active now, and checks that the
-/// active revision is then the declared one.
+/// How many times a publication is made again when another revision became active.
+const PUBLISH_ATTEMPTS: usize = 3;
+
+/// Publishes the declared members over the revision active now, as its successor, and
+/// checks that the active revision is then the declared one. When another revision
+/// becomes active first, Hub answers 412 and nothing changes: the control plane is read
+/// and the publication made again, from that revision, a bounded number of times.
 pub async fn publish(
     inputs: &Inputs,
     origin: &Url,
@@ -827,13 +874,69 @@ pub async fn publish(
     declared: &Value,
 ) -> Result<String> {
     let administrator = Administrator::signed_in(inputs, origin, profile)?;
-    let active = administrator.control_plane().await?;
-    let document = publication(declared, &active.control_plane);
-    let revision = administrator
-        .publish(&document)
-        .await
-        .context("Hub refused the publication and keeps its active revision")?;
-    let now = administrator.control_plane().await?;
+    publish_over(&administrator, declared).await
+}
+
+/// The control plane route, as a publication reads and writes it.
+pub(crate) trait ControlPlaneRoute {
+    async fn read(&self) -> Result<ActiveControlPlane>;
+    async fn write(&self, document: &Value, based_on: &str) -> Result<Publication>;
+}
+
+impl ControlPlaneRoute for Administrator {
+    async fn read(&self) -> Result<ActiveControlPlane> {
+        self.control_plane().await
+    }
+
+    async fn write(&self, document: &Value, based_on: &str) -> Result<Publication> {
+        self.publish(document, based_on).await
+    }
+}
+
+pub(crate) async fn publish_over(
+    administrator: &impl ControlPlaneRoute,
+    declared: &Value,
+) -> Result<String> {
+    let mut revision = None;
+    for attempt in 1..=PUBLISH_ATTEMPTS {
+        let active = administrator.read().await?;
+        let based_on = active
+            .revision
+            .clone()
+            .context("Hub names no settled active revision to publish over; try again")?;
+        if compare(
+            &installation_owned(declared.clone()),
+            &installation_owned(active.control_plane.clone()),
+        )
+        .is_empty()
+        {
+            // Another publication made the same change.
+            revision = Some(based_on);
+            break;
+        }
+        let document = publication(declared, &active.control_plane);
+        match administrator
+            .write(&document, &based_on)
+            .await
+            .context("Hub refused the publication and keeps its active revision")?
+        {
+            Publication::Active(made) => {
+                revision = Some(made);
+                break;
+            }
+            Publication::Moved => {
+                println!(
+                    "   revision {based_on} is no longer active (attempt {attempt}); reading again"
+                );
+            }
+        }
+    }
+    let Some(revision) = revision else {
+        bail!(
+            "another revision became active before each of {PUBLISH_ATTEMPTS} publications; nothing was published"
+        );
+    };
+    let now = administrator.read().await?;
     let left = compare(
         &installation_owned(declared.clone()),
         &installation_owned(now.control_plane),
@@ -1180,6 +1283,113 @@ mod tests {
         assert_eq!(
             health_of(&report, "artifact", "0199a0a0-0000-7000-8000-000000000004"),
             None
+        );
+    }
+}
+
+#[cfg(test)]
+mod publication_tests {
+    use std::sync::Mutex;
+
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    use super::*;
+
+    /// Hub's control plane route as recorded states: the active revisions in order, and
+    /// a person who creates a repository after the first read, before the publication.
+    struct Route {
+        revisions: Mutex<Vec<(String, Value)>>,
+        reads: Mutex<usize>,
+        concurrent_after_read: Option<Value>,
+    }
+
+    impl ControlPlaneRoute for Route {
+        async fn read(&self) -> Result<ActiveControlPlane> {
+            let mut reads = self.reads.lock().unwrap();
+            *reads += 1;
+            let revisions = self.revisions.lock().unwrap();
+            let (revision, control_plane) = revisions.last().unwrap().clone();
+            Ok(ActiveControlPlane {
+                revision: Some(revision),
+                control_plane,
+            })
+        }
+
+        async fn write(&self, document: &Value, based_on: &str) -> Result<Publication> {
+            let mut revisions = self.revisions.lock().unwrap();
+            if *self.reads.lock().unwrap() == 1
+                && self.concurrent_after_read.is_some()
+                && revisions.len() == 1
+            {
+                // The repository is created between the installer's read and its write.
+                revisions.push(("gcp-2".into(), self.concurrent_after_read.clone().unwrap()));
+            }
+            if revisions.last().unwrap().0 != based_on {
+                return Ok(Publication::Moved);
+            }
+            let made = format!("gcp-{}", revisions.len() + 1);
+            revisions.push((made.clone(), document.clone()));
+            Ok(Publication::Active(made))
+        }
+    }
+
+    fn active() -> Value {
+        json!({
+            "computers": {"handbook": "old"},
+            "authorization": {"grants": [], "roles": []},
+            "workContexts": [],
+            "lore": {"deployments": [], "repositories": [], "assignments": []},
+        })
+    }
+
+    #[tokio::test]
+    async fn a_repository_created_while_publishing_survives_the_publication() {
+        let declared = json!({
+            "computers": {"handbook": "new"},
+            "authorization": {"grants": [{"role": "example"}], "roles": []},
+            "workContexts": [],
+            "lore": {"deployments": [], "repositories": [], "assignments": []},
+        });
+        let mut created = active();
+        created["lore"]["repositories"] = json!([{"id": "01a1586c89057ea3adcfc848da54077b"}]);
+        let route = Route {
+            revisions: Mutex::new(vec![("gcp-1".into(), active())]),
+            reads: Mutex::new(0),
+            concurrent_after_read: Some(created),
+        };
+        let revision = publish_over(&route, &declared).await.unwrap();
+        let revisions = route.revisions.lock().unwrap();
+        // The first write was refused (412); the second was based on the new revision.
+        assert_eq!(revision, "gcp-3");
+        let (_, published) = revisions.last().unwrap();
+        assert_eq!(published["computers"]["handbook"], "new");
+        assert_eq!(
+            published["lore"]["repositories"],
+            json!([{"id": "01a1586c89057ea3adcfc848da54077b"}])
+        );
+        assert_eq!(published["authorization"]["grants"], json!([]));
+    }
+
+    #[tokio::test]
+    async fn a_publication_that_keeps_losing_stops_without_publishing() {
+        struct Busy;
+        impl ControlPlaneRoute for Busy {
+            async fn read(&self) -> Result<ActiveControlPlane> {
+                Ok(ActiveControlPlane {
+                    revision: Some("gcp-1".into()),
+                    control_plane: active(),
+                })
+            }
+            async fn write(&self, _: &Value, _: &str) -> Result<Publication> {
+                Ok(Publication::Moved)
+            }
+        }
+        let declared = json!({"computers": {"handbook": "new"}});
+        let error = publish_over(&Busy, &declared).await.unwrap_err();
+        assert!(
+            error.to_string().contains("nothing was published"),
+            "{error}"
         );
     }
 }
