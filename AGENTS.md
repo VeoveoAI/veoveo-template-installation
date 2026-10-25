@@ -28,9 +28,11 @@
   for explicit repository assignments/native tokens, and unchanged native Lore
   enforcement. Native OpenShell owns factory renewal/injection; user Lore refresh
   remains in each private Computer. The retired Desktop adapter/standalone signer
-  and ingress remain retired. Do not add another issuer service, refresh daemon,
-  custom Lore authorization rules, automatic admin/member repository rights or
-  global grants to compensate for an installation mismatch. Local Keycloak
+  and ingress remain retired. Creating a repository through Hub makes its creator
+  the owner; no other repository grant is automatic, and no administrator role
+  grants repositories. Do not add another issuer service, refresh daemon, custom
+  Lore authorization rules or global grants to compensate for an installation
+  mismatch. Local Keycloak
   remains identity/management bootstrap; repository assignments belong to Hub.
   Do not restore the retired direct-issuer provisioning helper or its grant state.
 - The platform never writes into a Computer's `/sandbox`; it is the person's home.
