@@ -17,16 +17,6 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     cargo build --release --locked --bin lore --bin loreserver \
     && install -D -m 0755 target/release/lore target/release/loreserver -t /out
 
-FROM build AS fixture-build
-RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
-    --mount=type=cache,target=/build/target,sharing=locked \
-    cargo build --release --locked -p lore-server --example factory_branch_fixture \
-    && install -D -m 0755 target/release/examples/factory_branch_fixture /out/factory-branch-fixture
-
-FROM scratch AS fixture
-COPY --from=fixture-build /out/factory-branch-fixture /factory-branch-fixture
-
 FROM debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \

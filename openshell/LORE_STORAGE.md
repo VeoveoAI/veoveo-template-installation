@@ -141,17 +141,8 @@ Artifact, application, identity or other schema/bucket state. Backups and a
 compatibility layer are not prerequisites for this fresh development cutover.
 Revisit retention before production data becomes part of the scope.
 
-Build CLI, server, factory package and stopped-server fixture from the same
-reviewed source. The fixture now takes a **native config directory containing
-`local.toml`**, not `/data`. Run it only in an isolated trusted operator process
-on the private network with the selected configuration, public CA and native
-storage credential environment. It constructs the selected backend and emits
-the existing final JSON shape: `repository`, `forbidden`, `main`, `assigned`,
-`other`. Save that JSON privately as fixture evidence. For actual repository
-registrations/assignments use Hub's existing typed control-plane publication;
-review native hook bindings separately in trusted TOML. This is not a runtime seed
-service or a grant-provisioning helper. Do not run it concurrently with the
-owning Lore server or give its storage credentials to the qualifier factory.
+Build CLI and server from the same reviewed source. For actual repository
+registrations/assignments use Hub's existing typed control-plane publication.
 
 Keep the existing private native address, alias, static IP, TLS identity and volume
 definitions. The local `vv-lore` volume is retained by this template; switching the

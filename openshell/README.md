@@ -211,24 +211,8 @@ image build and measured limits; Hub/Time application acceptance is separate.
 Factories run explicit build commands against published Lore revisions. They have
 no OpenCode installation or inference provider; agent sessions run in user Computers.
 
-For disposable qualification only, export the offline seeder:
-
-```sh
-docker build -f factory/Lore.Dockerfile --target fixture \
-  --build-context lore-source=./state/openshell/lore-s3-postgres-7785408e70ed302296a24383ae302c3a606e78c3 \
-  --build-context ca=./tls/ca \
-  --output type=local,dest=./state/openshell/factory-hook-bin .
-```
-
 For the fresh disposable backend cutover, follow [native Lore storage](LORE_STORAGE.md).
-Stop the owning Lore server before opening its stores. The plugin-capable fixture
-takes a native configuration directory containing `local.toml`, not `/data`, and
-uses the configured backend with trusted storage credentials. Run it in an
-isolated operator container. It creates fresh repo/branch IDs, valid empty heads
-and protected `main`. Save the final JSON line privately as
-`state/openshell/factory-hook-fixture.json`; it is not a server/agent bootstrap API.
-Keep this fixture output as test evidence only. Select native server settings in
-trusted TOML; Lore runs no hook. Publish actual repository/grant data
+Select native server settings in trusted TOML; Lore runs no hook. Publish actual repository/grant data
 through Hub's existing control plane. Start only the intended bootstrap services
 through the coordinated native setup; no IdP repository-mapping helper is needed.
 
