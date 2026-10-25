@@ -287,3 +287,41 @@ The tunnel preserves public signed S3 bytes and uses verified TLS to native Serv
 Native controllers, readiness/restarts and application retry/reconnect handle
 recovery; there is no custom startup DAG or proxy. Lore reads Hub's OIDC discovery at
 startup and restarts until Hub serves its issuer; no init Job orders them.
+
+## Applying An Installation
+
+`veoveo-installer` makes a cluster match this repository. It is an operator's command,
+not a service: it keeps no state of its own, runs only when an operator runs it, and
+exits, so it is neither an orchestrator nor a second launcher. It installs and
+upgrades only the substrate the platform cannot deploy itself: the Kubernetes
+foundation (Cilium, the Agent Sandbox controller, PostgreSQL, SeaweedFS, Vector and
+VictoriaLogs, the registry and BuildKit), OpenShell, the Lore server, Hub, the
+platform servers while they run as installation sandboxes, the provider profiles and
+the Computer and factory templates. K3s comes first, from K3s's own installer.
+Everything built on the platform is deployed by the factory, never by the installer.
+
+Its inputs are this repository (the lock, manifests, Helm values, policies, provider
+profiles, templates and Hub's seed) and the operator's private directory of
+installation values and secrets, which never enters Git. Image digests come only from
+the lock: `veoveo-installer build` builds a component at its locked revision and
+records the digest there, and nothing else writes one.
+
+`veoveo-installer plan` compares each piece's declared state with what runs and
+prints the difference without changing anything. `veoveo-installer apply` makes only
+those changes, in dependency order, checks each one (readiness, registration with Hub,
+the standard probes) and stops at the first failure with its evidence; run again, it
+changes nothing. First installation and every upgrade take the same path.
+
+It changes each piece through its owner's interface and adds no logic the owner
+already has: Kubernetes through its API, Helm releases with `helm`, OpenShell through
+its Rust SDK as the operator's OpenShell identity, and Hub's live control plane through
+Hub's administrative route as an installation administrator, who signs in through the
+browser as any Hub client does; Hub validates the document it is given and keeps its
+active revision on rejection. It prepares Hub's trusted files from the identity
+provider's registration (Hub's keys, the authorization server's key set and the seed
+document), which `identity/configure-hub`, `identity/configure-openshell` and
+`identity/provision` do today; those Python tools are retired with it.
+
+`veoveo-installer` is a component of its own, in Rust, with its own repository and
+check, built into an image this repository's lock pins like any other. It reads the
+lock with core's installation contract crate.
