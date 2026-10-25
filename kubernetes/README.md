@@ -154,6 +154,19 @@ registry at `registry.veoveo-system.svc.cluster.local:5000` with the fixed Clust
 kubectl apply -f kubernetes/logs.yaml -f kubernetes/builder.yaml
 ```
 
+Build steps run in BuildKit's network, so both files carry network policies, which
+Cilium enforces: BuildKit answers only Hub's supervisor and reaches only cluster DNS,
+the registry and public addresses, and VictoriaLogs answers only Vector and the
+supervisors of `vv-services`, where console reads it. Both name their workspace
+namespaces for the gateway ID `openshell`; render them as `openshell-<gateway>-<workspace>`
+for another ID. BuildKit's configuration admits only Docker's Dockerfile frontend for a
+`# syntax=` line, and Hub keeps each branch's cache mounts apart and prunes them around
+every build. BuildKit reads its configuration when it starts, so a changed
+`buildkitd.toml` takes effect after
+`kubectl -n veoveo-system rollout restart statefulset/buildkitd`. The registry has no
+authentication yet: a build step can push to it, which redirects no workload, since
+every workload names its image by digest.
+
 Point the node's container runtime at the registry once, then restart K3s. The
 restart takes the API away for a few seconds and restarts no container:
 
