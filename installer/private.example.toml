@@ -1,0 +1,71 @@
+# private.toml: the operator's private inputs, in a directory of its own with mode 0700
+# that never enters Git:
+#   veoveo-installer --private <directory> plan
+# plan and apply only read it. `login` keeps the Hub sign-in where [hub] says, and
+# `identity hub` writes Hub's trusted files into [identity] directory.
+# Every key the installer accepts is here, with example values; every section is
+# optional. Paths are relative to the private directory unless a key says otherwise.
+
+# The Kubernetes context of the kubeconfig to use; without it, its current context.
+[kubernetes]
+context = "default"
+
+# The operator's OpenShell CLI sign-in: the gateway's name in the CLI's configuration,
+# and the CLI's configuration home that holds it (its XDG_CONFIG_HOME, an absolute
+# path); without config_home, $XDG_CONFIG_HOME or ~/.config.
+[openshell]
+gateway = "k3s-operator"
+config_home = "/home/operator/.config"
+
+# Where `veoveo-installer login` keeps the operator's Hub sign-in; without it, the Hub
+# SDK CLI's grant directory, so one sign-in serves both.
+[hub]
+grants = "hub-grants"
+
+# Private values files of a Helm release, by release name, layered over the
+# repository's values in this order.
+[helm.cilium]
+values = ["cilium-node.yaml"]
+
+# A chart that comes from no Helm repository is read from a source checkout, an
+# absolute path: OpenShell's chart, at the gateway's revision.
+[helm.openshell]
+values = ["openshell-identity.yaml"]
+source = "/home/operator/src/OpenShell"
+
+# Private environment values of a sandbox, keyed <workspace>/<name>: those its
+# declaration lists as private_environment. A deployment ID is a UUIDv7 chosen once
+# and kept.
+[sandbox."vv-services/console".environment]
+VEOVEO_DEPLOYMENT_ID = "01990000-0000-7000-8000-000000000001"
+
+[sandbox."vv-services/artifact".environment]
+VEOVEO_DEPLOYMENT_ID = "01990000-0000-7000-8000-000000000002"
+
+[sandbox."vv-services/media".environment]
+VEOVEO_DEPLOYMENT_ID = "01990000-0000-7000-8000-000000000003"
+
+[sandbox."vv-services/embedding".environment]
+VEOVEO_DEPLOYMENT_ID = "01990000-0000-7000-8000-000000000004"
+
+# The identity provider's registration, from which `veoveo-installer identity hub`
+# prepares Hub's trusted files (hub.env, authorization-server.jwks.json and hub.json)
+# in `directory`, and the claim step writes them into Hub's claim.
+[identity]
+directory = "hub-config"
+# The people of a first seed: a JSON document holding the seed's members people
+# change (grants, memberships, Work Context output owners and initial grants,
+# repositories and assignments). Later seeds keep the earlier seed's people.
+people = "hub-people.json"
+
+# Hub's settings in hub.env that are not secret.
+[identity.environment]
+VEOVEO_DATABASE_URL = "postgres://veoveo_owner@veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432/veoveo?sslmode=verify-full&sslrootcert=/etc/veoveo/tls/postgres-ca.crt"
+VEOVEO_SERVER_DATABASE_URL = "postgres://veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432/veoveo?sslmode=verify-full"
+
+# Secrets in hub.env, each read from its own file, which holds the value alone: every
+# `env` secret the seed names that Hub does not make itself.
+[identity.secrets]
+VEOVEO_DATABASE_PASSWORD = "veoveo-owner-db.password"
+VEOVEO_IDP_OIDC_CLIENT_SECRET = "entra-hub-client.secret"
+VEOVEO_COMPUTER_MODEL_API_KEY = "computer-model-api-key.secret"

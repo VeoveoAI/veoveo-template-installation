@@ -195,6 +195,39 @@ mod tests {
         );
     }
 
+    /// The example names every key, so it parses only while it matches what is accepted.
+    #[test]
+    fn the_example_names_every_key() {
+        let mut private = Private::parse(include_str!("../private.example.toml")).unwrap();
+        private.directory = PathBuf::from("/private");
+        assert_eq!(private.kubernetes.context.as_deref(), Some("default"));
+        let openshell = private.openshell.as_ref().unwrap();
+        assert_eq!(openshell.gateway, "k3s-operator");
+        assert!(openshell.config_home.as_ref().unwrap().is_absolute());
+        assert!(private.hub.grants.is_some());
+        assert_eq!(
+            private.helm_values("cilium"),
+            [PathBuf::from("/private/cilium-node.yaml")]
+        );
+        assert!(private.helm["openshell"].source.is_some());
+        for server in ["console", "artifact", "media", "embedding"] {
+            assert!(
+                private
+                    .sandbox_environment(&format!("vv-services/{server}"))
+                    .unwrap()
+                    .contains_key("VEOVEO_DEPLOYMENT_ID")
+            );
+        }
+        let identity = private.identity.as_ref().unwrap();
+        assert!(identity.people.is_some());
+        assert!(!identity.environment.is_empty());
+        assert!(
+            identity
+                .secrets
+                .contains_key("VEOVEO_IDP_OIDC_CLIENT_SECRET")
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn a_directory_others_can_read_is_refused() {
