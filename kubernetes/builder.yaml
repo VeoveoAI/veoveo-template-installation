@@ -15,6 +15,9 @@ data:
       minFreeSpace = "20GB"
     [registry."registry.veoveo-system.svc.cluster.local:5000"]
       http = true
+    # A `# syntax=` line may name only Docker's own Dockerfile frontend.
+    [frontend."gateway.v0"]
+      allowedRepositories = ["docker/dockerfile"]
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -89,6 +92,65 @@ spec:
     - name: buildkit
       port: 1234
       targetPort: buildkit
+---
+# Build steps share the daemon's network. It answers only Hub, whose requests leave
+# through its supervisor in the vv-control workspace's namespace (rendered for the
+# gateway ID `openshell`), and reaches only cluster DNS, the registry and the public
+# internet: no other private, link-local or cluster address.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: buildkitd
+  namespace: veoveo-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: buildkitd
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshell-openshell-vv-control
+          podSelector:
+            matchLabels:
+              openshell.ai/boundary-role: supervisor
+      ports:
+        - protocol: TCP
+          port: 1234
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: registry
+      ports:
+        - protocol: TCP
+          port: 5000
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 224.0.0.0/4
+              - 240.0.0.0/4
 ---
 apiVersion: apps/v1
 kind: StatefulSet
