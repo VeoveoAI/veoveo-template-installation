@@ -17,7 +17,7 @@ deployment acceptance.
 
 - Factory toolchain: this revision's [factory Dockerfile](../factory/Dockerfile),
   UID/GID 10001. Select its inspected immutable image digest.
-- Native Lore: source commit `bd9da2128acd83963b7168d63af7401409867bc7`, retaining
+- Native Lore: source commit `4b7b7e236419414b4a0c67ecd66ca2409f19d35c`, retaining
   native OIDC refresh and S3/PostgreSQL storage, ending a lagging subscriber's
   notification stream and reading `LORE_ACCESS_TOKEN` and `LORE_IDENTITY` when their
   flags are absent, which Computers and factory sandboxes need. Build with the existing
@@ -41,25 +41,12 @@ deployment acceptance.
   platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
 - Native OpenShell gateway/driver, supervisor and sandbox runtime:
-  `a6ed0ab4119208d99fb3211fe64fb1d0e52adf10` for all three, which adds gRPC on
-  sandbox service routes to `53e3665811a72dd1555edb18aeb4fedef4158dbd`, retaining
-  Kubernetes workspace persistence, connected-target forwarding readiness,
-  destination-CA staging, admitted GPU allocation propagation and native recovery
-  of a terminated admitted supervisor under `always`/`on-failure`. Temporarily
-  Pending Pods and stale controller status preserve running intent; fresh runtime
-  generations replace terminal Pods while retaining supported persistent state.
-  It contains the supervisor of
-  `d7a990083214e8a618f05b1b471aeeac6d9aa82a`, retaining mediated HTTP/2 stream
-  turnover and trusted gateway Service-DNS resolution, and renewing an expired
-  native Kubernetes launch credential pair before policy discovery. Fresh bundles
-  skip rebootstrap to avoid the initial runtime-binding persistence race. The
-  chart and sandbox runtime base is `846de5fa01234a22827915b3f4e5b9092367078b`.
-  Publish the three images to the local registry and select their digests through
-  native configuration. Both Kubernetes Pods deliberately
-  use `Never`; host recovery uses fresh generations rather than restarting an old
-  Pod with its expired bootstrap. The third Linux host reboot restored the owned
-  `always` workloads without manual Starts; mounted browser navigation and the
-  final bounded exact-model acceptance also pass in the recorded scope.
+  `491b3503d39f3ba83a25a309f52e52e20e304b03` for all three, as the
+  [K3s gateway](../kubernetes/README.md#native-openshell-gateway) describes. It mounts
+  the Lore and Hub SDK CLI images that the Computer template names, records the
+  network activity Computer collection reads and keeps a Computer's workspace across
+  replacement. Publish the three images to the local registry and select their
+  digests through native configuration.
 
 Source commits and local builds do not establish live deployment or user/model
 acceptance. The remote Lore endpoint and its owning deployment must be verified
