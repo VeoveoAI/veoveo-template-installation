@@ -34,8 +34,8 @@ its Computer ID. The Computer template is `computer-v<n>`, and provider profiles
 
 Mac remains normal native source development and component/integration testing,
 including Docker fixtures. Local Keycloak and its database may remain external.
-No Mac Lima/K3s deployment is required. Compose recipes are local test and identity
-fixtures, not a Linux launch path.
+No Mac Lima/K3s deployment is required. Compose recipes serve the Mac test and
+identity fixtures; Linux deploys only on Kubernetes.
 
 ## Configuration Ownership
 
