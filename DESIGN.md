@@ -131,7 +131,7 @@ agent-controlled images. Only reviewed public CAs enter application build contex
 Services/DNS provide private PostgreSQL, S3 and Lore addressing. Every workload's
 policy is in OpenShell's own schema under [policies](kubernetes/policies). An endpoint
 that carries a credential comes from the attached provider's profile, so Lore is
-reached only through the `lore` profile's credential-bound endpoint and no policy has a
+reached only through the `vv-lore` profile's credential-bound endpoint and no policy has a
 passthrough Lore rule. The public-only `platform-destination-roots-v1` bundle holds the
 gateway CA, the Lore and SeaweedFS destination roots and the PostgreSQL CA; the
 supervisor injects it into every workload's trust, and changing it means recreating
@@ -140,10 +140,12 @@ the affected runtimes.
 Real credentials stay in the gateway's encrypted custody; a workload sees only the
 placeholder its provider's environment names, which OpenShell replaces on the request.
 A credential that must sign stays with its signer, such as Artifact's bucket key. The
-provider profiles are global: `lore` (Lore access for Computers and factory instances,
-refreshed by the gateway with each one's own Hub client), `factory-registration`
-(an instance's registration token), the Computer's `hub` and `model`, and Hub's own
-native control and forwarder identities, which never attach to a Computer.
+provider profiles are global: `vv-lore` (Lore access for Computers and factory
+instances, refreshed by the gateway with each one's own Hub client),
+`vv-factory-registration` (an instance's registration token), the Computer's
+`vv-computer-hub` and `vv-computer-model`, each platform server's
+`vv-<server>-registration`, and Hub's own `vv-hub-native-control` and
+`vv-hub-forwarder`, which never attach to a Computer.
 
 ## Public Ingress
 
