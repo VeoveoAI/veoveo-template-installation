@@ -140,7 +140,10 @@ pub fn prepare_in(
     people: Option<Value>,
     check: bool,
 ) -> Result<Report> {
-    let mut report = Report::default();
+    // Every file is decided and checked first, and written only once all agree, so a
+    // refusal writes nothing.
+    let mut decided: Vec<(&Path, String)> = Vec::new();
+    let mut writes: Vec<(&Path, String, bool)> = Vec::new();
     let environment_exists = paths.environment.exists();
     if !environment_exists && (paths.key_set.exists() || paths.seed.exists()) {
         bail!(
@@ -159,29 +162,18 @@ pub fn prepare_in(
                 paths.environment.display()
             )
         })?;
-        report.lines.push(format!(
-            "{}: kept, {} values; Hub's keys recovered",
-            paths.environment.display(),
-            values.len()
+        decided.push((
+            &paths.environment,
+            format!("kept, {} values; Hub's keys recovered", values.len()),
         ));
         values
     } else {
         let values = create(wanted)?;
-        if check {
-            report.lines.push(format!(
-                "{}: would be created with new keys {}",
-                paths.environment.display(),
-                GENERATED.join(", ")
-            ));
-        } else {
-            private_directory(&paths.directory)?;
-            write_private(&paths.environment, &render_environment(&values), true)?;
-            report.lines.push(format!(
-                "{}: created with new keys {}",
-                paths.environment.display(),
-                GENERATED.join(", ")
-            ));
-        }
+        decided.push((
+            &paths.environment,
+            format!("{{}} with new keys {}", GENERATED.join(", ")),
+        ));
+        writes.push((&paths.environment, render_environment(&values), true));
         values
     };
     let value = |name: &str| {
@@ -192,7 +184,8 @@ pub fn prepare_in(
     };
     let jwk =
         authorization_jwk(value(SIGNING_KEY).context("hub.env has no access-token signing key")?)?;
-    let key_set = json!({"keys": [jwk.clone()]});
+    let kid = jwk["kid"].as_str().unwrap_or_default().to_owned();
+    let key_set = json!({"keys": [jwk]});
     if paths.key_set.exists() {
         let text = std::fs::read_to_string(&paths.key_set)?;
         let existing: Value = serde_json::from_str(&text)
@@ -202,57 +195,69 @@ pub fn prepare_in(
             "{} is not the public key of hub.env's signing key: recover the key both came from",
             paths.key_set.display()
         );
-        report.lines.push(format!(
-            "{}: kept, key {}",
-            paths.key_set.display(),
-            jwk["kid"].as_str().unwrap_or_default()
-        ));
-    } else if check {
-        report.lines.push(format!(
-            "{}: would be written, key {}",
-            paths.key_set.display(),
-            jwk["kid"].as_str().unwrap_or_default()
-        ));
+        decided.push((&paths.key_set, format!("kept, key {kid}")));
     } else {
-        write_private(
+        decided.push((&paths.key_set, format!("{{}}, key {kid}")));
+        writes.push((
             &paths.key_set,
-            &(serde_json::to_string_pretty(&key_set)? + "\n"),
+            serde_json::to_string_pretty(&key_set)? + "\n",
             false,
-        )?;
-        report.lines.push(format!(
-            "{}: written, key {}",
-            paths.key_set.display(),
-            jwk["kid"].as_str().unwrap_or_default()
         ));
     }
-    let document = seed_document(
-        seed,
-        people.as_ref(),
-        jwk["kid"].as_str().unwrap_or_default(),
+    let document = seed_document(seed, people.as_ref(), &kid);
+    let unowned = control_plane::unowned_contexts(&document);
+    ensure!(
+        unowned.is_empty(),
+        "the seed's Work Context {} names no output owner: a person owns its outputs, so name the owner in the people document ([identity] people) or keep the earlier seed's; the repository's example owner is never written",
+        unowned.join(", ")
     );
     missing_secrets(&document, &environment)?;
-    let text = serde_json::to_string_pretty(&document)? + "\n";
     // The seed is kept while it holds the same document, however it is laid out.
     let existing = std::fs::read_to_string(&paths.seed)
         .ok()
         .and_then(|existing| serde_json::from_str::<Value>(&existing).ok());
     if existing.as_ref() == Some(&document) {
-        report.lines.push(format!("{}: kept", paths.seed.display()));
-    } else if check {
-        report.lines.push(format!(
-            "{}: would be written from the repository's seed{}",
-            paths.seed.display(),
-            existing
-                .as_ref()
-                .map(|existing| differing_members(&document, existing))
-                .unwrap_or_default()
-        ));
+        decided.push((&paths.seed, "kept".to_owned()));
     } else {
-        write_private(&paths.seed, &text, false)?;
-        report.lines.push(format!(
-            "{}: written from the repository's seed",
-            paths.seed.display()
+        decided.push((
+            &paths.seed,
+            format!(
+                "{{}} from the repository's seed{}",
+                if check {
+                    existing
+                        .as_ref()
+                        .map(|existing| differing_members(&document, existing))
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                }
+            ),
         ));
+        writes.push((
+            &paths.seed,
+            serde_json::to_string_pretty(&document)? + "\n",
+            false,
+        ));
+    }
+    if !check && !writes.is_empty() {
+        private_directory(&paths.directory)?;
+        for (path, text, exclusive) in &writes {
+            write_private(path, text, *exclusive)?;
+        }
+    }
+    let mut report = Report::default();
+    for (path, line) in decided {
+        let written = writes.iter().any(|(written, _, _)| *written == path);
+        let verb = match (written, check, path == paths.environment.as_path()) {
+            (false, _, _) => "",
+            (true, true, true) => "would be created",
+            (true, true, false) => "would be written",
+            (true, false, true) => "created",
+            (true, false, false) => "written",
+        };
+        report
+            .lines
+            .push(format!("{}: {}", path.display(), line.replace("{}", verb)));
     }
     Ok(report)
 }
@@ -724,5 +729,32 @@ mod tests {
             document["authorizationServers"][0]["accessTokenKeyId"],
             "kid-1"
         );
+    }
+
+    #[test]
+    fn a_seed_names_the_people_who_own_outputs_and_never_the_example_owner() {
+        let fixture = Fixture::new("owner");
+        let mut seed = fixture.seed.clone();
+        seed["workContexts"][0]["outputPolicy"] =
+            json!({"owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"}});
+        // A first seed without a people document has no owner to name, and writes nothing.
+        let error = prepare_in(&fixture.paths(), &fixture.wanted, &seed, None, false).unwrap_err();
+        assert!(error.to_string().contains("reference-work"), "{error}");
+        assert!(fixture.files().is_empty());
+        // The people document, or an earlier seed, names the owner.
+        let owner = json!({"kind": "principal", "id": "https://login.example/v2.0#e8c1"});
+        let people = json!({"workContexts": [{"id": "reference-work", "memberships": [], "outputPolicy": {"owner": owner}}]});
+        prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &seed,
+            Some(people),
+            false,
+        )
+        .unwrap();
+        let written: Value =
+            serde_json::from_str(&std::fs::read_to_string(fixture.paths().seed).unwrap()).unwrap();
+        assert_eq!(written["workContexts"][0]["outputPolicy"]["owner"], owner);
+        assert!(!written.to_string().contains("55555555"));
     }
 }

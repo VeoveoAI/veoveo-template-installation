@@ -335,7 +335,9 @@ providers add to a sandbox's policy; a template's or sandbox's image, environmen
 resources, driver configuration, providers, command and restart policy; Hub's control
 plane through `GET /admin/{profile}/control-plane`, against the seed merged by typed
 keys and the handbook, leaving out the members people change (grants, Work Context
-memberships, repositories and assignments); and Hub's trusted files, read in Hub's
+memberships, output owners and initial grants, repositories and assignments), which a
+publication carries from the active revision, so the seed's example people, such as
+its example output owner, are never published; and Hub's trusted files, read in Hub's
 sandbox through native exec. It lists, in step order, what differs and what it could
 not read, and succeeds only when everything was read and matches. A seed Job runs
 once and is deleted, so plan does not read the claim it fills.

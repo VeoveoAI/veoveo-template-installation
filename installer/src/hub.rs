@@ -4,9 +4,9 @@
 //! Hub's trusted files, is what the installation publishes; Hub's validation answers it
 //! as Hub would keep and serve it, with its SHA-256, which is compared with the active
 //! revision's, so Hub's own serialization, with its defaults, decides what differs.
-//! The members people change (their grants, memberships, repositories and assignments)
-//! are never the installation's: they are left out of the comparison, and a publication
-//! keeps them as they are at that moment.
+//! The members people change (their grants, memberships, Work Context output owners and
+//! initial grants, repositories and assignments) are never the installation's: they are
+//! left out of the comparison, and a publication keeps them as they are at that moment.
 //! Nothing resets the control plane; a first installation's Hub seeds itself.
 //!
 //! Hub's trusted files that come from this repository, such as the policies Hub hands
@@ -46,9 +46,11 @@ pub const SIGN_IN_REDIRECT: &str = "http://127.0.0.1:3211/callback";
 pub const SIGN_IN_SCOPE: &str = "mcp";
 
 /// Members of the control plane that people change, never the installation.
-pub const PEOPLE: [&str; 4] = [
+pub const PEOPLE: [&str; 6] = [
     "authorization.grants",
     "workContexts.*.memberships",
+    "workContexts.*.outputPolicy.owner",
+    "workContexts.*.outputPolicy.initialGrants",
     "lore.repositories",
     "lore.assignments",
 ];
@@ -341,8 +343,8 @@ pub fn installation_owned(mut control_plane: Value) -> Value {
 }
 
 /// The document to publish: the declared members, with the members people change taken
-/// from the active revision. A Work Context the active revision lacks gets no members:
-/// the seed's example memberships are never published.
+/// from the active revision. A Work Context the active revision lacks gets no members,
+/// and no output owner or initial grants: the seed's example people are never published.
 pub fn publication(declared: &Value, active: &Value) -> Value {
     let mut document = installation_owned(declared.clone());
     if let (Some(grants), Some(authorization)) = (
@@ -366,17 +368,53 @@ pub fn publication(declared: &Value, active: &Value) -> Value {
         .and_then(Value::as_array_mut)
     {
         for context in contexts {
-            let memberships = active["workContexts"]
+            let active_context = active["workContexts"]
                 .as_array()
-                .and_then(|active| active.iter().find(|other| other["id"] == context["id"]))
+                .and_then(|active| active.iter().find(|other| other["id"] == context["id"]));
+            let memberships = active_context
                 .and_then(|other| other.get("memberships").cloned())
                 .unwrap_or_else(|| Value::Array(Vec::new()));
-            if let Some(context) = context.as_object_mut() {
-                context.insert("memberships".to_owned(), memberships);
+            let Some(context) = context.as_object_mut() else {
+                continue;
+            };
+            context.insert("memberships".to_owned(), memberships);
+            for member in OUTPUT_PEOPLE {
+                let Some(value) = active_context
+                    .and_then(|other| other.pointer(&format!("/outputPolicy/{member}")))
+                else {
+                    continue;
+                };
+                if let Some(policy) = context
+                    .entry("outputPolicy")
+                    .or_insert_with(|| Value::Object(serde_json::Map::new()))
+                    .as_object_mut()
+                {
+                    policy.insert(member.to_owned(), value.clone());
+                }
             }
         }
     }
     document
+}
+
+/// The members of a Work Context's output policy that are people's.
+const OUTPUT_PEOPLE: [&str; 2] = ["owner", "initialGrants"];
+
+/// The Work Contexts of `document` whose output policy names no owner: a context the
+/// active revision lacks, whose owner is a person's and set in Hub, never this
+/// repository's example.
+pub fn unowned_contexts(document: &Value) -> Vec<String> {
+    document["workContexts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|context| {
+            context
+                .get("outputPolicy")
+                .is_some_and(|policy| policy.get("owner").is_none())
+        })
+        .map(|context| context["id"].as_str().unwrap_or_default().to_owned())
+        .collect()
 }
 
 // ----- signing in -----
@@ -728,7 +766,16 @@ pub(crate) async fn compare_with_hub(
 ) -> Result<Comparison> {
     let active = route.read().await?;
     let document = publication(declared, &active.control_plane);
-    let outcome = match route.validate(&document).await? {
+    let unowned = unowned_contexts(&document);
+    let validation = if unowned.is_empty() {
+        route.validate(&document).await?
+    } else {
+        Validation::Refused(format!(
+            "the active revision has no Work Context {}, whose output owner is a person's and set in Hub; this repository's example owner is never published",
+            unowned.join(", ")
+        ))
+    };
+    let outcome = match validation {
         Validation::Refused(reason) => Outcome::Refused(reason),
         Validation::Valid { sha256, .. } if sha256 == active.sha256 => Outcome::Differs(Vec::new()),
         Validation::Valid {
@@ -854,7 +901,7 @@ pub async fn plan(inputs: &Inputs, hub: &Hub, gateway: Option<&Gateway>) -> Vec<
                     subject,
                     differences,
                     Some(format!(
-                        "Hub's validated form of the declared document against the active revision, SHA-256 {}{restart}; people's grants, memberships, repositories and assignments stay as they are",
+                        "Hub's validated form of the declared document against the active revision, SHA-256 {}{restart}; people's grants, memberships, output owners and initial grants, repositories and assignments stay as they are",
                         active.sha256
                     )),
                 )
@@ -1463,6 +1510,61 @@ mod tests {
     }
 
     #[test]
+    fn a_work_contexts_output_owner_and_initial_grants_are_the_active_revisions() {
+        let mut declared = seed();
+        declared["workContexts"][0]["outputPolicy"] = json!({
+            "owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"},
+            "initialGrants": [{"subject": {"kind": "principal", "id": "https://login.example/v2.0#44444444"}, "level": "viewer"}],
+            "classification": "internal",
+        });
+        declared["workContexts"][1]["outputPolicy"] = json!({
+            "owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"},
+        });
+        let mut active = active();
+        active["workContexts"][0]["outputPolicy"] = json!({
+            "owner": {"kind": "principal", "id": "https://login.example/v2.0#e8c1"},
+            "initialGrants": [{"subject": {"kind": "principal", "id": "https://login.example/v2.0#77aa"}, "level": "editor"}],
+            "classification": "restricted",
+        });
+        let document = publication(&declared, &active);
+        // The person who owns the outputs, and the grants people made, as active; the
+        // installation's classification as declared.
+        assert_eq!(
+            document["workContexts"][0]["outputPolicy"],
+            json!({
+                "owner": active["workContexts"][0]["outputPolicy"]["owner"],
+                "initialGrants": active["workContexts"][0]["outputPolicy"]["initialGrants"],
+                "classification": "internal",
+            })
+        );
+        // Neither is a difference the installation would publish.
+        let paths: Vec<String> = compare(
+            &installation_owned(declared.clone()),
+            &installation_owned(active.clone()),
+        )
+        .iter()
+        .map(|difference| difference.path.to_string())
+        .collect();
+        assert!(
+            !paths
+                .iter()
+                .any(|path| path.contains("owner") || path.contains("initialGrants")),
+            "{paths:?}"
+        );
+        // A Work Context the active revision lacks has no owner to publish, never the
+        // repository's example.
+        assert_eq!(document["workContexts"][1]["outputPolicy"], json!({}));
+        assert!(!document.to_string().contains("55555555"));
+        assert_eq!(unowned_contexts(&document), ["new-work"]);
+        // Once the active revision has it, its owner is carried too.
+        active["workContexts"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"id": "new-work", "memberships": [], "outputPolicy": {"owner": {"kind": "principal", "id": "https://login.example/v2.0#e8c1"}}}));
+        assert!(unowned_contexts(&publication(&declared, &active)).is_empty());
+    }
+
+    #[test]
     fn a_publication_keeps_what_people_created_and_publishes_no_example_person() {
         let document = publication(&seed(), &active());
         // People's members as active.
@@ -1794,6 +1896,23 @@ mod publication_tests {
                 .unwrap()
                 .read_at_start()
         );
+    }
+
+    #[tokio::test]
+    async fn a_work_context_without_its_owner_is_refused_before_hub_validates_it() {
+        let route = Route::over(active());
+        let mut declared = active();
+        declared["workContexts"] = json!([{"id": "new-work", "memberships": [],
+            "outputPolicy": {"owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"}}}]);
+        let comparison = compare_with_hub(&route, &declared).await.unwrap();
+        let Outcome::Refused(reason) = comparison.outcome else {
+            panic!("an owner-less Work Context is refused");
+        };
+        assert!(reason.contains("new-work"), "{reason}");
+        assert!(!comparison.document.to_string().contains("55555555"));
+        let error = publish_over(&route, &declared).await.unwrap_err();
+        assert!(error.to_string().contains("example owner"), "{error}");
+        assert_eq!(*route.writes.lock().unwrap(), 0);
     }
 
     #[tokio::test]

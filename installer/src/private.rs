@@ -82,7 +82,8 @@ pub struct Identity {
     #[serde(default)]
     pub secrets: BTreeMap<String, PathBuf>,
     /// The people of a first seed: a JSON document holding the seed's members people
-    /// change (grants, memberships, repositories and assignments).
+    /// change (grants, memberships, Work Context output owners and initial grants,
+    /// repositories and assignments).
     pub people: Option<PathBuf>,
 }
 
