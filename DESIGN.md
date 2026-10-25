@@ -51,12 +51,13 @@ Computer keeps its recorded version until its owner restarts it.
 
 A value that would differ in a second installation belongs here; a value that changes
 with a server's code belongs to that server's repository. The installation owns the
-base policies, provider profiles, the Computer image and template, public origins and
-identity-provider clients. The default factory sandbox size, the soft caps and the
-base branch are installation values too, but they live in Hub's control plane
-(`factory.cpu`, `factory.memory`, `factory.caps`, `execution.baseBranch`), seeded from
-[hub.example.json](kubernetes/hub.example.json) and changed through Hub's live
-control-plane route; no other file carries them.
+base policies, provider profiles, the Computer image and template, the factory
+template, public origins and identity-provider clients. The factory template,
+`factory-v1` in workspace `installation`, holds every factory sandbox's size and its
+mounts, and Hub's `factory.template` names it. The soft caps and the base branch are
+installation values too, but they live in Hub's control plane (`factory.caps`,
+`execution.baseBranch`), seeded from [hub.example.json](kubernetes/hub.example.json)
+and changed through Hub's live control-plane route; no other file carries them.
 
 ## Images
 
@@ -188,7 +189,10 @@ access stated as one explicit rule, every name of three or more labels plus the
 two-label names in use on ports 80 and 443, so it can be tightened later. Inspected
 rules for exact hosts still apply and private addresses stay closed. A repository's
 `openshell/policy.yaml` adds rules only for something else. The base policy withholds
-the log store, so no branch reads another instance's output.
+the log store, so no branch reads another instance's output. Each sandbox also gets the
+factory template's size and its
+[driver configuration](kubernetes/factory-driver-config.json), which mounts the Lore
+image read-only, with the branch's own image.
 
 Three installation services serve every repository and branch: Vector on every node
 ships all container output to single-node VictoriaLogs, where it outlives its pod; one

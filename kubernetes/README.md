@@ -256,11 +256,28 @@ names them in the `factory` section (`registrationProfile`, `loreProfile`,
 `workspace`); the rendered base policy goes into Hub's configuration claim as
 `factory-base-v1.yaml` ([hub-config-pvc.yaml](hub-config-pvc.yaml)), which
 `factory.policyFile` names as `/etc/veoveo/hub/factory-base-v1.yaml`. Hub reads it at
-startup and exits if it is invalid. The default size, soft caps and base branch are
-Hub control-plane values (`factory.cpu`, `factory.memory`, `factory.caps`,
+startup and exits if it is invalid.
+
+Every factory sandbox's size and mounts come from the factory template, which
+`factory.template` names, created as the Computer template is, with the
+[filled](#naming-each-image-once) factory driver configuration and no image:
+
+```sh
+openshell sandbox template create factory-v1 --workspace installation \
+  --cpu 4 --memory 8Gi \
+  --driver-config-json "$(cat "$PRIVATE/factory-driver-config.json")"
+```
+
+Hub reads it on every push and creates each instance inline with the branch's own
+image, the template's CPU and memory as limits and its driver configuration; a
+template that names an image, environment or a GPU is refused. OpenShell has no
+template update: to change it, delete it and create it again under the same name, and
+each instance takes it at its next push, which recreates its sandbox. The template may
+come before or after Hub starts; until it exists, every push fails at `create` and
+names it. The soft caps and base branch are Hub control-plane values (`factory.caps`,
 `execution.baseBranch`), seeded from [hub.example.json](hub.example.json) and changed
-live through Hub's control-plane route. No installation-wide factory client or
-secret exists: each instance's Lore access comes from its own Hub client.
+live through Hub's control-plane route. No installation-wide factory client or secret
+exists: each instance's Lore access comes from its own Hub client.
 
 ## SeaweedFS
 

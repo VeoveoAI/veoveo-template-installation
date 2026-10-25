@@ -271,10 +271,11 @@ addresses, versioned Computer template/policy, empty repository/assignment lists
 the `execution` and `factory` sections. `execution.baseBranch` (`main`) is the branch
 whose instance serves a server a user's selection does not name. `factory` names the
 same gateway as `nativeUpstreams`, the `vv-factory` workspace, the base policy at
-`/etc/veoveo/hub/factory-base-v1.yaml`, the default size of every factory sandbox
-(`cpu: "4"`, `memory: "8Gi"`), the loopback port, Hub's issuer, the Lore server, the
-two global provider profiles, the image builder (BuildKit, the local registry and the
-Lore CLI image `veoveo/lore` there by digest) and soft caps (`instancesPerUser: 4`,
+`/etc/veoveo/hub/factory-base-v1.yaml`, the
+[factory template](README.md#factory-sandbox-policy-and-providers) `factory-v1` in
+workspace `installation`, which sizes every factory sandbox and mounts Lore, the
+loopback port, Hub's issuer, the Lore server, the two global provider profiles, the
+image builder (BuildKit and the local registry) and soft caps (`instancesPerUser: 4`,
 `enforce: false`: exceeding the cap warns in the instance's status). These are Hub
 control-plane values: the file seeds them and the live route below changes them.
 Its `oauthClients` also register `veoveo-hub-sdk-cli`, the public client whose
