@@ -21,8 +21,8 @@ uses explicit repository registrations and tenant/principal assignments to issue
 Lore's native signed resource grants. Native Lore enforces its existing token
 contract; native OpenShell renews/injects separate factory credentials. There is
 no additional issuer service, signer, refresh daemon or custom Lore authorization
-layer. See [the Hub-native installation](computer/LORE_HUB.md). Local Keycloak remains management/identity bootstrap. The existing pre-push hook
-is not comprehensive branch isolation.
+layer. See [the Hub-native installation](computer/LORE_HUB.md). Local Keycloak remains management/identity bootstrap. Factory instances read Lore
+only; their provider profile admits no Lore write.
 
 ## Mac development bootstrap
 
