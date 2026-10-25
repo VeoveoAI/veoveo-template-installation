@@ -234,7 +234,7 @@ success.
 See the [native signed-authority contract](../openshell/REFERENCE.md#native-seaweedfs-https-and-signed-authority).
 
 Lore acts as the Computer's owner after the owner's one Hub sign-in; there is no
-Lore login. Select the [Hub-issued native Lore setup](LORE_HUB.md): Entra proves
+Lore login. Hub's [Lore credentials](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle) apply: Entra proves
 identity through Hub's existing broker, Hub manages explicit live repository
 assignments and signs native claims, and unchanged Lore enforces its own contract.
 Each custody handoff gives the Computer's own Hub client a new secret in the

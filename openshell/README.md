@@ -41,7 +41,7 @@ openshell sandbox list --all-workspaces
 ```
 
 `identity/configure-openshell` provisions only local native management clients.
-Lore uses [Hub-issued native resource grants](../computer/LORE_HUB.md): the public
+Lore uses [Hub-issued native resource grants](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle): the public
 client is secretless; a separate factory client's secret enters native refresh
 custody. Human identity comes from Hub's existing enterprise broker. IdP clients,
 roles or optional scopes do not own Hub repository assignments. The old
@@ -93,8 +93,8 @@ host-gateway pin supplies the hostname without an `/etc/hosts` edit or Docker
 network attachment. Keep exact client hostname/port/binary rules and remove the
 old Lore-container `allowed_ips`; do not substitute a loopback CIDR. The TLS leaf
 must add DNS SAN `host.openshell.internal` under the existing trusted CA. Preserve
-its mounted key/certificate paths and internal Compose alias. Follow the
-[shared endpoint requirements](../computer/LORE_HUB.md).
+its mounted key/certificate paths and internal Compose alias. Keep the endpoint hostname, certificate SAN, CLI remote and Hub's
+`lore.deployments[].endpoint` aligned.
 Native denied-baseline catalog listing is empty; provide known assigned URLs. Native
 repository lookup now lets a verified caller resolve an ID/name/metadata hash;
 reading repository contents still requires its native grant. No new human
@@ -231,7 +231,7 @@ through the coordinated native setup; no IdP repository-mapping helper is needed
 
 ## Native provider and qualification
 
-Select [the Hub-native issuer and factory profile](../computer/LORE_HUB.md) with
+Select [the Hub-native issuer and factory profile](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle) with
 its exact repository scope, separate factory principal and native
 `oauth2_client_credentials` custody. Hub admits the current explicit assignment
 and returns Lore's native signed resource entry; native OpenShell renews it. The

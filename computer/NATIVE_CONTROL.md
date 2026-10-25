@@ -114,7 +114,7 @@ installation input; it is not the native management identity. Do not put
 supplies that reference. Preserve existing Hub database/signing/registration
 state and other services. The separately authorized unreleased Hub resource-binding
 migration discards disposable OAuth continuity, not native service custody or
-Computer working storage; see [issuer cutover](LORE_HUB.md#live-publication-and-first-cutover).
+Computer working storage; see the [first import](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers).
 
 For a fresh Hub sandbox, select the matching Computer-enabled policy and reviewed
 immutable Hub image. The existing native mount configuration supplies the

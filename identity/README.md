@@ -247,8 +247,8 @@ Hub broker application remains confidential and its credential stays trusted.
 Native Lore's secretless public client and distinct factory client are registered
 with Hub, not provisioned as directory repository-role/resource mappers. Hub's
 revisioned control plane owns exact native repository registrations and explicit
-tenant/principal/action assignments. Follow [Hub-issued native Lore](../computer/LORE_HUB.md)
-for public-client, issuer, factory custody and live publication settings.
+tenant/principal/action assignments. Hub's [Lore credentials](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle)
+describe the public client, issuer, factory custody and live publication.
 
 The retired `configure-lore` direct-issuer helper and its helper-only tests have
 been removed. Do not regenerate its local client/grant bookkeeping. Retain any

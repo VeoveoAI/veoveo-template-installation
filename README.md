@@ -21,7 +21,7 @@ uses explicit repository registrations and tenant/principal assignments to issue
 Lore's native signed resource grants. Native Lore enforces its existing token
 contract; native OpenShell renews/injects separate factory credentials. There is
 no additional issuer service, signer, refresh daemon or custom Lore authorization
-layer. See [the Hub-native installation](computer/LORE_HUB.md). Local Keycloak remains management/identity bootstrap. The existing pre-push hook
+layer. See Hub's [Lore credentials](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle). Local Keycloak remains management/identity bootstrap. The existing pre-push hook
 is not comprehensive branch isolation.
 
 ## Mac development bootstrap
@@ -38,7 +38,7 @@ Compose cleanup. The native OpenShell gateway runs as the macOS service.
 Complete the one-time [CA trust setup](identity/README.md#macos-certificate-trust),
 then follow [native OpenShell setup](openshell/README.md). Local management bootstrap uses
 `docker compose --profile keycloak up -d`. Lore repository registrations and
-explicit assignments use [Hub's native live publication](computer/LORE_HUB.md),
+explicit assignments use [Hub's live control plane](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#live-native-destinations-and-computer-defaults),
 not directory client/resource mappers. The former OIDC egress proxy is retired;
 workload egress follows native OpenShell policy and credential mediation.
 A fresh installation must first provision identity credentials and external volumes.
