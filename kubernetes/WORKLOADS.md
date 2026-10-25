@@ -267,9 +267,18 @@ mount/environment configuration alone is not transport acceptance.
 ## Hub and automatic private Computers
 
 `hub.example.json` is the existing typed Hub input with Kubernetes gateway/Lore
-addresses, versioned Computer template/policy, empty repository/assignment lists and
-the `execution` and `factory` sections. `execution.baseBranch` (`main`) is the branch
-whose instance serves a server a user's selection does not name. `factory` names the
+addresses, versioned Computer template/policy, the private bindings of Artifact, Media,
+Embedding and console, empty repository/assignment lists and the `execution` and
+`factory` sections. Merged by typed keys with
+[identity/entra.example.json](../identity/entra.example.json), it is a complete seed
+catalog that `veoveo-hub validate` admits, with the names the
+[installation design](../DESIGN.md#identity) lists. Both use one set of example
+identifiers, which an installation replaces with its own: Entra tenant
+`11111111-1111-4111-8111-111111111111`, the OpenShell resource application
+`22222222-2222-4222-8222-222222222222` (the gateway's audience), Hub's broker
+application `33333333-3333-4333-8333-333333333333` (the `entra` client) and the example
+people `44444444-…` (member), `55555555-…` (administrator) and `66666666-…` (billed).
+`execution.baseBranch` (`main`) is the branch whose instance serves a server a user's selection does not name. `factory` names the
 same gateway as `nativeUpstreams`, the `vv-factory` workspace, the base policy at
 `/etc/veoveo/hub/factory-base-v1.yaml`, the
 [factory template](README.md#factory-sandbox-policy-and-providers) `factory-v1` in
@@ -293,12 +302,12 @@ seed only an empty installation; routine updates use the authenticated live
 `GET`/`PUT /admin/{profile}/control-plane` path and its current revision. That route
 needs an explicit rule in the complete input's `policies[].rules`, naming the route's
 `{profile}` and the Entra `administrator` app role, which Hub carries in the token's
-`roles` claim:
+`roles` claim. The identity example's `reference-policy` holds it:
 
 ```json
 {"id": "installation-administration", "effect": "allow",
  "actions": ["admin_read", "admin_write"], "profiles": ["local"],
- "roles": ["administrator"], "tenantIds": ["<tenant>"]}
+ "roles": ["administrator"], "tenantIds": ["reference"]}
 ```
 
 Making someone an administrator is assigning them that Entra app role; Hub's `admin`
@@ -534,6 +543,18 @@ callbacks; use status-check operation with Media's `VEOVEO_PUBLIC_ORIGIN` unset.
 This fixture produces synthetic data, not model inference or valid media proof.
 Its native process readiness does not prove Media registration or a Task result.
 No fixture image rebuild is required for these configuration inputs.
+
+Media with a real provider may complete its runs by the provider's webhooks instead.
+Its trusted configuration then sets `VEOVEO_PUBLIC_ORIGIN` to Hub's public origin and
+`VEOVEO_ALLOW_LOOPBACK_HOSTS=true`, since native HTTP ingress reaches it as
+`127.0.0.1:8802`, beside the provider's webhook secret. Expose Media natively and add
+the Media callback route of [tunnel-routes.yaml](tunnel-routes.yaml), which publishes
+only `/media/operations/{operation_id}/{token}`:
+
+```sh
+openshell service expose --workspace vv-services media 8802 http \
+  --authorization-mode bearer-passthrough
+```
 
 With an existing native Hub bearer/reference, verify registration and actual MCP
 routing without invoking a model:
