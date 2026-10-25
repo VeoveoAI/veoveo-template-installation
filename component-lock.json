@@ -4,12 +4,12 @@
     {
       "name": "veoveo-hub",
       "repository": "https://github.com/VeoveoAI/veoveo-hub",
-      "revision": "9e00c77432439bb260972316b55d67bedd2ce534"
+      "revision": "d718d0222a7104bd16b65a318abe8d4a62d5c4c6"
     },
     {
       "name": "veoveo-hub-sdk",
       "repository": "https://github.com/VeoveoAI/veoveo-hub-sdk",
-      "revision": "3980af81d82bd34524b9a02003a74b73c8879ef8"
+      "revision": "a41c9cc6c81f6c0305dd41165defb142740ed6b1"
     },
     {
       "name": "veoveo-mcp-console",
@@ -39,7 +39,7 @@
     {
       "name": "veoveo-mcp-time",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-time",
-      "revision": "2ae5f13baebba69c0d52b14b06855b8f5093d392"
+      "revision": "6f17481bfa04fd6bf95aac58aeac2515a3976906"
     }
   ]
 }
