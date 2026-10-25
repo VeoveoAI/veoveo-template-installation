@@ -2,6 +2,9 @@
 
 - This repository holds installation choices and trusted bootstrap configuration.
   Planning belongs in `veoveo-docs`. Components own their build and check logic.
+- The installation's design is in [DESIGN.md](DESIGN.md) and the platform's in the
+  [architecture](https://github.com/VeoveoAI/veoveo-docs/blob/main/ARCHITECTURE.md). Change the design in the same change as the
+  configuration it describes.
 - Linux deployment uses K3s foundation controllers and OpenShell's native Kubernetes
   driver for Hub/MCP, Computer and factory workloads. Mac remains ordinary source
   development/testing with local fixtures; do not provision a Mac cluster. Use native
@@ -20,7 +23,7 @@
   it is not a comprehensive branch authorization or transport-expiry system.
   Credential lifecycle qualification stays separate in native OpenShell controls.
 - The user withdrew Desktop acceptance on 2026-10-17. The current accepted
-  [Hub-issued native Lore architecture](../veoveo-docs/LORE_OPENSHELL_INTEGRATION.md#hub-issued-native-lore-credentials)
+  [Hub-issued native Lore architecture](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle)
   uses Entra for human identity, Hub's existing issuer and revisioned control plane
   for explicit repository assignments/native tokens, and unchanged native Lore
   enforcement. Native OpenShell owns factory renewal/injection; user Lore refresh
