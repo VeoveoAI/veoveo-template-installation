@@ -56,9 +56,10 @@ control-plane route; no other file carries them.
 
 Lore owns source/revision semantics and enforces its unchanged native signed-token
 contract. Entra authenticates humans; Hub's existing issuer and revisioned control
-plane own explicit repository assignments/native token issuance. There is no
-Desktop adapter, standalone signer, automatic creator/admin grant, custom Lore
-permission layer or token worker. Factory renewal/injection belongs to native
+plane own explicit repository assignments/native token issuance. Creating a
+repository through Hub makes its creator the owner; no other grant is automatic,
+and no administrator role grants repositories. There is no Desktop adapter,
+standalone signer, custom Lore permission layer or token worker. Factory renewal/injection belongs to native
 OpenShell. Human native Lore grants remain in each private Computer.
 
 The installation's identity provider (Entra in the reference, local Keycloak for Mac
@@ -75,7 +76,7 @@ Keycloak.
 Installation administration is the identity provider's `administrator` app role,
 which Hub reads from the token's `roles` claim and which the control-plane policy rule
 `installation-administration` names. Hub's `admin` installation role governs only
-server tool permissions, and neither grants repository access.
+server tool permissions.
 
 Lore's server settings ([lore.toml](kubernetes/lore.toml)) trust only Hub's
 `{origin}/oauth` issuer, with audience `{origin}/resources/lore`, `at+jwt` tokens,
