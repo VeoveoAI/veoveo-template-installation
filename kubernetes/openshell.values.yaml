@@ -51,6 +51,14 @@ server:
   sandboxJwt:
     # Selects the default managed namespace ID; render matching PVC/Job namespaces.
     gatewayId: openshell
+  drivers:
+    kubernetes:
+      resourceAdmission:
+        # The only repositories whose digest-pinned images may be image volumes: Lore and
+        # the Hub SDK CLI. Upgrading either changes its digest, never this list.
+        imageRepositories:
+          - registry.veoveo-system.svc.cluster.local:5000/veoveo/lore
+          - registry.veoveo-system.svc.cluster.local:5000/veoveo/hub-sdk-cli
   tls:
     enableMtls: true
     certSecretName: openshell-server-tls

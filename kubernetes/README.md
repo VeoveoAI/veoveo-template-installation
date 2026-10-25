@@ -201,16 +201,29 @@ binaries are `/opt/veoveo/lore/usr/local/bin/lore` and
 `/opt/veoveo/hub-sdk-cli/usr/local/bin/veoveo-hub-sdk-cli`, the paths the policies and
 the `vv-lore` profile name.
 
-[component-lock.json](../component-lock.json) names each of these images once, under
-`images`, by digest in the local registry. The files that use one carry its
-placeholder, `@image:lore@` or `@image:hub-sdk-cli@`: [lore.yaml](lore.yaml) and the
-[Hub](hub-driver-config.json), [Computer](computer-driver-config.json) and
-[factory](factory-driver-config.json) driver configurations. Fill them into private
-copies; this is the only way a digest enters them, and it refuses an image that is not
-pinned by digest:
+[component-lock.json](../component-lock.json) names each of these images once, by digest
+in the local registry, in its `images` member, which the
+[component lock format](https://github.com/VeoveoAI/veoveo-core/blob/main/platform/installation/contract/DESIGN.md)
+defines: a map from the image's name to `<repository>@sha256:<digest>`, with no tag. The
+template has built no image, so its lock names none; once an installation publishes
+both images, its lock holds:
+
+```json
+"images": {
+  "hub-sdk-cli": "registry.veoveo-system.svc.cluster.local:5000/veoveo/hub-sdk-cli@sha256:<digest>",
+  "lore": "registry.veoveo-system.svc.cluster.local:5000/veoveo/lore@sha256:<digest>"
+}
+```
+
+The files that use an image carry its placeholder, `@image:lore@` or
+`@image:hub-sdk-cli@`: [lore.yaml](lore.yaml) and the [Hub](hub-driver-config.json),
+[Computer](computer-driver-config.json) and [factory](factory-driver-config.json) driver
+configurations. Fill them into private copies; this is the only way a digest enters
+them, it refuses an image that is not pinned by digest, and the last line fails while
+any placeholder is left:
 
 ```sh
-jq -er '.images | to_entries[] |
+jq -r '(.images // {}) | to_entries[] |
   if (.value | test("^[^@]+@sha256:[0-9a-f]{64}$")) then "s|@image:\(.key)@|\(.value)|g"
   else error("\(.key) is not pinned by digest in component-lock.json") end' \
   component-lock.json > "$PRIVATE/images.sed"
@@ -220,13 +233,16 @@ done
 ! grep -n '@image:' "$PRIVATE/lore.yaml" "$PRIVATE"/*-driver-config.json
 ```
 
-Upgrading Lore builds and publishes one image, puts its digest in the lock and fills
-the files again. Then apply `lore.yaml`, recreate Hub with the new Hub driver
-configuration, and publish the Computer and factory templates again: Hub uses the new
-Lore when it restarts, each Computer as a new Computer version when its owner restarts
-it, and each factory instance when its next push recreates its sandbox. OpenShell's
-resource admission refuses image volumes, so the installation's gateway runs with it
-disabled ([openshell.values.yaml](openshell.values.yaml)) and with `allow_driver_config`.
+OpenShell's resource admission stays on. It admits an image volume only when its
+reference is pinned by digest and its repository is listed, which
+[openshell.values.yaml](openshell.values.yaml) does for exactly these two repositories
+(`server.drivers.kubernetes.resourceAdmission.imageRepositories`); the gateway also
+runs with `allow_driver_config`. Upgrading Lore builds and publishes one image, puts
+its digest in the lock and fills the files again; the repository list does not change.
+Then apply `lore.yaml`, recreate Hub with the new Hub driver configuration, and publish
+the Computer and factory templates again: Hub uses the new Lore when it restarts, each
+Computer as a new Computer version when its owner restarts it, and each factory
+instance when its next push recreates its sandbox.
 
 ## Factory sandbox policy and providers
 

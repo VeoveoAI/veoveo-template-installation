@@ -65,17 +65,19 @@ Veoveo's own images are built from source and served only by the installation's
 registry; third-party images stay at their upstream registries. Every image is pinned
 by digest.
 
-Platform tools reach the workloads that use them from their own image. The Lore
-image holds the only Lore CLI: the Lore server runs it, and Hub, Computers and
-factory instances mount it read-only at `/opt/veoveo/lore` as a Kubernetes image
-volume pinned by digest, through OpenShell's driver configuration. Computers mount
-the SDK CLI image the same way at `/opt/veoveo/hub-sdk-cli`. No other image copies
-either tool, and Hub holds no image reference for them: a Computer takes its mounts
-from the Computer template, and a factory instance from the factory template, whose
-size and mounts Hub applies with the branch's own image. Policies name the mounted
-binaries' paths. A mounted binary uses the workload image's C library, as a copied
-one did. Image volumes are stable in the installation's Kubernetes 1.36; OpenShell's
-resource admission refuses them, so the installation runs without it.
+Platform tools reach the workloads that use them from their own image. The Lore image
+holds the only Lore CLI: the Lore server runs it, and Hub, Computers and factory
+instances mount it read-only at `/opt/veoveo/lore` as a Kubernetes image volume pinned
+by digest, through OpenShell's driver configuration. Computers mount the SDK CLI image
+the same way at `/opt/veoveo/hub-sdk-cli`. No other image copies either tool, and Hub
+holds no image reference for them: a Computer takes its mounts from the Computer
+template, and a factory instance from the factory template, whose size and mounts Hub
+applies with the branch's own image. Policies name the mounted binaries' paths. A
+mounted binary uses the workload image's C library, as a copied one did. Image volumes
+are stable in the installation's Kubernetes 1.36. OpenShell's resource admission,
+which approves every attachment a sandbox requests, admits an image volume only when
+it is pinned by digest and its repository is one the installation lists; upgrading a
+tool changes its digest, never that list.
 
 The installation names each image once, in `component-lock.json`, and fills every
 manifest, template and driver configuration that uses it from there. Upgrading Lore
