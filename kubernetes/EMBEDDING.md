@@ -362,7 +362,7 @@ and token files, registration/discovery, Artifact byte identity, ordered multimo
 vectors/coverage/tokens, usage, real ACL refusal, composition and service restart
 recovery. Reuse the frozen media/options/8192 recipes and the six retained native
 Linux outputs for matching deployed Linux comparisons. Follow the coordinator's
-[Linux CUDA qualification decision](../../veoveo-docs/OPENSHELL_HARDCUT_PLAN.md#multimodal-embedding-replacement--2026-10-19).
+[Linux CUDA qualification decision](https://github.com/VeoveoAI/veoveo-docs/blob/main/records/OPENSHELL_HARDCUT_PLAN.md#multimodal-embedding-replacement--2026-10-19).
 
 All six native CUDA outputs are now collected, with source/model/settings,
 coverage, tokens, cardinality/dimensions, finite normalized vectors and actual

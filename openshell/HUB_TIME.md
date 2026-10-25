@@ -2,7 +2,7 @@
 
 These files prepare the existing native Hub → Time contract. They do not deploy
 services or establish application, renewal, database or restart acceptance. Use the
-[execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md#subsequent-adoption)
+[qualification checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/QUALIFICATION_CHECKLIST.md)
 for those gates. Ordinary reruns preserve application state. During the current
 development phase, an authorized breaking-contract cutover resets disposable
 application data and qualifies the matched stack from fresh state; it does not

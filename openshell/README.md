@@ -20,7 +20,7 @@ The existing opaque-token factory integration, configured push hook and native
 [S3 + PostgreSQL storage plugin](LORE_STORAGE.md) are Veoveo additions. The backend
 passes native component conformance against real PostgreSQL and SeaweedFS;
 deployed server, dependency restart and factory qualification remain pending. Native OpenShell
-configuration selects runtime images; the [execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md)
+configuration selects runtime images; the [qualification checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/QUALIFICATION_CHECKLIST.md)
 records current acceptance. Local image tags are not registry releases.
 
 ## Operator identity and trust

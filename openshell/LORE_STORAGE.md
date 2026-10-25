@@ -6,7 +6,7 @@ immutable/mutable conformance against real PostgreSQL/SeaweedFS, focused
 concurrency/failure/reopen scenarios, plugin configuration checks and operator
 fixture compilation. Deployed server, dependency restart and factory acceptance
 remain pending. Follow the
-[execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md)
+[qualification checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/QUALIFICATION_CHECKLIST.md)
 and qualify the exact source revision before replacing the live server. The build
 examples in [native setup](README.md) pin that plugin revision for both CLI and
 server and reuse one fresh source export. The earlier `8be7e6e6` upstream-merge

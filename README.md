@@ -50,7 +50,7 @@ repository with `openshell/run` is served from its own factory sandbox, built fr
 that repository's `openshell/image/`; the installation supplies the
 [base policy, provider profiles, log store, image builder and registry](kubernetes/README.md#factory-sandbox-policy-and-providers).
 OpenCode and model credentials belong in user Computers. The
-[execution checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md) records current acceptance.
+[qualification checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/QUALIFICATION_CHECKLIST.md) records current acceptance.
 
 The [Entra reference](openshell/REFERENCE.md) retains identity contracts and
 historical Docker deployment receipts. Its Docker/Compose placement commands do
@@ -82,6 +82,6 @@ are preserved.
 
 Earlier local direct-issuer receipts remain historical. Hub-issued native Lore,
 interactive user login and the reference Linux/Entra Computer goal are active in
-the [execution plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md).
+the [plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/PLAN.md).
 Source/configuration preparation is separate from deployed and model acceptance.
 GPU/CUDA and general environment composition remain separate qualifications.

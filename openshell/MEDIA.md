@@ -1,7 +1,7 @@
 # Native Media preparation
 
 These are installation and qualification instructions; the
-[Media execution plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md#media-native-integration-plan)
+[Media execution record](https://github.com/VeoveoAI/veoveo-docs/blob/main/records/OPENSHELL_HARDCUT_PLAN.md#media-native-integration-plan)
 records actual deployed evidence and remaining gates. Preserve the qualified Time/Artifact paths, existing
 PostgreSQL/SeaweedFS data and registration keys. Endpoint/provider/placement
 selection stays in this installation and uses the existing local Work Context;

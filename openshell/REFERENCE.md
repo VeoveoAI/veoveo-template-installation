@@ -8,7 +8,7 @@ do not use them to launch the replacement Linux stack. Current deployment and
 acceptance status are recorded in the execution plan.
 
 This prepares the reference Linux goal in the
-[execution plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/OPENSHELL_HARDCUT_PLAN.md#reference-linux-deployment-and-signed-wavespeed-webhook-goal).
+[execution record](https://github.com/VeoveoAI/veoveo-docs/blob/main/records/OPENSHELL_HARDCUT_PLAN.md#reference-linux-deployment-and-signed-wavespeed-webhook-goal).
 It is configuration, not a qualification receipt or deployment controller. Public
 origins below are examples; use the operator's reviewed DNS/TLS configuration in
 private state. The authorized fresh Linux reference discards old application
