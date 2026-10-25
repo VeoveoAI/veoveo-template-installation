@@ -2,6 +2,9 @@
 # Lore's endpoint and credential come from the attached computer-lore provider of
 # the global vv-lore profile, whose inspected endpoint substitutes the owner's token.
 # Lore and the Hub SDK CLI are the read-only image volumes of computer-driver-config.json.
+# The hub rule admits the owner's MCP endpoint for OpenCode and for the mounted Hub SDK
+# CLI, whose bearer is the same COMPUTER_HUB_REFERENCE placeholder; the model rule stays
+# OpenCode's alone.
 version: 1
 filesystem_policy:
   include_workdir: true
@@ -38,6 +41,7 @@ network_policies:
         allow_all_known_mcp_methods: true
     binaries:
     - path: /usr/local/bin/opencode
+    - path: /opt/veoveo/hub-sdk-cli/usr/local/bin/veoveo-hub-sdk-cli
   hub_computer:
     # The Computer's own status, restart and previous version, for any program in it:
     # the proxy puts the owner's Hub token in place of the COMPUTER_HUB_REFERENCE

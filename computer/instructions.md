@@ -1,6 +1,13 @@
-This private Computer provides OpenCode, the configured Hub MCP connection and
-native Lore CLI. Hub supplies authorized platform tools, branch selection and the
-owner's Lore access; Lore owns source repositories and their authorization.
+This private Computer provides OpenCode, the configured Hub MCP connection, the
+native Lore CLI and the Hub CLI `veoveo-hub-sdk-cli`. Hub supplies authorized platform
+tools, branch selection and the owner's Lore access; Lore owns source repositories and
+their authorization.
+
+From a shell or a script, `veoveo-hub-sdk-cli tools` lists the same Hub tools as the
+owner and `veoveo-hub-sdk-cli call <tool> '<JSON arguments>'` calls one, waiting for a
+Task-backed tool to end; `resources`, `prompts` and `read <uri>` work the same way and
+`--json` prints JSON. It needs no flags or sign-in: the proxy supplies the owner's Hub
+token. Its `login`, `logout` and `ask` do not apply here.
 
 ## Home and publication
 

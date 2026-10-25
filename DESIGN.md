@@ -241,7 +241,13 @@ one source is [computer/instructions.md](computer/instructions.md), published in
 OpenCode's configuration ([opencode.json](computer/opencode.json)) selects
 `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default, turns off its Git and Mercurial
 plugins and its snapshots, since Lore owns source history and undo, and connects one
-MCP server, `hub`, with the Computer's own Hub credential. `computers.collectAfterSeconds`
+MCP server, `hub`, with the Computer's own Hub credential. The mounted Hub SDK CLI acts
+as the owner the same way: the template sets `VEOVEO_CLI_HUB` to the Hub's public
+origin, `VEOVEO_CLI_PROFILE=computer` and `VEOVEO_CLI_BEARER_ENV=COMPUTER_HUB_REFERENCE`,
+and the policy's `hub` rule admits `/mcp/computer`, with the `computer-hub` credential
+binding, for both OpenCode and the CLI's binary, so `veoveo-hub-sdk-cli tools` and `call`
+need no flags. The model endpoint stays OpenCode's alone; the CLI's `login`, `logout`
+and `ask` say that they do not apply in a Computer. `computers.collectAfterSeconds`
 sets idle collection (7200 in the reference); the forwarding capacity is Hub's
 `computers.forwardingConnectionLimit`, beside the gateway's per-sandbox and per-replica
 TCP limits, which are separate from SSH's.
