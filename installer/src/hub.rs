@@ -118,9 +118,19 @@ pub fn fill_claim(
     Ok(filled)
 }
 
+/// The claim's declared files, as `claim_files` names them, provided its seed Job is
+/// declared too: apply writes the files with it and removes files with a Job made from it.
+/// A claim whose files or manifest cannot be filled cannot be written, and one whose
+/// manifest still holds a render marker is not ready.
+pub fn declared_claim(inputs: &Inputs, claim: &HubClaim) -> Result<Vec<(String, String, String)>> {
+    let files = claim_files(inputs, claim)?;
+    crate::kubernetes::seed_job(inputs, claim)?;
+    Ok(files)
+}
+
 pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) -> Vec<Item> {
     let subject = format!("Hub's trusted files in {}", claim.directory);
-    let files = match claim_files(inputs, claim) {
+    let files = match declared_claim(inputs, claim) {
         Ok(files) => files,
         Err(error) => return vec![Item::unusable(subject, &error)],
     };
@@ -908,14 +918,25 @@ pub async fn plan(inputs: &Inputs, hub: &Hub, gateway: Option<&Gateway>) -> Vec<
             Some(revision) => format!("control plane at {origin}, active revision {revision}"),
             None => subject,
         };
-        let item = Item::deferred(
-            subject,
-            format!(
-                "Hub reads the files the declared control plane names when it validates it, and the claim step writes {} first; apply has Hub validate the document then, and publishes it unless Hub refuses it",
-                unwritten.join(", ")
+        let unwritten = unwritten.join(", ");
+        // The claim step writes them with its seed Job, which a manifest still holding a
+        // render marker cannot make.
+        let ready = claim
+            .map(|claim| crate::kubernetes::seed_job(inputs, claim))
+            .transpose();
+        let item = match ready {
+            Err(error) => Item::unusable(
+                subject,
+                &error.context(format!("the claim step cannot write {unwritten}")),
             ),
-            publish,
-        );
+            Ok(_) => Item::deferred(
+                subject,
+                format!(
+                    "Hub reads the files the declared control plane names when it validates it, and the claim step writes {unwritten} first; apply has Hub validate the document then, and publishes it unless Hub refuses it"
+                ),
+                publish,
+            ),
+        };
         (active, item)
     };
     let mut items = vec![item];
@@ -1057,6 +1078,10 @@ async fn plan_cleanup(
         "files of {} no revision of this repository names",
         claim.directory
     );
+    // Apply removes them with a Job made from the claim's seed Job.
+    if let Err(error) = crate::kubernetes::seed_job(inputs, claim) {
+        return Item::unusable(subject, &error);
+    }
     let names = match gateway
         .list_directory(&claim.workspace, &claim.sandbox, &claim.directory)
         .await
@@ -1587,6 +1612,65 @@ mod tests {
         );
         // Publishing it leaves the active revision equal to the declaration.
         assert!(compare(&installation_owned(seed()), &installation_owned(document)).is_empty());
+    }
+
+    /// A claim whose seed Job's manifest still holds a render marker is not ready: plan
+    /// does not compare it, as it does not compare any other marker file, instead of
+    /// planning a write that would fail when apply makes it.
+    #[test]
+    fn a_claim_whose_manifest_holds_a_marker_is_not_compared() {
+        let repository =
+            std::env::temp_dir().join(format!("veoveo-installer-claim-{}", std::process::id()));
+        std::fs::create_dir_all(repository.join("kubernetes")).unwrap();
+        std::fs::write(repository.join("policy.yaml"), "version: 1\n").unwrap();
+        let declaration = crate::declaration::Declaration::parse(
+            r#"
+            [[step]]
+            name = "hub-claim"
+            [step.claim]
+            workspace = "vv-control"
+            sandbox = "hub"
+            directory = "/etc/veoveo/hub"
+            manifest = "kubernetes/hub-config-pvc.yaml"
+            job = "seed-hub-config-v1"
+            secret = "hub-config-bootstrap"
+            [[step.claim.file]]
+            name = "computer-policy"
+            source = "policy.yaml"
+            "#,
+        )
+        .unwrap();
+        let inputs = Inputs {
+            repository: repository.clone(),
+            declaration,
+            lock: crate::inputs::tests::lock(),
+            private: Default::default(),
+        };
+        let claim = inputs.declaration.claim("hub-claim").unwrap();
+        let planned = |image: &str| {
+            std::fs::write(
+                repository.join("kubernetes/hub-config-pvc.yaml"),
+                format!(
+                    "apiVersion: batch/v1\nkind: Job\nmetadata:\n  name: seed-hub-config-v1\n  \
+                     namespace: openshell-openshell-vv-control\nspec:\n  template:\n    spec:\n      \
+                     containers:\n      - name: copy\n        image: {image}\n"
+                ),
+            )
+            .unwrap();
+            declared_claim(&inputs, claim)
+                .err()
+                .map(|error| Item::unusable("Hub's trusted files in /etc/veoveo/hub", &error))
+        };
+        let marker = planned("REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256").unwrap();
+        assert!(matches!(marker.state, State::NotCompared(_)), "{marker:?}");
+        assert!(marker.matches() && marker.blocker().is_none() && marker.action.is_none());
+        // An image the lock does not name is an error, which blocks apply.
+        let unlocked = planned("@image:copy@").unwrap();
+        assert!(matches!(unlocked.state, State::Unusable(_)), "{unlocked:?}");
+        assert!(unlocked.blocker().is_some());
+        // Filled from the lock, the claim is declared and plan compares it.
+        assert!(planned("@image:lore@").is_none());
+        std::fs::remove_dir_all(&repository).unwrap();
     }
 
     #[test]
