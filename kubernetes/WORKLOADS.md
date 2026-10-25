@@ -319,12 +319,22 @@ openshell sandbox template create computer-v1 --workspace installation \
   --driver-config-json "$(cat "$PRIVATE/computer-driver-config.json")" \
   --env SSL_CERT_DIR=/etc/ssl/certs \
   --env VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337 \
+  --env VEOVEO_CLI_HUB="$HUB_ORIGIN" --env VEOVEO_CLI_PROFILE=computer \
+  --env VEOVEO_CLI_BEARER_ENV=COMPUTER_HUB_REFERENCE \
   --annotation "veoveo.ai/release-note=$COMPUTER_RELEASE_NOTE"
 ```
 
 The template's driver configuration, [filled](README.md#naming-each-image-once) from
 the lock, mounts the Lore and Hub SDK CLI images read-only at `/opt/veoveo/lore` and
 `/opt/veoveo/hub-sdk-cli`, whose binary directories the Computer image puts on `PATH`.
+`HUB_ORIGIN` is the Hub's public origin, such as `https://veoveo.example.com`. The
+three `VEOVEO_CLI_*` variables make `veoveo-hub-sdk-cli tools` and `call` act as the
+Computer's owner with no flags, exactly as OpenCode does: each request goes to
+`$HUB_ORIGIN/mcp/computer` with the `COMPUTER_HUB_REFERENCE` placeholder, which the
+proxy replaces with the owner's Hub token, and the
+[Computer policy](policies/computer-v1.yaml)'s `hub` rule admits that endpoint for the
+CLI's mounted binary. The CLI's `login`, `logout` and `ask` say that they do not apply
+in a Computer, and no rule admits the model endpoint for the CLI.
 The profiles and the template may come before or after Hub starts: Hub reads the
 template when a Computer is entered, and until it and the profiles exist, `/computer`
 says that Computers are unavailable and why. The template, the
