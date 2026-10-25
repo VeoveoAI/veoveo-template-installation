@@ -4,6 +4,7 @@
   installer that applies them (`installer/`, Rust). An installation made from this
   template owns all of it; to update one, compare it with the latest template and bring
   over what applies.
+  The installer's one check is `docker build -f installer/Dockerfile --target check .`.
   Planning belongs in `veoveo-docs`. Components own their build and check logic.
 - The installation's design is in [DESIGN.md](DESIGN.md) and the platform's in the
   [architecture](https://github.com/VeoveoAI/veoveo-docs/blob/main/ARCHITECTURE.md). Change the design in the same change as the

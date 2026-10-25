@@ -8,3 +8,6 @@ tls/
 
 # Retired proxy output can remain locally; exclude it from image contexts.
 egress/
+
+# The installer's build output.
+installer/target/
