@@ -81,7 +81,4 @@ gatewayConfig:
   openshell.drivers.kubernetes:
     additional_ca_bundle: /etc/openshell/platform-ca/ca.crt
     allow_driver_config: true
-    # Lore and the Hub SDK CLI are image volumes, which resource admission refuses.
-    resource_admission:
-      enabled: false
     workspace_mode: managed

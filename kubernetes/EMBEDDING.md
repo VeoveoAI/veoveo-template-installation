@@ -74,11 +74,8 @@ kubectl label runtimeclass nvidia openshell.ai/sandbox-attachable=true \
 
 The resource-version guard refuses a concurrent object change. Preserve the
 existing class and all other metadata; add no workspace approval label to this
-shared RuntimeClass. Do not recreate it or change gateway defaults. Native admission
-records the actual class UID. The reference gateway runs without resource admission,
-which refuses the installation's image volumes
-([openshell.values.yaml](openshell.values.yaml)); the label matters only to a gateway
-that enables it. This trusted
+shared RuntimeClass. Do not recreate it, disable resource admission or change
+gateway defaults. Native admission records the actual class UID. This trusted
 bootstrap label requires no source/image rebuild.
 
 The official chart uses host device/kubelet mounts as a trusted foundation
