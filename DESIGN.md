@@ -212,6 +212,25 @@ another reads would let a branch plant compiled code in a build it has no right 
 change. Each instance compiles on its own sandbox's disk, and a new branch or a
 recreated sandbox compiles from nothing.
 
+The image builder keeps that rule for `openshell/image/`. Hub builds every branch with
+BuildKit's cache-mount namespace (`BUILDKIT_CACHE_MOUNT_NS`, a build option the client
+sets and a `Dockerfile` cannot) set to the SHA-256 of its repository ID and branch name,
+so one branch's `RUN --mount=type=cache` directory is never another's, and prunes
+BuildKit's cache mounts before and after every build, so one lives for one build only.
+BuildKit keys a cached step by its instruction and inputs and not by what a cache mount
+held, so a cache mount's content must not outlive its build. Layers stay cached: a push
+that changes nothing in `openshell/image/` gets the same image back. The builder runs
+no frontend but `docker/dockerfile`'s, whatever a `# syntax=` line names.
+
+Build steps share the BuildKit daemon's network, so Kubernetes network policy, which
+Cilium enforces, bounds what a build reaches: the daemon reaches the public internet,
+the registry and cluster DNS and no other private or cluster address, and only Hub's
+supervisor reaches the daemon. The log store admits only Vector, which writes to it,
+and the supervisors of `vv-services`, where console reads it; no factory sandbox or
+build reaches it. The registry has no authentication yet, so a build step can still
+push an image to it. Every workload names its image by digest, so a pushed image
+redirects nothing, but the registry's authentication stays open.
+
 ## Computers
 
 The Computer template `computer-v1`, in workspace `installation`, its
