@@ -304,8 +304,7 @@ Everything built on the platform is deployed by the factory, never by the instal
 Its inputs are this repository (the lock, manifests, Helm values, policies, provider
 profiles, templates and Hub's seed) and the operator's private directory of
 installation values and secrets, which never enters Git. Image digests come only from
-the lock: `veoveo-installer build` builds a component at its locked revision and
-records the digest there, and nothing else writes one.
+the lock.
 
 [installation.toml](installation.toml) declares the substrate as an ordered list of
 steps, each changing through one owner: Kubernetes manifests and ConfigMaps built from
