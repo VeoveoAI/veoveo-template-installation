@@ -19,7 +19,7 @@ The build commands below select reviewed Lore source at
 `ec6bdc2195753b50f70696d367788b4bc8d08964` (0.10.2-nightly). Native OIDC
 discovery, device login and partition exchange come from upstream. Human token
 refresh remains unimplemented there; this source update does not qualify that flow.
-The existing opaque-token factory integration, configured push hook and native
+The existing opaque-token factory integration and native
 [S3 + PostgreSQL storage plugin](LORE_STORAGE.md) are Veoveo additions. The backend
 passes native component conformance against real PostgreSQL and SeaweedFS;
 deployed server, dependency restart and factory qualification remain pending. Native OpenShell
@@ -55,8 +55,8 @@ Trusted server/storage configuration remains under the existing private
 native `server.toml` and storage environment using the existing storage/TLS recipe;
 no grant bookkeeping file/helper replaces the retired tool. The tracked
 `lore/server.toml` supplies public Hub-native auth defaults and unchanged trusted
-storage/TLS/hook sections. Preserve other native server settings and exact hook
-assignments. Agents cannot edit that state.
+storage/TLS sections. Preserve other native server settings; Lore runs no hook.
+Agents cannot edit that state.
 
 ## Build and provision
 
@@ -109,8 +109,7 @@ then its namespaced alias, then `sub`. During the authorized cutover, remove tha
 one obsolete line from existing private configuration and verify that all other
 parsed TOML values are unchanged. No automatic configuration migration is needed.
 Existing factory claim mappers supply no identity override, so their stable subject
-remains the identity. Resource claims, catalog mode, native branch protection and
-trusted factory assignments are preserved.
+remains the identity. Resource claims, catalog mode and native branch protection are preserved.
 
 Upgrade the host CLI, images and any existing local Lore background service
 as a coordinated set. Upstream changed client/service IPC from JSON to bitcode

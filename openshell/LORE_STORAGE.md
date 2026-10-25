@@ -134,7 +134,7 @@ AWS_SECRET_ACCESS_KEY=<test bucket signing key>
 ```
 
 In rapid development the backend switch starts with fresh disposable Lore state.
-Stop the owning Lore server, retain canonical source and trusted identity/hook
+Stop the owning Lore server, retain canonical source and trusted identity
 inputs, reset only approved Lore state, then reseed from retained Git/published
 source using native Lore operations. Do not migrate local packfiles or reset
 Artifact, application, identity or other schema/bucket state. Backups and a

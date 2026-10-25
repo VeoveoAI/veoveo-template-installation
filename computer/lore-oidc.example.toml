@@ -1,5 +1,5 @@
 # Native Lore server authentication FRAGMENT; merge into trusted server settings.
-# Preserve the existing TLS, PostgreSQL/S3 storage and hook configuration. Select
+# Preserve the existing TLS and PostgreSQL/S3 storage configuration. Select
 # this native ResourceGrants mode explicitly: environment.endpoint.auth_url must
 # be absent, not combined with this resource_claim. No Lore source change.
 [server.auth]

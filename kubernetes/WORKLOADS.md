@@ -41,9 +41,8 @@ gateway's chart-generated workload trust remains native supervisor material.
 
 ## Lore and tunnel foundation workloads
 
-Render `lore.toml` privately with the actual Hub issuer/audience/client and existing
-trusted hook assignments. The hook is unchanged; an empty map does not prove a
-factory protected-branch scenario. Create `lore-settings` from the native TOML,
+Render `lore.toml` privately with the actual Hub issuer/audience/client; Lore runs
+no hook. Create `lore-settings` from the native TOML,
 `lore-server-tls` as a TLS Secret, and `lore-storage` from a private env file with
 exact keys `LORE_POSTGRES_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
 This `--from-env-file` input uses raw `KEY=value` lines without shell quotes;
