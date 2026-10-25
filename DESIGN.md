@@ -206,6 +206,12 @@ captured and a restart re-reads nothing. Registry cleanup deletes unused tags un
 `factory/`. No installation-wide factory client or secret exists: each instance's
 Lore access comes from its own Hub client.
 
+Factory builds share no writable cache. Branch code is untrusted, and Lore permissions
+can differ between branches of one repository, so a cache that one build writes and
+another reads would let a branch plant compiled code in a build it has no right to
+change. Each instance compiles on its own sandbox's disk, and a new branch or a
+recreated sandbox compiles from nothing.
+
 ## Computers
 
 The Computer template `computer-v1`, in workspace `installation`, its
