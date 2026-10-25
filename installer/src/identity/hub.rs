@@ -232,15 +232,20 @@ pub fn prepare_in(
     );
     missing_secrets(&document, &environment)?;
     let text = serde_json::to_string_pretty(&document)? + "\n";
-    let unchanged = std::fs::read_to_string(&paths.seed)
+    // The seed is kept while it holds the same document, however it is laid out.
+    let existing = std::fs::read_to_string(&paths.seed)
         .ok()
-        .is_some_and(|existing| existing == text);
-    if unchanged {
+        .and_then(|existing| serde_json::from_str::<Value>(&existing).ok());
+    if existing.as_ref() == Some(&document) {
         report.lines.push(format!("{}: kept", paths.seed.display()));
     } else if check {
         report.lines.push(format!(
-            "{}: would be written from the repository's seed",
-            paths.seed.display()
+            "{}: would be written from the repository's seed{}",
+            paths.seed.display(),
+            existing
+                .as_ref()
+                .map(|existing| differing_members(&document, existing))
+                .unwrap_or_default()
         ));
     } else {
         write_private(&paths.seed, &text, false)?;
@@ -374,6 +379,19 @@ pub fn seed_document(seed: &Value, people: Option<&Value>, kid: &str) -> Value {
         }
     }
     document
+}
+
+/// Where the seed would change, by member path and never by value.
+fn differing_members(document: &Value, existing: &Value) -> String {
+    let paths: Vec<String> = crate::difference::compare(document, existing)
+        .iter()
+        .map(|difference| difference.path.to_string())
+        .collect();
+    if paths.is_empty() {
+        "; it differs only in members that are empty in one of them".to_owned()
+    } else {
+        format!("; it differs at {}", paths.join(", "))
+    }
 }
 
 /// Every environment secret the seed names is in `hub.env`.
@@ -542,6 +560,61 @@ mod tests {
             "{report:?}"
         );
         assert_eq!(fixture.files(), first);
+    }
+
+    #[test]
+    fn a_seed_laid_out_otherwise_is_kept_and_a_changed_one_names_paths_only() {
+        let fixture = Fixture::new("layout");
+        prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            None,
+            false,
+        )
+        .unwrap();
+        let paths = fixture.paths();
+        let document: Value =
+            serde_json::from_str(&std::fs::read_to_string(&paths.seed).unwrap()).unwrap();
+        // Another tool's layout of the same document: compact, members in another order.
+        let mut members: Vec<(String, Value)> = document
+            .as_object()
+            .unwrap()
+            .iter()
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect();
+        members.reverse();
+        let compact = format!(
+            "{{{}}}",
+            members
+                .iter()
+                .map(|(name, value)| format!("{name:?}:{value}"))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        std::fs::write(&paths.seed, &compact).unwrap();
+        let report = prepare_in(
+            &paths,
+            &fixture.wanted,
+            &fixture.seed,
+            Some(document.clone()),
+            false,
+        )
+        .unwrap();
+        assert_eq!(report.lines[2], format!("{}: kept", paths.seed.display()));
+        assert_eq!(std::fs::read_to_string(&paths.seed).unwrap(), compact);
+
+        let mut seed = fixture.seed.clone();
+        seed["lore"]["deployments"] = json!([{"id": "lore", "url": "https://lore.example.com"}]);
+        let report = prepare_in(&paths, &fixture.wanted, &seed, Some(document), true).unwrap();
+        assert_eq!(
+            report.lines[2],
+            format!(
+                "{}: would be written from the repository's seed; it differs at lore.deployments[id=lore]",
+                paths.seed.display()
+            )
+        );
+        assert!(!report.lines[2].contains("lore.example.com"));
     }
 
     #[test]

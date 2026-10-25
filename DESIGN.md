@@ -388,7 +388,7 @@ and the registration secret), the secrets `[identity.secrets]` supplies and the
 settings `[identity.environment]` holds; the authorization server's public key set,
 whose key ID is its RFC 7638 thumbprint; and the seed `hub.json`, the repository's seed
 with that key ID and the people of the earlier seed or of `[identity] people`, never
-the examples. Keys are made once: over existing files it recovers them, checks that
+the examples; a seed holding the same document however laid out is kept. Keys are made once: over existing files it recovers them, checks that
 they agree with what the private directory supplies, and otherwise refuses without
 writing, since a rotation is a reviewed act of its own. The claim step writes these
 files into Hub's claim when the claim lacks them, as on a first installation, and a
