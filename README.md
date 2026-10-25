@@ -22,6 +22,7 @@ it; native Lore enforces its token contract and OpenShell renews and injects eac
 workload's credentials. There is no other issuer, signer, refresh daemon or Lore
 authorization layer. See Hub's
 [Lore credentials](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle).
+Factory instances read Lore only: their provider profile admits no Lore write.
 
 `factory/` packages a pinned Rust toolchain as the base of user Computers, which
 mount the Lore CLI and the Hub SDK CLI from their own images. A pushed Lore branch of

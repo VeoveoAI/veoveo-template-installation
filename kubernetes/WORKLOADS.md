@@ -26,8 +26,8 @@ Render public origins to the actual installation. Service DNS replaces old host
 loopback/Docker aliases only for this Linux placement. Keep every endpoint's
 exact binary/port/method/path/provider rule. The `policies/` files use native
 policy schema and complete canonicalization, not a second policy language.
-Computers and factory sandboxes reach Lore through the `vv-lore` profile's
-credential-bound endpoint; no policy has a passthrough Lore rule. Do not add aliases
+Computers reach Lore through the `vv-lore` profile's credential-bound endpoint and
+factory sandboxes through `vv-factory-lore`'s, which admits reads only; no policy has a passthrough Lore rule. Do not add aliases
 or disable TLS to make trust pass.
 
 The private Lore leaf must cover `lore.veoveo-system.svc.cluster.local` and its

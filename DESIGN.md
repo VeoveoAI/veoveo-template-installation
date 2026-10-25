@@ -123,8 +123,8 @@ Lore's server settings ([lore.toml](kubernetes/lore.toml)) trust only Hub's
 resource IDs `urc-{id}` and `baseline_access = "denied"`; Lore's public client is
 `lore-computer`, with the `lore:login` scope and the scope template `lore-repo-{id}`.
 QUIC is off, so every Lore operation is gRPC that OpenShell mediates. The repository
-catalog is `baseline`: Lore lists no repositories per person. The existing
-`factory_branch` pre-push hook is configured with no assignments.
+catalog is `baseline`: Lore lists no repositories per person. Lore runs no hook: what a
+workload may do in Lore is its token's grants and its provider profile's endpoint rules.
 
 ## Storage
 
@@ -165,8 +165,9 @@ agent-controlled images. Only reviewed public CAs enter application build contex
 Services/DNS provide private PostgreSQL, S3 and Lore addressing. Every workload's
 policy is in OpenShell's own schema under [policies](kubernetes/policies). An endpoint
 that carries a credential comes from the attached provider's profile, so Lore is
-reached only through the `vv-lore` profile's credential-bound endpoint and no policy has a
-passthrough Lore rule. The public-only `platform-destination-roots-v1` bundle holds the
+reached only through the credential-bound endpoint of `vv-lore` or `vv-factory-lore` and
+no policy has a passthrough Lore rule. A profile's endpoint rules bound what its
+credential may do, whatever the token allows. The public-only `platform-destination-roots-v1` bundle holds the
 gateway CA, the Lore and SeaweedFS destination roots and the PostgreSQL CA; the
 supervisor injects it into every workload's trust, and changing it means recreating
 the affected runtimes.
@@ -174,8 +175,9 @@ the affected runtimes.
 Real credentials stay in the gateway's encrypted custody; a workload sees only the
 placeholder its provider's environment names, which OpenShell replaces on the request.
 A credential that must sign stays with its signer, such as Artifact's bucket key. The
-provider profiles are global: `vv-lore` (Lore access for Computers and factory
-instances, refreshed by the gateway with each one's own Hub client),
+provider profiles are global: `vv-lore` (a Computer's Lore access as its owner, every
+method), `vv-factory-lore` (a factory instance's Lore access as its latest pusher,
+reads only), both refreshed by the gateway with each one's own Hub client,
 `vv-factory-registration` (an instance's registration token), the Computer's
 `vv-computer-hub` and `vv-computer-model`, each platform server's
 `vv-<server>-registration`, and Hub's own `vv-hub-native-control` and
@@ -241,6 +243,14 @@ and the supervisors of `vv-services`, where console reads it; no factory sandbox
 build reaches it. The registry has no authentication yet, so a build step can still
 push an image to it. Every workload names its image by digest, so a pushed image
 redirects nothing, but the registry's authentication stays open.
+
+A factory instance reads Lore and never writes to it. Its Lore token is the latest
+pusher's, with that person's grants, and the branch's code runs beside it: with write
+access, code an earlier push planted would act with a later pusher's rights. So Hub's
+`factory.loreProfile` names `vv-factory-lore`, whose endpoint admits only the read
+methods the instance's start command uses, `lore clone` and `lore sync --reset`:
+OpenShell refuses every other Lore method before the token is attached. Computers keep
+`vv-lore`, with every method, since their owner pushes from them.
 
 ## Computers
 

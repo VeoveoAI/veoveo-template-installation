@@ -97,7 +97,7 @@
     "hubIssuer": "https://veoveo.example.com",
     "loreServer": "grpcs://lore.veoveo-system.svc.cluster.local:41337",
     "registrationProfile": "vv-factory-registration",
-    "loreProfile": "vv-lore",
+    "loreProfile": "vv-factory-lore",
     "imageBuilder": {
       "buildkit": "tcp://buildkitd.veoveo-system.svc.cluster.local:1234",
       "registry": "registry.veoveo-system.svc.cluster.local:5000"

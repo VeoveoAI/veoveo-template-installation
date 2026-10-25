@@ -12,7 +12,7 @@ Local development uses persistent Keycloak. The remote Linux reference uses
 Microsoft Entra ID. Installers may keep the bundled Keycloak service or configure
 another OIDC provider; Hub authorization, roles and resource tokens remain
 Veoveo's responsibility. The qualified local Lore path uses its maintained auth
-patches and native pre-push hook.
+patches.
 
 ## Persistent local Keycloak
 

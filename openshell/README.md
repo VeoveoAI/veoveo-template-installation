@@ -227,8 +227,8 @@ uses the configured backend with trusted storage credentials. Run it in an
 isolated operator container. It creates fresh repo/branch IDs, valid empty heads
 and protected `main`. Save the final JSON line privately as
 `state/openshell/factory-hook-fixture.json`; it is not a server/agent bootstrap API.
-Keep this fixture output as test evidence only. Select native server settings and
-explicit hook bindings in trusted TOML; publish actual repository/grant data
+Keep this fixture output as test evidence only. Select native server settings in
+trusted TOML; Lore runs no hook. Publish actual repository/grant data
 through Hub's existing control plane. Start only the intended bootstrap services
 through the coordinated native setup; no IdP repository-mapping helper is needed.
 
@@ -253,9 +253,8 @@ owner isolation remain separate gates in the execution plan.
 Historical `first-path lore-direct`/Keycloak lifecycle receipts remain historical;
 their removed provisioning helper is not an active installation command. No new
 qualification launcher replaces it. Use component-owned native test harnesses and
-the coordinated Linux acceptance lane. The optional factory pre-push hook remains
-a normal-push workflow guard, not complete branch isolation; native protection
-and ordinary permissions keep their existing meaning.
+the coordinated Linux acceptance lane. Lore runs no hook; native protection and
+ordinary permissions keep their existing meaning.
 
 ## Hub and Time preparation
 

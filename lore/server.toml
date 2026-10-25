@@ -1,8 +1,4 @@
-# Hub-issued native resource grants. Factory hook assignments remain trusted.
-[hooks.factory_branch]
-enabled = true
-assignments = {}
-
+# Hub-issued native resource grants. Lore runs no hook.
 [server.auth]
 jwt_issuer = ["https://veoveo.example.com/oauth"]
 jwt_audience = ["https://veoveo.example.com/resources/lore"]

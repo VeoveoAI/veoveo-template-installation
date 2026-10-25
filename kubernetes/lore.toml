@@ -1,9 +1,6 @@
 # Native server settings layered over the maintained image's default.toml.
-# Render the actual public issuer/audience and trusted hook assignments privately.
-[hooks.factory_branch]
-enabled = true
-assignments = {}
-
+# Render the actual public issuer and audience. Lore runs no hook: a workload's Lore
+# rights are its token's grants within its provider profile's endpoint rules.
 [server.auth]
 jwt_issuer = ["https://veoveo.example.com/oauth"]
 jwt_audience = ["https://veoveo.example.com/resources/lore"]
