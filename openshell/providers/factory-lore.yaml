@@ -1,0 +1,51 @@
+# One per factory instance: Lore access as the branch's latest pusher, for reading only.
+# The gateway refreshes it with the instance's own Hub client, which issues that person's
+# token for the instance's repository. The branch's code runs beside the credential, so
+# the endpoint admits only the read methods of the instance's start command, `lore clone`
+# and `lore sync --reset`, and OpenShell refuses every other Lore method, every write
+# among them, before the token is attached: code an earlier push planted cannot act with
+# a later pusher's write rights. Of these, a factory used EnvironmentGet, RepositoryGet,
+# BranchGet, RevisionList and StorageService/Get over seven days of the reference
+# installation; the others are the remaining reads of the same path. Lore's command line,
+# mounted read-only from the Lore image at /opt/veoveo/lore, reads the placeholder from
+# LORE_ACCESS_TOKEN; only that binary receives the credential. Replace veoveo.example.com
+# with Hub's host.
+id: vv-factory-lore
+display_name: Lore read access as a factory instance's latest pusher
+credentials:
+  - name: access_token
+    env_vars: [LORE_ACCESS_TOKEN]
+    required: true
+    auth_style: bearer
+    header_name: authorization
+    refresh:
+      strategy: oauth2_client_credentials
+      token_url: https://veoveo.example.com/oauth/token
+      refresh_before: 60s
+      max_lifetime: 300s
+      material:
+        - name: client_id
+          required: true
+        - name: client_secret
+          required: true
+          secret: true
+endpoints:
+  - host: lore.veoveo-system.svc.cluster.local
+    port: 41337
+    protocol: rest
+    enforcement: enforce
+    rules:
+      - allow: {method: POST, path: /lore.environment.v1.EnvironmentService/EnvironmentGet}
+      - allow: {method: POST, path: /lore.repository.v1.RepositoryService/RepositoryGet}
+      - allow: {method: POST, path: /lore.repository.v1.RepositoryService/RepositoryMetadataGet}
+      - allow: {method: POST, path: /lore.revision.v1.RevisionService/BranchGet}
+      - allow: {method: POST, path: /lore.revision.v1.RevisionService/BranchList}
+      - allow: {method: POST, path: /lore.revision.v1.RevisionService/BranchMetadataGet}
+      - allow: {method: POST, path: /lore.revision.v1.RevisionService/RevisionList}
+      - allow: {method: POST, path: /lore.storage.v1.StorageService/Get}
+      - allow: {method: POST, path: /lore.storage.v1.StorageService/GetMetadata}
+      - allow: {method: POST, path: /lore.storage.v1.StorageService/GetResolved}
+      - allow: {method: POST, path: /lore.storage.v1.StorageService/Query}
+      - allow: {method: POST, path: /lore.storage.v1.StorageService/MutableLoad}
+binaries:
+  - /opt/veoveo/lore/usr/local/bin/lore

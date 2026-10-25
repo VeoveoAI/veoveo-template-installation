@@ -1,7 +1,7 @@
 # Base policy of every factory sandbox. The branch's checkout lives in /sandbox/src,
 # where its build puts the server it runs. The Lore and registration endpoints, with
-# their credentials, come from the attached providers of the vv-lore and
-# vv-factory-registration profiles; Lore's command line is the read-only image volume
+# their credentials, come from the attached providers of the vv-factory-lore and
+# vv-factory-registration profiles, and vv-factory-lore admits Lore's read methods only; Lore's command line is the read-only image volume
 # of factory-driver-config.json. Factory sandboxes have open internet access: every
 # name of three or more labels plus the two-label names in use, on ports 80 and 443.
 # Inspected rules for exact hosts, such as Hub's, still apply to those hosts, and
