@@ -54,6 +54,10 @@ spec:
           secret:
             secretName: public-tunnel
             defaultMode: 0444
+            # Only the token reaches the connector.
+            items:
+              - key: token
+                path: token
         - name: ca
           configMap:
             name: public-tunnel-ca
