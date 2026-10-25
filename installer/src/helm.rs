@@ -34,9 +34,18 @@ pub async fn plan(inputs: &Inputs, release: &HelmRelease) -> Vec<Item> {
         Ok(values) => values,
         Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
     };
-    match unfilled(inputs, release).and_then(|values| digest_checks(&values, &inputs.lock)) {
-        Ok(()) => {}
-        Err(error) => return vec![Item::new(subject, State::Refused(format!("{error:#}")))],
+    let unfilled = match unfilled(inputs, release) {
+        Ok(values) => values,
+        Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
+    };
+    // The chart composes each image from the values and its own defaults, which the values
+    // do not repeat.
+    let defaults = match chart_defaults(inputs, release).await {
+        Ok(defaults) => defaults,
+        Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
+    };
+    if let Err(error) = digest_checks(&with_defaults(defaults, &unfilled), &inputs.lock) {
+        return vec![Item::new(subject, State::Refused(format!("{error:#}")))];
     }
     let upgrade = Action::UpgradeRelease {
         release: release.clone(),
@@ -128,9 +137,30 @@ fn unfilled(inputs: &Inputs, release: &HelmRelease) -> Result<Value> {
     declared_values(&layers)
 }
 
-/// Each image the values name by `@digest:<name>@` beside its `repository`, and the
-/// image's own `registry` or `global.image.registry`, is the lock entry's repository as
-/// a chart composes it, `<registry>/<repository>`; the digest alone cannot say so.
+/// The chart's default values, as `helm show values` prints them.
+async fn chart_defaults(inputs: &Inputs, release: &HelmRelease) -> Result<Value> {
+    let chart = chart_reference(inputs, release)?;
+    let mut arguments = vec!["show".to_owned(), "values".to_owned(), chart];
+    if let Some(repository) = &release.repository {
+        arguments.extend(["--repo".to_owned(), repository.clone()]);
+    }
+    if let Some(version) = &release.version {
+        arguments.extend(["--version".to_owned(), version.clone()]);
+    }
+    let arguments: Vec<&str> = arguments.iter().map(String::as_str).collect();
+    read_values("the chart's default values", &helm(&arguments).await?)
+}
+
+/// The values as the chart reads them: its defaults with the release's values over them.
+pub fn with_defaults(mut defaults: Value, values: &Value) -> Value {
+    merge_values(&mut defaults, values.clone());
+    defaults
+}
+
+/// Each image the values name by `@digest:<name>@` is the lock entry's repository as the
+/// chart composes it, `<registry>/<repository>`, from the image's `repository` and its own
+/// `registry` or `global.image.registry`, given in the values or by the chart's defaults,
+/// which `values` holds under them; the digest alone cannot say so.
 pub fn digest_checks(
     values: &Value,
     lock: &veoveo_installation_contract::ComponentLock,
@@ -159,7 +189,9 @@ pub fn digest_checks(
             .as_str()
             .filter(|repository| !repository.is_empty())
         else {
-            return problems.push(format!("{path} names no repository beside @digest:{name}@"));
+            return problems.push(format!(
+                "{path} names no repository for @digest:{name}@, in the values or the chart's defaults"
+            ));
         };
         let registry = image["registry"]
             .as_str()
@@ -525,5 +557,27 @@ mod digest_tests {
                 .to_string()
                 .contains("names no repository")
         );
+    }
+
+    #[test]
+    fn a_repository_the_values_leave_to_the_chart_is_the_charts_default() {
+        let lock = crate::inputs::tests::lock();
+        // The values name the registry and the digest; the chart's defaults the repository.
+        let values = json!({
+            "global": {"image": {"registry": "registry.example.com:5000/veoveo"}},
+            "gateway": {"image": {"digest": "@digest:lore@"}},
+        });
+        let defaults = json!({
+            "global": {"image": {"registry": "ghcr.io/nvidia"}},
+            "gateway": {"image": {"registry": "", "repository": "lore", "tag": ""}},
+        });
+        assert!(digest_checks(&with_defaults(defaults.clone(), &values), &lock).is_ok());
+        // A default that is not the lock entry's repository is refused.
+        let mut other = defaults;
+        other["gateway"]["image"]["repository"] = json!("openshell/gateway");
+        let error = digest_checks(&with_defaults(other, &values), &lock)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("but the lock's lore is"), "{error}");
     }
 }

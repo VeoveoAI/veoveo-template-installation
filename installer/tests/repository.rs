@@ -207,6 +207,20 @@ fn the_seed_names_each_claim_file_by_its_content() {
     assert!(!seed.to_string().contains("@claim:"));
 }
 
+/// The defaults of the charts whose values name images by digest, as recorded from
+/// `helm show values` of the OpenShell chart at 491b3503d39f3ba83a25a309f52e52e20e304b03.
+fn chart_defaults(release: &str) -> serde_json::Value {
+    match release {
+        "openshell" => serde_json::json!({
+            "global": {"image": {"registry": "ghcr.io/nvidia"}},
+            "gateway": {"image": {"registry": "", "repository": "openshell/gateway"}},
+            "sandboxRuntime": {"image": {"registry": "", "repository": "openshell/sandbox"}},
+            "supervisor": {"image": {"registry": "", "repository": "openshell/supervisor"}},
+        }),
+        _ => serde_json::json!({}),
+    }
+}
+
 #[test]
 fn the_helm_values_name_the_lock_repository_of_each_digest() {
     use veoveo_installer::{declaration::StepKind, helm, inputs::read_lock};
@@ -229,7 +243,42 @@ fn the_helm_values_name_the_lock_repository_of_each_digest() {
         if digests == 0 || lock.images().is_empty() {
             continue;
         }
-        helm::digest_checks(&values, &lock)
-            .unwrap_or_else(|error| panic!("{}: {error:#}", release.release));
+        helm::digest_checks(
+            &helm::with_defaults(chart_defaults(&release.release), &values),
+            &lock,
+        )
+        .unwrap_or_else(|error| panic!("{}: {error:#}", release.release));
     }
+}
+
+#[test]
+fn a_single_step_connects_every_owner_its_apply_needs() {
+    use veoveo_installer::{apply, run};
+    let inputs = inputs();
+    // The OpenShell step that holds Hub's sandbox: replacing Hub is followed by waiting
+    // for the workloads that become ready once Hub serves, in Kubernetes.
+    let steps = run::selected(&inputs, &["hub".to_owned()]).unwrap();
+    let selected: Vec<_> = steps.iter().map(|(_, step)| *step).collect();
+    assert!(apply::awaits_hub_dependents(&inputs, selected[0]));
+    assert_eq!(
+        run::Needs::of_steps(&inputs, &selected),
+        run::Needs {
+            cluster: true,
+            gateway: true
+        }
+    );
+    // Every step reaches what its plan and its apply use.
+    for step in &inputs.declaration.steps {
+        if apply::awaits_hub_dependents(&inputs, step) {
+            assert!(run::Needs::of(&inputs, step).cluster, "{}", step.name);
+        }
+    }
+    let profiles = run::selected(&inputs, &["profiles".to_owned()]).unwrap();
+    assert_eq!(
+        run::Needs::of(&inputs, profiles[0].1),
+        run::Needs {
+            cluster: false,
+            gateway: true
+        }
+    );
 }

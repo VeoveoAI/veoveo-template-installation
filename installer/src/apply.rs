@@ -51,6 +51,7 @@ pub async fn apply(inputs: &Inputs, only: &[String]) -> Result<usize> {
         return Ok(0);
     }
     let mut made = 0;
+    let mut hub_dependents = false;
     for step in &plan.steps {
         if step.items.iter().all(|item| item.action.is_none()) {
             continue;
@@ -59,6 +60,7 @@ pub async fn apply(inputs: &Inputs, only: &[String]) -> Result<usize> {
             .declaration
             .step(&step.name)
             .context("a planned step is declared")?;
+        hub_dependents |= awaits_hub_dependents(inputs, declared);
         let mut applied = BTreeSet::new();
         let mut restart = BTreeSet::new();
         for item in &step.items {
@@ -107,7 +109,9 @@ pub async fn apply(inputs: &Inputs, only: &[String]) -> Result<usize> {
         let again = run::plan_step(inputs, step.position, declared, &mut connections).await;
         check_matches(&again)?;
     }
-    await_after_hub(inputs, &mut connections).await?;
+    if hub_dependents {
+        await_after_hub(inputs, &mut connections).await?;
+    }
     println!("Applied {made} change(s).");
     Ok(made)
 }
@@ -297,7 +301,16 @@ async fn after_sandbox(inputs: &Inputs, workspace: &str, name: &str) -> Result<(
     }
 }
 
-/// The workloads that become ready only once Hub serves, checked after the last step.
+/// Whether, once `step` has changed, apply waits after its last step for the workloads
+/// that become ready only once Hub serves: the step changes what Hub serves, or holds
+/// such a workload. Connections::open connects Kubernetes for every such step.
+pub fn awaits_hub_dependents(inputs: &Inputs, step: &crate::declaration::Step) -> bool {
+    run::changes_hub(inputs, step)
+        || matches!(&step.kind, StepKind::Kubernetes(objects) if !objects.after_hub.is_empty())
+}
+
+/// The workloads that become ready only once Hub serves, checked after the last step
+/// when a changed step awaits them.
 async fn await_after_hub(inputs: &Inputs, connections: &mut Connections) -> Result<()> {
     let workloads: Vec<String> = inputs
         .declaration

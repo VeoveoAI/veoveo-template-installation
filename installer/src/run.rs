@@ -17,12 +17,84 @@ pub struct Connections {
     gateway: Option<Result<Gateway, String>>,
 }
 
+/// Which owners' connections a step needs, in plan and in apply, whatever its owner.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Needs {
+    pub cluster: bool,
+    pub gateway: bool,
+}
+
+impl Needs {
+    /// What `step` reaches. A step that changes what Hub serves also needs Kubernetes,
+    /// where apply then waits for the workloads that become ready once Hub serves.
+    pub fn of(inputs: &Inputs, step: &Step) -> Self {
+        let mut needs = match &step.kind {
+            StepKind::Kubernetes(_) => Self {
+                cluster: true,
+                gateway: false,
+            },
+            StepKind::Helm(_) => Self::default(),
+            // Read in Hub's sandbox; written by the claim's seed Job.
+            StepKind::Claim(_) => Self {
+                cluster: true,
+                gateway: true,
+            },
+            // Hub's sandbox and restart through OpenShell; the claim's cleanup Job.
+            StepKind::Hub(_) => Self {
+                cluster: true,
+                gateway: true,
+            },
+            _ => Self {
+                cluster: false,
+                gateway: true,
+            },
+        };
+        if changes_hub(inputs, step) {
+            needs.cluster = true;
+        }
+        needs
+    }
+
+    /// What the steps together reach.
+    pub fn of_steps(inputs: &Inputs, steps: &[&Step]) -> Self {
+        steps.iter().fold(Self::default(), |all, step| {
+            let needs = Self::of(inputs, step);
+            Self {
+                cluster: all.cluster || needs.cluster,
+                gateway: all.gateway || needs.gateway,
+            }
+        })
+    }
+}
+
+/// Whether applying `step` can change what Hub serves: Hub's trusted claim, Hub's
+/// control plane, or a step that holds Hub's sandbox. After such a step apply waits for
+/// the workloads that become ready once Hub serves.
+pub fn changes_hub(inputs: &Inputs, step: &Step) -> bool {
+    let hub = inputs
+        .declaration
+        .steps
+        .iter()
+        .find_map(|step| match &step.kind {
+            StepKind::Hub(hub) => Some(hub),
+            _ => None,
+        });
+    match &step.kind {
+        StepKind::Claim(_) | StepKind::Hub(_) => true,
+        StepKind::Sandboxes(sandboxes) => hub.is_some_and(|hub| {
+            sandboxes
+                .iter()
+                .any(|sandbox| sandbox.workspace == hub.workspace && sandbox.name == hub.sandbox)
+        }),
+        _ => false,
+    }
+}
+
 impl Connections {
     /// Connects to the owners the steps need.
     pub async fn open(inputs: &Inputs, steps: &[&Step]) -> Self {
-        let needs = |test: fn(&StepKind) -> bool| steps.iter().any(|step| test(&step.kind));
-        let cluster = if needs(|kind| matches!(kind, StepKind::Kubernetes(_) | StepKind::Claim(_)))
-        {
+        let needs = Needs::of_steps(inputs, steps);
+        let cluster = if needs.cluster {
             Some(
                 kubernetes::connect(inputs.private.kubernetes.context.as_deref())
                     .await
@@ -32,8 +104,7 @@ impl Connections {
         } else {
             None
         };
-        let gateway = if needs(|kind| !matches!(kind, StepKind::Kubernetes(_) | StepKind::Helm(_)))
-        {
+        let gateway = if needs.gateway {
             Some(match &inputs.private.openshell {
                 Some(access) => openshell::connect(access)
                     .await
