@@ -1,0 +1,263 @@
+# The substrate veoveo-installer applies, in the order it applies it. Each step changes
+# through one owner's interface: Kubernetes objects, a Helm release, or OpenShell's
+# workspaces, provider profiles, templates and sandboxes, and last Hub's control plane.
+# Paths are relative to this repository; images are the lock's names. Private inputs,
+# such as private Helm values and private environment values, are in the operator's
+# private.toml. K3s comes first, from K3s's own installer.
+
+[[step]]
+name = "namespaces"
+manifests = ["kubernetes/namespaces.yaml"]
+
+[[step]]
+name = "cilium"
+[step.helm]
+release = "cilium"
+namespace = "kube-system"
+chart = "cilium"
+repository = "https://helm.cilium.io/"
+version = "1.20.3"
+# The node override, which names the node API address, is private.toml's.
+values = ["kubernetes/cilium.values.yaml"]
+
+[[step]]
+name = "agent-sandbox"
+kustomize = "kubernetes/agent-sandbox"
+
+[[step]]
+name = "nvidia-device-plugin"
+[step.helm]
+release = "nvidia-device-plugin"
+namespace = "kube-system"
+chart = "nvidia-device-plugin"
+repository = "https://nvidia.github.io/k8s-device-plugin"
+version = "0.20.1"
+values = ["kubernetes/nvidia-device-plugin.values.yaml"]
+
+# The registry first: every Veoveo image, PostgreSQL's included, comes from it.
+[[step]]
+name = "registry-builder-logs"
+manifests = ["kubernetes/builder.yaml", "kubernetes/logs.yaml"]
+
+[[step]]
+name = "postgres"
+manifests = ["kubernetes/postgres.yaml"]
+[[step.config_map]]
+namespace = "veoveo-system"
+name = "veoveo-postgres-initdb"
+files = { "owner.sql" = "postgres/initdb/owner.sql", "platform.sql" = "kubernetes/postgres-platform.sql", "zz-extensions.sql" = "postgres/initdb/zz-extensions.sql" }
+
+[[step]]
+name = "seaweedfs"
+[step.helm]
+release = "seaweedfs"
+namespace = "veoveo-system"
+chart = "seaweedfs"
+repository = "https://seaweedfs.github.io/seaweedfs/helm"
+version = "4.48.0"
+values = ["kubernetes/seaweedfs.values.yaml"]
+
+# The chart comes from OpenShell's source at the gateway's revision.
+[[step]]
+name = "openshell"
+[step.helm]
+release = "openshell"
+namespace = "openshell"
+chart = "deploy/helm/openshell"
+values = ["kubernetes/openshell.values.yaml"]
+
+[[step]]
+name = "lore"
+manifests = ["kubernetes/lore.yaml"]
+[[step.config_map]]
+namespace = "veoveo-system"
+name = "lore-settings"
+files = { "local.toml" = "kubernetes/lore.toml" }
+
+[[step]]
+name = "tunnel"
+manifests = ["kubernetes/tunnel.yaml"]
+
+[[step]]
+name = "workspaces"
+workspaces = ["vv-control", "vv-services", "installation", "vv-factory"]
+
+# Workspace-local claims. Their namespaces exist once the workspace's first provider
+# custody is prepared. A seed Job copies private files into its claim.
+[[step]]
+name = "workspace-storage"
+manifests = [
+  "kubernetes/hub-config-pvc.yaml",
+  "kubernetes/postgres-client-ca.yaml",
+  "kubernetes/service-storage.yaml",
+  "kubernetes/seed-service-configs.yaml",
+  "kubernetes/media-provider-config-pvc.yaml",
+  "kubernetes/embedding-storage.yaml",
+  "kubernetes/seed-embedding-config.yaml",
+  "kubernetes/seed-embedding-cache.yaml",
+]
+
+[[step]]
+name = "profiles"
+[[step.profile]]
+file = "openshell/providers/lore.yaml"
+[[step.profile]]
+file = "openshell/providers/factory-lore.yaml"
+[[step.profile]]
+file = "openshell/providers/factory-registration.yaml"
+[[step.profile]]
+file = "computer/providers/hub.yaml"
+[[step.profile]]
+file = "computer/providers/model.yaml"
+[[step.profile]]
+file = "openshell/providers/entra-hub-native-control.example.yaml"
+workspace = "vv-control"
+[[step.profile]]
+file = "openshell/providers/console-registration.yaml"
+workspace = "vv-services"
+[[step.profile]]
+file = "openshell/providers/artifact-registration.yaml"
+workspace = "vv-services"
+[[step.profile]]
+file = "openshell/providers/media-registration.yaml"
+workspace = "vv-services"
+[[step.profile]]
+file = "openshell/providers/media-generation.yaml"
+workspace = "vv-services"
+[[step.profile]]
+file = "openshell/providers/embedding-registration.yaml"
+workspace = "vv-services"
+[[step.profile]]
+file = "openshell/providers/embedding-inference.yaml"
+workspace = "vv-services"
+
+[[step]]
+name = "templates"
+[[step.template]]
+workspace = "installation"
+name = "computer-v1"
+image = "computer"
+cpu = "2"
+memory = "4Gi"
+driver_config = "kubernetes/computer-driver-config.json"
+environment = { SSL_CERT_DIR = "/etc/ssl/certs", VEOVEO_LORE_REMOTE = "grpcs://lore.veoveo-system.svc.cluster.local:41337", VEOVEO_CLI_HUB = "https://veoveo.example.com", VEOVEO_CLI_PROFILE = "computer", VEOVEO_CLI_BEARER_ENV = "COMPUTER_HUB_REFERENCE" }
+[[step.template]]
+workspace = "installation"
+name = "factory-v1"
+cpu = "4"
+memory = "8Gi"
+driver_config = "kubernetes/factory-driver-config.json"
+
+[[step]]
+name = "hub"
+[[step.sandbox]]
+workspace = "vv-control"
+name = "hub"
+image = "hub"
+policy = "kubernetes/policies/hub-computer-entra.example.yaml"
+providers = ["vv-hub-native-control"]
+driver_config = "kubernetes/hub-driver-config.json"
+restart_policy = "always"
+environment = { SSL_CERT_DIR = "/etc/veoveo/tls" }
+command = ["/bin/sh", "-ec", "set -a; . /etc/veoveo/hub/hub.env; set +a; exec /usr/local/bin/veoveo-hub serve --allow-loopback-hosts"]
+[[step.sandbox.service]]
+name = "http"
+port = 8080
+authorization = "bearer-passthrough"
+
+[[step]]
+name = "platform-servers"
+[[step.sandbox]]
+workspace = "vv-services"
+name = "console"
+image = "console"
+policy = "kubernetes/policies/console.yaml"
+providers = ["vv-console-registration"]
+driver_config = "kubernetes/console-driver-config.json"
+restart_policy = "always"
+environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://console.internal:8805", VEOVEO_PORT = "8805" }
+private_environment = ["VEOVEO_DEPLOYMENT_ID"]
+command = ["/usr/local/bin/veoveo-mcp-console"]
+
+[[step.sandbox]]
+workspace = "vv-services"
+name = "artifact"
+image = "artifact"
+policy = "kubernetes/policies/artifact.yaml"
+providers = ["vv-artifact-registration"]
+driver_config = "kubernetes/artifact-driver-config.json"
+restart_policy = "always"
+environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://artifact.internal:8801", VEOVEO_PORT = "8801", SSL_CERT_DIR = "/etc/veoveo/tls" }
+private_environment = ["VEOVEO_DEPLOYMENT_ID"]
+command = ["/bin/sh", "-ec", "set -a; . /etc/veoveo/artifact/storage.env; set +a; exec /usr/local/bin/veoveo-mcp-artifact"]
+
+[[step.sandbox]]
+workspace = "vv-services"
+name = "media-provider"
+image = "media-provider"
+policy = "kubernetes/policies/media-provider.yaml"
+driver_config = "kubernetes/media-provider-driver-config.json"
+restart_policy = "always"
+environment = { MEDIA_FAKE_PROVIDER_LISTEN = "127.0.0.1:8803", MEDIA_FAKE_PROVIDER_API_BEARER = "fake-generation-key", MEDIA_FAKE_PROVIDER_ADVERTISED_BASE = "https://vv-services--media-provider--http.openshell.localhost:8080" }
+command = ["/bin/sh", "-ec", "set -a; . /etc/veoveo/media/provider.env; set +a; exec /usr/local/bin/veoveo-mcp-media-fake-provider"]
+[[step.sandbox.service]]
+name = "http"
+port = 8803
+authorization = "bearer-passthrough"
+
+[[step.sandbox]]
+workspace = "vv-services"
+name = "media"
+image = "media"
+policy = "kubernetes/policies/media.yaml"
+providers = ["vv-media-registration", "vv-media-generation"]
+driver_config = "kubernetes/media-driver-config.json"
+restart_policy = "always"
+environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://media.internal:8802", VEOVEO_PORT = "8802", VEOVEO_KEY_DIRECTORY = "/var/lib/veoveo/media/keys", MEDIA_PROVIDER_URL = "https://vv-services--media-provider--http.openshell.localhost:8080", SSL_CERT_DIR = "/etc/veoveo/tls" }
+private_environment = ["VEOVEO_DEPLOYMENT_ID"]
+command = ["/bin/sh", "-c", "set -a; . /etc/veoveo/media/provider.env; set +a; exec /usr/local/bin/veoveo-mcp-media"]
+
+[[step.sandbox]]
+workspace = "vv-services"
+name = "embedding-runtime"
+image = "runtime-embedding"
+policy = "kubernetes/policies/embedding-runtime.yaml"
+driver_config = "kubernetes/embedding-runtime-driver-config.json"
+restart_policy = "always"
+# The reference installation's measured allocation for the full model on one GPU.
+cpu = "4"
+memory = "8Gi"
+gpu = 1
+environment = { VEOVEO_EMBEDDING_DEVICE = "cuda", VEOVEO_EMBEDDING_TOKEN_FILE = "/etc/veoveo/embedding/runtime.token", VEOVEO_EMBEDDING_STORAGE_ORIGIN = "https://veoveo.example.com:443" }
+command = ["/opt/embedding/.venv/bin/python", "-m", "veoveo_runtime_embedding"]
+[[step.sandbox.service]]
+name = "http"
+port = 8804
+authorization = "bearer-passthrough"
+
+[[step.sandbox]]
+workspace = "vv-services"
+name = "embedding"
+image = "embedding"
+policy = "kubernetes/policies/embedding.yaml"
+providers = ["vv-embedding-registration", "vv-embedding-inference"]
+driver_config = "kubernetes/embedding-driver-config.json"
+restart_policy = "always"
+cpu = "1"
+memory = "1Gi"
+environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://embedding.internal:8803", VEOVEO_PORT = "8803", VEOVEO_EMBEDDING_RUNTIME_URL = "https://vv-services--embedding-runtime--http.openshell.localhost:8080", VEOVEO_EMBEDDING_DEVICE = "cuda" }
+private_environment = ["VEOVEO_DEPLOYMENT_ID"]
+command = ["/usr/local/bin/veoveo-mcp-embedding"]
+
+# Hub's live control plane, published through its administrative route, never reset.
+[[step]]
+name = "hub-control-plane"
+[step.hub]
+profile = "local"
+seed = ["identity/entra.example.json", "kubernetes/hub.example.json"]
+handbook = "computer/instructions.md"
+[step.hub.claim]
+workspace = "vv-control"
+sandbox = "hub"
+directory = "/etc/veoveo/hub"
+files = { "computer-policy-v1.yaml" = "kubernetes/policies/computer-v1.yaml", "factory-base-v1.yaml" = "kubernetes/policies/factory-base.yaml" }
