@@ -234,11 +234,14 @@ async fn execute(inputs: &Inputs, connections: &mut Connections, action: &Action
             origin,
             profile,
             declared,
-            restart_hub,
+            hub: (workspace, name),
         } => {
-            let revision = hub::publish(inputs, origin, profile, declared).await?;
-            println!("   revision {revision} is active");
-            if let Some((workspace, name)) = restart_hub {
+            let published = hub::publish(inputs, origin, profile, declared).await?;
+            println!("   revision {} is active", published.revision);
+            if published.read_at_start() {
+                println!(
+                    "   {workspace}/{name} reads a changed member only at its start; restarting it"
+                );
                 gateway(connections)?
                     .restart_sandbox(workspace, name)
                     .await?;

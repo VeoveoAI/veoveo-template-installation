@@ -65,13 +65,14 @@ pub enum Action {
         files: Vec<(String, String)>,
     },
     /// Publish the declared members through Hub's administrative route, keeping the
-    /// members people change from the revision active at that moment, and restart Hub
-    /// when a member it reads only at its start changed.
+    /// members people change from the revision active at that moment, and restart Hub's
+    /// sandbox, `hub` as `(workspace, name)`, when Hub's validation shows that a member
+    /// it reads only at its start changes.
     Publish {
         origin: Url,
         profile: String,
         declared: Value,
-        restart_hub: Option<(String, String)>,
+        hub: (String, String),
     },
     /// Wait until Hub reports the server's deployment healthy.
     AwaitRegistration {
@@ -144,13 +145,13 @@ impl Action {
                     .join(", "),
                 claim.job
             ),
-            Self::Publish { restart_hub, .. } => {
-                let mut text = "publish these members through the administrative route".to_owned();
-                if let Some((workspace, name)) = restart_hub {
-                    text.push_str(&format!(", then restart {workspace}/{name}, which reads them at its start"));
-                }
-                text
-            }
+            Self::Publish {
+                hub: (workspace, name),
+                ..
+            } => format!(
+                "have Hub validate the declared control plane and publish it over the active revision; restart {workspace}/{name} when a member it reads only at its start ({}) changes",
+                crate::hub::READ_AT_START.join(", ")
+            ),
             Self::AwaitRegistration { server, .. } => {
                 format!("wait until Hub reports {server} healthy")
             }

@@ -1,9 +1,12 @@
 //! Hub's control plane, read and published through Hub's administrative route as the
 //! operator, an installation administrator signed in through the browser with the Hub
-//! SDK's sign-in. It is compared with this repository's seed, filled with the handbook
-//! and the names of Hub's trusted files. The members people change (their grants,
-//! memberships, repositories and assignments) are never the installation's: they are
-//! left out of the comparison, and a publication keeps them as they are at that moment.
+//! SDK's sign-in. This repository's seed, filled with the handbook and the names of
+//! Hub's trusted files, is what the installation publishes; Hub's validation answers it
+//! as Hub would keep and serve it, with its SHA-256, which is compared with the active
+//! revision's, so Hub's own serialization, with its defaults, decides what differs.
+//! The members people change (their grants, memberships, repositories and assignments)
+//! are never the installation's: they are left out of the comparison, and a publication
+//! keeps them as they are at that moment.
 //! Nothing resets the control plane; a first installation's Hub seeds itself.
 //!
 //! Hub's trusted files that come from this repository, such as the policies Hub hands
@@ -496,7 +499,8 @@ impl Administrator {
             .path_segments_mut()
             .map_err(|()| anyhow!("{} cannot hold a path", self.origin))?
             .pop_if_empty()
-            .extend(["admin", self.profile.as_str(), route]);
+            .extend(["admin", self.profile.as_str()])
+            .extend(route.split('/'));
         Ok(address)
     }
 
@@ -560,8 +564,51 @@ impl Administrator {
             .context("Hub's answer holds no controlPlane")?;
         Ok(ActiveControlPlane {
             revision: body["revisionId"].as_str().map(str::to_owned),
+            sha256: body["sha256"]
+                .as_str()
+                .context("Hub's answer holds no sha256")?
+                .to_owned(),
             control_plane,
         })
+    }
+
+    /// What publishing `document` would make active, as Hub validates and prepares it
+    /// without publishing: the document as Hub would keep and serve it with its SHA-256,
+    /// or the reason Hub refuses it.
+    pub async fn validate(&self, document: &Value) -> Result<Validation> {
+        let method = reqwest::Method::POST;
+        let response = self
+            .send(
+                method.clone(),
+                "control-plane/validate",
+                Some(document),
+                None,
+            )
+            .await?;
+        match response.status().as_u16() {
+            400 => {
+                let text = response.text().await.unwrap_or_default();
+                Ok(Validation::Refused(refusal_reason(&text)))
+            }
+            404 | 405 => bail!(
+                "Hub at {} does not validate control-plane documents (HTTP {}): it needs Hub with POST /admin/{{profile}}/control-plane/validate",
+                self.origin,
+                response.status().as_u16()
+            ),
+            _ => {
+                let body = answer(response, &method).await?;
+                Ok(Validation::Valid {
+                    sha256: body["sha256"]
+                        .as_str()
+                        .context("Hub's validation holds no sha256")?
+                        .to_owned(),
+                    control_plane: body
+                        .get("controlPlane")
+                        .cloned()
+                        .context("Hub's validation holds no controlPlane")?,
+                })
+            }
+        }
     }
 
     /// Publishes a complete control plane as the successor of `based_on`, the revision
@@ -622,10 +669,92 @@ async fn answer(response: reqwest::Response, method: &reqwest::Method) -> Result
     }
 }
 
-/// What Hub's administrative route answers.
+/// The reason of an RFC 9457 problem Hub answered: its detail, else its title, else the
+/// text.
+fn refusal_reason(text: &str) -> String {
+    let problem: Value = serde_json::from_str(text).unwrap_or(Value::Null);
+    problem["detail"]
+        .as_str()
+        .or_else(|| problem["title"].as_str())
+        .unwrap_or(text.trim())
+        .to_owned()
+}
+
+/// What Hub's administrative route answers: the active revision, when Hub serves it,
+/// and the control plane as Hub serves it, with its SHA-256.
+#[derive(Debug, Clone)]
 pub struct ActiveControlPlane {
     pub revision: Option<String>,
+    pub sha256: String,
     pub control_plane: Value,
+}
+
+/// What Hub answers for a document it validated without publishing it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Validation {
+    /// The document as Hub would keep and serve it, with its SHA-256.
+    Valid {
+        sha256: String,
+        control_plane: Value,
+    },
+    /// Hub refuses the document, for this reason.
+    Refused(String),
+}
+
+/// What publishing the declared members over the active revision would change.
+#[derive(Debug)]
+pub(crate) struct Comparison {
+    pub active: ActiveControlPlane,
+    /// The declared members over the active revision's people: what would be published.
+    pub document: Value,
+    pub outcome: Outcome,
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum Outcome {
+    /// Hub refuses the document, for this reason.
+    Refused(String),
+    /// Where Hub's form of the document differs from the active revision's; none when
+    /// their SHA-256 agree.
+    Differs(Vec<Difference>),
+}
+
+/// Reads the active revision, makes the publication from it and has Hub validate it;
+/// the two are the same when their SHA-256 agree. Where they differ is found between
+/// Hub's two forms, never between this repository's text and Hub's.
+pub(crate) async fn compare_with_hub(
+    route: &impl ControlPlaneRoute,
+    declared: &Value,
+) -> Result<Comparison> {
+    let active = route.read().await?;
+    let document = publication(declared, &active.control_plane);
+    let outcome = match route.validate(&document).await? {
+        Validation::Refused(reason) => Outcome::Refused(reason),
+        Validation::Valid { sha256, .. } if sha256 == active.sha256 => Outcome::Differs(Vec::new()),
+        Validation::Valid {
+            sha256,
+            control_plane,
+        } => {
+            let mut differences = compare(
+                &installation_owned(control_plane),
+                &installation_owned(active.control_plane.clone()),
+            );
+            if differences.is_empty() {
+                // They differ only in members one of them holds empty.
+                differences.push(Difference::new(
+                    ValuePath::root().member("sha256"),
+                    Some(Value::String(sha256)),
+                    Some(Value::String(active.sha256.clone())),
+                ));
+            }
+            Outcome::Differs(differences)
+        }
+    };
+    Ok(Comparison {
+        active,
+        document,
+        outcome,
+    })
 }
 
 // ----- the control plane step -----
@@ -673,47 +802,113 @@ pub async fn plan(inputs: &Inputs, hub: &Hub, gateway: Option<&Gateway>) -> Vec<
         Ok(administrator) => administrator,
         Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
     };
-    let active = match administrator.control_plane().await {
-        Ok(active) => active,
-        Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
+    let claim = inputs.declaration.claim(&hub.claim);
+    // Hub reads the trusted files a document names when it validates it, and the claim
+    // step writes those this repository adds before this step runs.
+    let unwritten = match claim {
+        Some(claim) => match unwritten_files(gateway, hub, claim, &seed).await {
+            Ok(unwritten) => unwritten,
+            Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
+        },
+        None => Vec::new(),
     };
-    let mut items = Vec::new();
-    let subject = match &active.revision {
-        Some(revision) => format!("control plane at {origin}, active revision {revision}"),
-        None => subject,
+    let publish = Action::Publish {
+        origin: origin.clone(),
+        profile: hub.profile.clone(),
+        declared: seed.clone(),
+        hub: (hub.workspace.clone(), hub.sandbox.clone()),
     };
-    let declared = installation_owned(seed.clone());
-    let differences = compare(&declared, &installation_owned(active.control_plane.clone()));
-    let restart_hub = differences
-        .iter()
-        .any(|difference| {
-            let path = difference.path.to_string();
-            READ_AT_START
-                .iter()
-                .any(|section| path == *section || path.starts_with(&format!("{section}.")))
-        })
-        .then(|| (hub.workspace.clone(), hub.sandbox.clone()));
-    items.push(
-        Item::compared(
-            subject,
-            differences,
-            Some(
-                "people's grants, memberships, repositories and assignments stay as they are"
-                    .to_owned(),
+    let (active, item) = if unwritten.is_empty() {
+        let Comparison {
+            active, outcome, ..
+        } = match compare_with_hub(&administrator, &seed).await {
+            Ok(comparison) => comparison,
+            Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
+        };
+        let Some(revision) = &active.revision else {
+            return vec![Item::unread(
+                subject,
+                "Hub serves a control plane that is not its active revision, so nothing can be published over it; read again",
+            )];
+        };
+        let subject = format!("control plane at {origin}, active revision {revision}");
+        let item = match outcome {
+            Outcome::Refused(reason) => Item::new(
+                subject,
+                State::Refused(format!(
+                    "Hub refuses the declared control plane and would keep its active revision: {reason}"
+                )),
             ),
+            Outcome::Differs(differences) => {
+                let restart = if reads_at_start(&differences) {
+                    format!(
+                        "; Hub reads {} only at its start, so apply restarts {}/{}",
+                        READ_AT_START.join(", "),
+                        hub.workspace,
+                        hub.sandbox
+                    )
+                } else {
+                    String::new()
+                };
+                Item::compared(
+                    subject,
+                    differences,
+                    Some(format!(
+                        "Hub's validated form of the declared document against the active revision, SHA-256 {}{restart}; people's grants, memberships, repositories and assignments stay as they are",
+                        active.sha256
+                    )),
+                )
+                .with_action(publish)
+            }
+        };
+        (active, item)
+    } else {
+        let active = match administrator.control_plane().await {
+            Ok(active) => active,
+            Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
+        };
+        let subject = match &active.revision {
+            Some(revision) => format!("control plane at {origin}, active revision {revision}"),
+            None => subject,
+        };
+        let item = Item::new(
+            subject,
+            State::NotCompared(format!(
+                "Hub reads the files the declared control plane names when it validates it, and the claim step writes {} first; apply has Hub validate the document then, and publishes it unless Hub refuses it",
+                unwritten.join(", ")
+            )),
         )
-        .with_action(Action::Publish {
-            origin: origin.clone(),
-            profile: hub.profile.clone(),
-            declared: seed.clone(),
-            restart_hub,
-        }),
-    );
+        .with_action(publish);
+        (active, item)
+    };
+    let mut items = vec![item];
     items.extend(plan_registrations(inputs, &administrator, &origin, &hub.profile).await);
-    if let Some(claim) = inputs.declaration.claim(&hub.claim) {
+    if let Some(claim) = claim {
         items.push(plan_cleanup(inputs, claim, gateway, &seed, &active.control_plane).await);
     }
     items
+}
+
+/// The files of Hub's claim that the declared control plane names and Hub's sandbox
+/// does not hold yet.
+async fn unwritten_files(
+    gateway: &Gateway,
+    hub: &Hub,
+    claim: &HubClaim,
+    seed: &Value,
+) -> Result<Vec<String>> {
+    let named: Vec<String> = named_files(seed, &claim.directory)
+        .into_iter()
+        .map(|name| format!("{}/{name}", claim.directory))
+        .collect();
+    let held = gateway
+        .digests(&hub.workspace, &hub.sandbox, &named)
+        .await?;
+    Ok(named
+        .iter()
+        .filter(|path| !held.contains_key(*path))
+        .map(|path| path.rsplit('/').next().unwrap_or(path.as_str()).to_owned())
+        .collect())
 }
 
 /// The deployment each registering sandbox declares, as `(server, deployment)`.
@@ -945,22 +1140,48 @@ fn parse_yaml(text: &str) -> Option<Value> {
 const PUBLISH_ATTEMPTS: usize = 3;
 
 /// Publishes the declared members over the revision active now, as its successor, and
-/// checks that the active revision is then the declared one. When another revision
-/// becomes active first, Hub answers 412 and nothing changes: the control plane is read
-/// and the publication made again, from that revision, a bounded number of times.
+/// checks that Hub then serves what it validated. When another revision becomes active
+/// first, Hub answers 412 and nothing changes: the control plane is read, validated and
+/// published again, from that revision, a bounded number of times.
 pub async fn publish(
     inputs: &Inputs,
     origin: &Url,
     profile: &str,
     declared: &Value,
-) -> Result<String> {
+) -> Result<Published> {
     let administrator = Administrator::signed_in(inputs, origin, profile)?;
     publish_over(&administrator, declared).await
 }
 
-/// The control plane route, as a publication reads and writes it.
+/// A publication that is active: its revision, and where Hub's form of it differs from the
+/// revision it succeeded, none when another publication had made the same change.
+#[derive(Debug)]
+pub struct Published {
+    pub revision: String,
+    pub differences: Vec<Difference>,
+}
+
+impl Published {
+    /// Whether a member Hub reads only at its start changed.
+    pub fn read_at_start(&self) -> bool {
+        reads_at_start(&self.differences)
+    }
+}
+
+/// Whether a difference is in a section Hub reads only at its start.
+pub fn reads_at_start(differences: &[Difference]) -> bool {
+    differences.iter().any(|difference| {
+        let path = difference.path.to_string();
+        READ_AT_START
+            .iter()
+            .any(|section| path == *section || path.starts_with(&format!("{section}.")))
+    })
+}
+
+/// The control plane route, as a publication reads, validates and writes it.
 pub(crate) trait ControlPlaneRoute {
     async fn read(&self) -> Result<ActiveControlPlane>;
+    async fn validate(&self, document: &Value) -> Result<Validation>;
     async fn write(&self, document: &Value, based_on: &str) -> Result<Publication>;
 }
 
@@ -969,40 +1190,63 @@ impl ControlPlaneRoute for Administrator {
         self.control_plane().await
     }
 
+    async fn validate(&self, document: &Value) -> Result<Validation> {
+        Administrator::validate(self, document).await
+    }
+
     async fn write(&self, document: &Value, based_on: &str) -> Result<Publication> {
         self.publish(document, based_on).await
     }
 }
 
+/// The differing paths, for a message.
+fn paths(differences: &[Difference]) -> String {
+    differences
+        .iter()
+        .map(|difference| difference.path.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 pub(crate) async fn publish_over(
     administrator: &impl ControlPlaneRoute,
     declared: &Value,
-) -> Result<String> {
-    let mut revision = None;
+) -> Result<Published> {
+    let mut published = None;
     for attempt in 1..=PUBLISH_ATTEMPTS {
-        let active = administrator.read().await?;
+        let Comparison {
+            active,
+            document,
+            outcome,
+        } = compare_with_hub(administrator, declared).await?;
         let based_on = active
             .revision
             .clone()
             .context("Hub names no settled active revision to publish over; try again")?;
-        if compare(
-            &installation_owned(declared.clone()),
-            &installation_owned(active.control_plane.clone()),
-        )
-        .is_empty()
-        {
+        let differences = match outcome {
+            Outcome::Refused(reason) => bail!(
+                "Hub refuses the declared control plane and keeps its active revision {based_on}: {reason}"
+            ),
+            Outcome::Differs(differences) => differences,
+        };
+        if differences.is_empty() {
             // Another publication made the same change.
-            revision = Some(based_on);
+            published = Some(Published {
+                revision: based_on,
+                differences,
+            });
             break;
         }
-        let document = publication(declared, &active.control_plane);
         match administrator
             .write(&document, &based_on)
             .await
             .context("Hub refused the publication and keeps its active revision")?
         {
-            Publication::Active(made) => {
-                revision = Some(made);
+            Publication::Active(revision) => {
+                published = Some(Published {
+                    revision,
+                    differences,
+                });
                 break;
             }
             Publication::Moved => {
@@ -1012,27 +1256,24 @@ pub(crate) async fn publish_over(
             }
         }
     }
-    let Some(revision) = revision else {
+    let Some(published) = published else {
         bail!(
             "another revision became active before each of {PUBLISH_ATTEMPTS} publications; nothing was published"
         );
     };
-    let now = administrator.read().await?;
-    let left = compare(
-        &installation_owned(declared.clone()),
-        &installation_owned(now.control_plane),
-    );
-    if !left.is_empty() {
-        bail!(
+    let now = compare_with_hub(administrator, declared).await?;
+    match now.outcome {
+        Outcome::Differs(left) if left.is_empty() => Ok(published),
+        Outcome::Differs(left) => bail!(
             "after publishing, the active revision {} still differs at {}",
-            now.revision.unwrap_or_default(),
-            left.iter()
-                .map(|difference| difference.path.to_string())
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
+            now.active.revision.unwrap_or_default(),
+            paths(&left)
+        ),
+        Outcome::Refused(reason) => bail!(
+            "after publishing, Hub refuses the declared control plane over revision {}: {reason}",
+            now.active.revision.unwrap_or_default()
+        ),
     }
-    Ok(revision)
 }
 
 /// Waits until Hub reports the server's deployment healthy.
@@ -1377,69 +1618,213 @@ mod publication_tests {
 
     use super::*;
 
-    /// Hub's control plane route as recorded states: the active revisions in order, and
-    /// a person who creates a repository after the first read, before the publication.
+    /// Hub's form of a document, as recorded from Hub: every OAuth client's surface is
+    /// written, `full_mcp` by default, and endpoints end in `/`.
+    fn kept(document: &Value) -> Value {
+        let mut kept = document.clone();
+        if let Some(clients) = kept["oauthClients"].as_array_mut() {
+            for client in clients {
+                client
+                    .as_object_mut()
+                    .unwrap()
+                    .entry("clientSurface")
+                    .or_insert(json!("full_mcp"));
+            }
+        }
+        if let Some(endpoint) = kept["computers"]["gateway"]["endpoint"].as_str()
+            && !endpoint.ends_with('/')
+        {
+            kept["computers"]["gateway"]["endpoint"] = json!(format!("{endpoint}/"));
+        }
+        kept
+    }
+
+    fn digest(document: &Value) -> String {
+        sha256_hex(&serde_json::to_string(document).unwrap())
+    }
+
+    /// Hub's control plane route as recorded states: the active revisions in order, kept
+    /// in Hub's form; a person who creates a repository after the first read, before the
+    /// publication; and a reason Hub refuses every document for.
     struct Route {
         revisions: Mutex<Vec<(String, Value)>>,
         reads: Mutex<usize>,
+        writes: Mutex<usize>,
         concurrent_after_read: Option<Value>,
+        refusal: Option<String>,
+    }
+
+    impl Route {
+        fn over(active: Value) -> Self {
+            Self {
+                revisions: Mutex::new(vec![("gcp-1".into(), kept(&active))]),
+                reads: Mutex::new(0),
+                writes: Mutex::new(0),
+                concurrent_after_read: None,
+                refusal: None,
+            }
+        }
     }
 
     impl ControlPlaneRoute for Route {
         async fn read(&self) -> Result<ActiveControlPlane> {
-            let mut reads = self.reads.lock().unwrap();
-            *reads += 1;
+            *self.reads.lock().unwrap() += 1;
             let revisions = self.revisions.lock().unwrap();
             let (revision, control_plane) = revisions.last().unwrap().clone();
             Ok(ActiveControlPlane {
                 revision: Some(revision),
+                sha256: digest(&control_plane),
+                control_plane,
+            })
+        }
+
+        async fn validate(&self, document: &Value) -> Result<Validation> {
+            if let Some(reason) = &self.refusal {
+                return Ok(Validation::Refused(reason.clone()));
+            }
+            let control_plane = kept(document);
+            Ok(Validation::Valid {
+                sha256: digest(&control_plane),
                 control_plane,
             })
         }
 
         async fn write(&self, document: &Value, based_on: &str) -> Result<Publication> {
+            *self.writes.lock().unwrap() += 1;
             let mut revisions = self.revisions.lock().unwrap();
-            if *self.reads.lock().unwrap() == 1
-                && self.concurrent_after_read.is_some()
+            if let Some(created) = &self.concurrent_after_read
+                && *self.reads.lock().unwrap() == 1
                 && revisions.len() == 1
             {
                 // The repository is created between the installer's read and its write.
-                revisions.push(("gcp-2".into(), self.concurrent_after_read.clone().unwrap()));
+                revisions.push(("gcp-2".into(), kept(created)));
             }
             if revisions.last().unwrap().0 != based_on {
                 return Ok(Publication::Moved);
             }
             let made = format!("gcp-{}", revisions.len() + 1);
-            revisions.push((made.clone(), document.clone()));
+            revisions.push((made.clone(), kept(document)));
             Ok(Publication::Active(made))
         }
     }
 
     fn active() -> Value {
         json!({
-            "computers": {"handbook": "old"},
-            "authorization": {"grants": [], "roles": []},
+            "computers": {"handbook": "old", "gateway": {"endpoint": "https://openshell.openshell.svc.cluster.local:8080"}},
+            "oauthClients": [{"id": "veoveo-hub-sdk-cli", "grantTypes": ["authorization_code_pkce"]}],
+            "authorization": {"grants": [{"role": "admin", "subject": {"principal": "person-1"}}], "roles": []},
             "workContexts": [],
             "lore": {"deployments": [], "repositories": [], "assignments": []},
         })
     }
 
     #[tokio::test]
+    async fn the_declared_document_matches_hubs_form_of_it() {
+        // The repository writes no defaults and no trailing `/`; Hub serves both.
+        let route = Route::over(active());
+        let mut declared = active();
+        declared["authorization"]["grants"] = json!([{"role": "example"}]);
+        let comparison = compare_with_hub(&route, &declared).await.unwrap();
+        assert_ne!(comparison.active.control_plane, active());
+        assert_eq!(comparison.outcome, Outcome::Differs(Vec::new()));
+        // Nothing to publish: publication reads, validates and writes nothing.
+        assert_eq!(
+            publish_over(&route, &declared).await.unwrap().revision,
+            "gcp-1"
+        );
+        assert_eq!(*route.writes.lock().unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn a_change_differs_where_hubs_forms_differ_and_a_second_publication_changes_nothing() {
+        let route = Route::over(active());
+        let mut declared = active();
+        declared["computers"]["handbook"] = json!("new");
+        let comparison = compare_with_hub(&route, &declared).await.unwrap();
+        let Outcome::Differs(differences) = comparison.outcome else {
+            panic!("Hub validates the document");
+        };
+        assert_eq!(
+            differences
+                .iter()
+                .map(|difference| difference.path.to_string())
+                .collect::<Vec<_>>(),
+            ["computers.handbook"]
+        );
+        assert_eq!(
+            publish_over(&route, &declared).await.unwrap().revision,
+            "gcp-2"
+        );
+        assert_eq!(
+            publish_over(&route, &declared).await.unwrap().revision,
+            "gcp-2"
+        );
+        assert_eq!(*route.writes.lock().unwrap(), 1);
+        let revisions = route.revisions.lock().unwrap();
+        assert_eq!(revisions.last().unwrap().1["computers"]["handbook"], "new");
+        // The person's grant is kept, never the seed's example.
+        assert_eq!(
+            revisions.last().unwrap().1["authorization"]["grants"],
+            active()["authorization"]["grants"]
+        );
+    }
+
+    #[tokio::test]
+    async fn hub_restarts_only_for_a_member_it_reads_at_its_start() {
+        let mut started = active();
+        started["factory"] =
+            json!({"policyFile": "/etc/veoveo/hub/factory-base-111111111111.yaml"});
+        let route = Route::over(started.clone());
+        let mut handbook = started.clone();
+        handbook["computers"]["handbook"] = json!("new");
+        assert!(
+            !publish_over(&route, &handbook)
+                .await
+                .unwrap()
+                .read_at_start()
+        );
+        let mut factory = handbook;
+        factory["factory"]["policyFile"] = json!("/etc/veoveo/hub/factory-base-222222222222.yaml");
+        let published = publish_over(&route, &factory).await.unwrap();
+        assert!(published.read_at_start());
+        assert_eq!(published.differences.len(), 1);
+        assert!(
+            !publish_over(&route, &factory)
+                .await
+                .unwrap()
+                .read_at_start()
+        );
+    }
+
+    #[tokio::test]
+    async fn a_document_hub_refuses_is_never_written() {
+        let mut route = Route::over(active());
+        route.refusal = Some("duplicate policy rule `a` in policy `b`".into());
+        let mut declared = active();
+        declared["computers"]["handbook"] = json!("new");
+        let comparison = compare_with_hub(&route, &declared).await.unwrap();
+        assert_eq!(
+            comparison.outcome,
+            Outcome::Refused("duplicate policy rule `a` in policy `b`".into())
+        );
+        let error = publish_over(&route, &declared).await.unwrap_err();
+        assert!(
+            error.to_string().contains("duplicate policy rule"),
+            "{error}"
+        );
+        assert_eq!(*route.writes.lock().unwrap(), 0);
+    }
+
+    #[tokio::test]
     async fn a_repository_created_while_publishing_survives_the_publication() {
-        let declared = json!({
-            "computers": {"handbook": "new"},
-            "authorization": {"grants": [{"role": "example"}], "roles": []},
-            "workContexts": [],
-            "lore": {"deployments": [], "repositories": [], "assignments": []},
-        });
+        let mut declared = active();
+        declared["computers"]["handbook"] = json!("new");
+        declared["authorization"]["grants"] = json!([{"role": "example"}]);
         let mut created = active();
         created["lore"]["repositories"] = json!([{"id": "01a1586c89057ea3adcfc848da54077b"}]);
-        let route = Route {
-            revisions: Mutex::new(vec![("gcp-1".into(), active())]),
-            reads: Mutex::new(0),
-            concurrent_after_read: Some(created),
-        };
-        let revision = publish_over(&route, &declared).await.unwrap();
+        let mut route = Route::over(active());
+        route.concurrent_after_read = Some(created);
+        let revision = publish_over(&route, &declared).await.unwrap().revision;
         let revisions = route.revisions.lock().unwrap();
         // The first write was refused (412); the second was based on the new revision.
         assert_eq!(revision, "gcp-3");
@@ -1449,7 +1834,10 @@ mod publication_tests {
             published["lore"]["repositories"],
             json!([{"id": "01a1586c89057ea3adcfc848da54077b"}])
         );
-        assert_eq!(published["authorization"]["grants"], json!([]));
+        assert_eq!(
+            published["authorization"]["grants"],
+            active()["authorization"]["grants"]
+        );
     }
 
     #[tokio::test]
@@ -1459,18 +1847,40 @@ mod publication_tests {
             async fn read(&self) -> Result<ActiveControlPlane> {
                 Ok(ActiveControlPlane {
                     revision: Some("gcp-1".into()),
+                    sha256: digest(&active()),
                     control_plane: active(),
+                })
+            }
+            async fn validate(&self, document: &Value) -> Result<Validation> {
+                Ok(Validation::Valid {
+                    sha256: digest(document),
+                    control_plane: document.clone(),
                 })
             }
             async fn write(&self, _: &Value, _: &str) -> Result<Publication> {
                 Ok(Publication::Moved)
             }
         }
-        let declared = json!({"computers": {"handbook": "new"}});
+        let mut declared = active();
+        declared["computers"]["handbook"] = json!("new");
         let error = publish_over(&Busy, &declared).await.unwrap_err();
         assert!(
             error.to_string().contains("nothing was published"),
             "{error}"
+        );
+    }
+
+    #[test]
+    fn a_refusal_reason_is_the_problems_detail() {
+        assert_eq!(
+            refusal_reason(
+                r#"{"type":"https://veoveo.ai/problems/control-plane-invalid","title":"Invalid control plane","status":400,"detail":"duplicate policy rule `a` in policy `b`"}"#
+            ),
+            "duplicate policy rule `a` in policy `b`"
+        );
+        assert_eq!(
+            refusal_reason("invalid hub control plane\n"),
+            "invalid hub control plane"
         );
     }
 }

@@ -368,18 +368,26 @@ the new revision does not name are removed only after it is active.
 It changes each piece through its owner's interface and adds no logic the owner
 already has: Kubernetes through its API, Helm releases with `helm`, OpenShell through
 its Rust SDK as the operator's OpenShell identity, and Hub's live control plane through
-Hub's administrative route. It publishes only what differs from the active revision and
-never resets the control plane, so what people created since the seed, such as their
-repositories, survives every apply: a publication takes the members people change from
-the revision active at that moment and names that revision in `If-Match`, so Hub
-refuses it (412) when another became active first, and apply reads and publishes
-again, three times at most. Hub reads its `factory` section only when it
-starts, so a publication that changes it restarts Hub. To read or publish it, the
-operator signs in to Hub in the browser as themselves, an installation administrator,
-with `veoveo-installer login` (the Hub SDK's sign-in, as its `veoveo-hub-sdk-cli`
-client), so Hub's audit names the person and no standing administrator credential
-exists; Hub validates the document and keeps its active revision on rejection. A first
-installation needs no sign-in: Hub seeds an empty control plane from this repository.
+Hub's administrative route. Hub alone decides what a control plane is: plan sends the
+document it would publish to Hub's validation
+(`POST /admin/{profile}/control-plane/validate`), which answers it as Hub would keep it,
+with its SHA-256, compares that with the active revision's, and shows the members where
+Hub's two forms differ. While the claim step has still to write a file the document
+names, which Hub reads to validate it, apply has Hub validate it once the file is
+written. It publishes only what differs from the active revision and never resets the
+control plane, so what people created since the seed, such as their repositories,
+survives every apply: a publication takes the members people change from the revision
+active at that moment and names that revision in `If-Match`, so Hub refuses it (412)
+when another became active first, and apply reads, validates and publishes again,
+three times at most. Hub reads its `factory` section only when it starts, so a
+publication that changes it, as Hub's validation shows, restarts Hub. To read or
+publish it, the operator signs in to Hub in the browser as themselves, an installation
+administrator, with `veoveo-installer login` (the Hub SDK's sign-in, as its
+`veoveo-hub-sdk-cli` client), so Hub's audit names the person and no standing
+administrator credential exists; Hub refuses a document it does not admit, with the
+reason, and keeps its active revision. A first installation needs no sign-in: Hub
+seeds an empty control plane from this repository.
+
 
 `veoveo-installer identity hub` prepares Hub's trusted files in the private
 directory from the identity provider's registration: `hub.env` with Hub's own keys
