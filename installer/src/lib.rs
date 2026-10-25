@@ -9,6 +9,7 @@ pub mod declaration;
 pub mod difference;
 pub mod helm;
 pub mod hub;
+pub mod identity;
 pub mod inputs;
 pub mod kubernetes;
 pub mod openshell;

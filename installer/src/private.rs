@@ -26,9 +26,8 @@ pub struct Private {
     /// Private environment values of each sandbox, keyed `<workspace>/<name>`.
     #[serde(default)]
     pub sandbox: BTreeMap<String, SandboxValues>,
-    /// The identity provider's registration, from which a later phase prepares Hub's
-    /// trusted files. `plan` does not read it.
-    pub identity: Option<toml::Table>,
+    /// How Hub's trusted files are prepared from the identity provider's registration.
+    pub identity: Option<Identity>,
     #[serde(skip)]
     directory: PathBuf,
 }
@@ -65,6 +64,26 @@ pub struct HelmValues {
     /// The source checkout holding a chart that comes from no repository, such as
     /// OpenShell's at the gateway's revision. Not relative to the private directory.
     pub source: Option<PathBuf>,
+}
+
+/// Hub's trusted files and what they are made from: `hub.env`, the authorization
+/// server's key set and the seed `hub.json`, kept in `directory`.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Identity {
+    /// Where the files are kept, relative to the private directory.
+    pub directory: PathBuf,
+    /// Hub's settings in `hub.env` that are not secret, such as its database URLs.
+    #[serde(default)]
+    pub environment: BTreeMap<String, String>,
+    /// Secrets the trusted bootstrap supplies, each in its own file of the private
+    /// directory, such as the database password and the identity provider's client
+    /// secret.
+    #[serde(default)]
+    pub secrets: BTreeMap<String, PathBuf>,
+    /// The people of a first seed: a JSON document holding the seed's members people
+    /// change (grants, memberships, repositories and assignments).
+    pub people: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

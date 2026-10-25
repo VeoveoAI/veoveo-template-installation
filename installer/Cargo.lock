@@ -2421,6 +2421,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
@@ -3645,6 +3646,7 @@ name = "veoveo-installer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.23.1",
  "clap",
  "futures",
  "k8s-openapi",
@@ -3655,6 +3657,7 @@ dependencies = [
  "pretty_assertions",
  "prost-types",
  "reqwest 0.13.5",
+ "ring",
  "rustls",
  "serde",
  "serde-saphyr",
@@ -3665,6 +3668,7 @@ dependencies = [
  "toml",
  "tonic",
  "url",
+ "uuid",
  "veoveo-hub-sdk",
  "veoveo-hub-sdk-cli",
  "veoveo-installation-contract",

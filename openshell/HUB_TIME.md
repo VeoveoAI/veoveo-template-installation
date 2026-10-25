@@ -21,8 +21,7 @@ existing bootstrap `VEOVEO_DATABASE_PASSWORD` privately for its first run, witho
 putting its value in an argument or copying the rest of operator state into a sandbox:
 
 ```sh
-./identity/configure-hub \
-  --hub-origin https://vv-control--hub--http.openshell.localhost:17670
+veoveo-installer fixture hub
 ```
 
 The origin is a required input, fixed to workspace `vv-control`, sandbox `hub`,

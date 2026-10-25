@@ -43,7 +43,7 @@ openshell status
 openshell sandbox list --all-workspaces
 ```
 
-`identity/configure-openshell` provisions only local native management clients.
+`veoveo-installer fixture openshell` prepares only local native management clients.
 Lore uses [Hub-issued native resource grants](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle): the public
 client is secretless; a separate factory client's secret enters native refresh
 custody. Human identity comes from Hub's existing enterprise broker. IdP clients,

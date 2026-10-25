@@ -37,7 +37,7 @@ attached to user Computers.
 
 For local Keycloak, assign only the configured admin role and exact seven scopes to
 the new service account; remove unrelated inherited/default grants. The existing
-`identity/configure-hub` helper prepares the forwarder-only identity, not this
+`veoveo-installer fixture hub` prepares the forwarder-only identity, not this
 client. Use the selected IdP's ordinary administration interface for the new
 client and independently verify its native token claims before enabling Hub.
 

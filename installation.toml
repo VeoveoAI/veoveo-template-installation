@@ -156,9 +156,9 @@ cpu = "4"
 memory = "8Gi"
 driver_config = "kubernetes/factory-driver-config.json"
 
-# The files of Hub's trusted claim that come from this repository, each named by its
-# content; the seed names them as @claim:<name>@. Written before Hub starts, which
-# reads them, by the claim's seed Job.
+# The files of Hub's trusted claim: those from this repository, each named by its
+# content, which the seed names as @claim:<name>@, and Hub's private files. Written
+# before Hub starts, which reads them, by the claim's seed Job.
 [[step]]
 name = "hub-claim"
 [step.claim]
@@ -168,6 +168,9 @@ directory = "/etc/veoveo/hub"
 manifest = "kubernetes/hub-config-pvc.yaml"
 job = "seed-hub-config-v1"
 secret = "hub-config-bootstrap"
+# Hub's private trusted files, which `veoveo-installer identity hub` prepares in the
+# private directory: written when the claim lacks them, as on a first installation.
+private = ["hub.json", "hub.env", "authorization-server.jwks.json"]
 [[step.claim.file]]
 name = "computer-policy"
 source = "kubernetes/policies/computer-v1.yaml"

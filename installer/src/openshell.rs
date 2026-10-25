@@ -800,6 +800,29 @@ impl Gateway {
         Ok(output)
     }
 
+    /// The SHA-256 of each existing file of `paths` in a sandbox, by path, through native
+    /// exec; no content leaves the sandbox.
+    pub async fn digests(
+        &self,
+        workspace: &str,
+        sandbox: &str,
+        paths: &[String],
+    ) -> Result<std::collections::BTreeMap<String, String>> {
+        let mut command = vec![
+            "/bin/sh",
+            "-c",
+            "for f; do if [ -f \"$f\" ]; then /usr/bin/sha256sum \"$f\"; fi; done",
+            "sh",
+        ];
+        command.extend(paths.iter().map(String::as_str));
+        let output = self.exec(workspace, sandbox, &command).await?;
+        Ok(output
+            .lines()
+            .filter_map(|line| line.split_once("  "))
+            .map(|(digest, path)| (path.to_owned(), digest.to_owned()))
+            .collect())
+    }
+
     /// The names in a sandbox directory.
     pub async fn list_directory(
         &self,

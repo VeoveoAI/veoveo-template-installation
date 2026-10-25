@@ -253,6 +253,9 @@ pub struct HubClaim {
     pub secret: String,
     #[serde(rename = "file")]
     pub files: Vec<ClaimFile>,
+    /// The claim's private files, prepared in the private directory's `[identity]` directory.
+    #[serde(default)]
+    pub private: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

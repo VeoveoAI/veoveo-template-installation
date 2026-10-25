@@ -1,8 +1,11 @@
 # Installation identity
 
-Local Keycloak, its Compose services and the helpers `configure-openshell` and
-`provision` are **Mac development fixtures**; `configure-hub` prepares Hub's trusted
-files from local Keycloak or an existing Entra registration. Linux uses Entra and
+Local Keycloak, its Compose services and `veoveo-installer fixture` (`keycloak`,
+`openshell`, `hub` and `public-client`) are **Mac development fixtures**; for an
+installation, `veoveo-installer identity hub` prepares Hub's trusted files from the
+identity provider's registration (see the
+[design](../DESIGN.md#applying-an-installation)). Build it with
+`cargo build --release --manifest-path installer/Cargo.toml`. Linux uses Entra and
 needs no Keycloak: its Hub seed is [entra.example.json](entra.example.json)
 merged with the [K3s Hub fragment](../kubernetes/hub.example.json), as the
 [workload bootstrap](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
@@ -20,7 +23,7 @@ After creating the installation CA and preparing the ignored `.env`, run from
 the installation root:
 
 ```sh
-./identity/provision
+veoveo-installer fixture keycloak
 ```
 
 Provisioning enables `COMPOSE_PROFILES=keycloak` in the ignored `.env`. Keycloak
@@ -109,7 +112,7 @@ Ordinary provisioning preserves an existing leaf unchanged. To add the alias to
 an existing installation, explicitly renew only the identity certificate:
 
 ```sh
-./identity/provision --renew-identity-certificate
+veoveo-installer fixture keycloak --renew-identity-certificate
 ```
 
 This action requires the existing complete leaf pair and installation CA. It
@@ -150,12 +153,11 @@ qualified. Human sign-in alone must not grant application membership.
 
 For normal interactive use, register a public Keycloak client and explicit Hub
 membership rather than launching OpenCode with a service-account bearer token.
-The existing `configure-hub` helper has an opt-in mode that leaves the service
-clients, users, their roles and all unrelated catalog sections unchanged:
+`veoveo-installer fixture public-client` leaves the service clients, users, their
+roles and all unrelated catalog sections unchanged:
 
 ```sh
-identity/configure-hub --hub-origin "$HUB_ORIGIN" --local-public-client \
-  --installation-root "$INSTALLATION" \
+veoveo-installer --repository "$INSTALLATION" fixture public-client \
   --control-plane-file "$FRESH_CATALOG" --output-control-plane "$CANDIDATE" \
   --application-client-id opencode-local --member-object-id "$KEYCLOAK_USER_ID" \
   --work-context "$WORK_CONTEXT" --protected-resource "$HUB_ORIGIN/mcp/local" \

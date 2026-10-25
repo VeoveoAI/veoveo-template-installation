@@ -99,28 +99,15 @@ installation tenant. Sign-in alone grants no Work Context or permission.
 
 ## Prepare trusted Hub configuration
 
-Privately supply `VEOVEO_IDP_OIDC_TENANT_ID`, `VEOVEO_IDP_OIDC_CLIENT_ID`,
-`VEOVEO_IDP_OIDC_ISSUER`, `VEOVEO_IDP_OIDC_CLIENT_SECRET` and the existing trusted
-`VEOVEO_DATABASE_PASSWORD`. Save the verified issuer's standard OIDC discovery
-JSON privately; preparation does not fetch it or mutate Entra. Review its issuer,
-JWKS and authorization/token endpoints. Public example UUIDs in
-[entra.example.json](../identity/entra.example.json) are deliberately unenrolled.
-
-From the separate reference installation checkout, run the existing helper:
+Put the Entra registration in the installation's seed
+([entra.example.json](../identity/entra.example.json), whose public example UUIDs are
+deliberately unenrolled) and the secrets in the private directory: the client secret
+and the trusted `VEOVEO_DATABASE_PASSWORD`, each in a file `private.toml`'s
+`[identity.secrets]` names. Then, from the installation checkout:
 
 ```sh
-./identity/configure-hub --identity-provider entra \
-  --hub-origin https://veoveo.example.com \
-  --oidc-discovery-file /operator/private/entra-discovery.json \
-  --native-gateway https://host.openshell.internal:17670 \
-  --tenant reference --work-context reference-work --policy-version reference-policy \
-  --owner-object-id '<administrator-object-id>' \
-  --admin-object-id '<administrator-object-id>' \
-  --member-object-id '<ordinary-member-object-id>' \
-  --billed-object-id '<billed-test-user-object-id>' \
-  --application-client-id opencode \
-  --client-redirect-uri http://127.0.0.1:3210/callback \
-  --include-artifact --include-media
+veoveo-installer --private "$PRIVATE" identity hub --check
+veoveo-installer --private "$PRIVATE" identity hub
 ```
 
 Use the actual application's supported exact callback; the loopback example is not
@@ -132,16 +119,16 @@ membership lists principals, not the shared public application client, so anothe
 tenant user cannot gain membership merely by logging in. A single identity given
 admin authority cannot also prove the ordinary-member denial case.
 
-The helper performs no identity-administration, database, provider or deployment
-operation. It writes only standard owner-only component files under ignored
-`state/openshell/hub/`: `hub.json`, `hub.env` and the public
+It performs no identity-administration, database, provider or deployment
+operation. It writes only standard owner-only component files in the private
+directory's `[identity]` directory: `hub.json`, `hub.env` and the public
 `authorization-server.jwks.json`. Hub's own application signing key, forwarded
 identity key, audit/refresh keys and registration secret persist across reruns;
 no caller signing keys are generated. The Entra secret is copied only into trusted
 Hub's private environment. Validate the generated catalog using the component CLI:
 
 ```sh
-veoveo-hub validate --config state/openshell/hub/hub.json
+veoveo-hub validate --config "$PRIVATE/hub-config/hub.json"
 ```
 
 Before first startup, populate the existing `vv-hub-config` named volume with

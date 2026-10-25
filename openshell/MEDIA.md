@@ -52,9 +52,7 @@ After [Hub/Time preparation](HUB_TIME.md) and [private Artifact setup](ARTIFACT.
 run the trusted identity/catalog helper:
 
 ```sh
-./identity/configure-hub \
-  --hub-origin https://vv-control--hub--http.openshell.localhost:17670 \
-  --include-artifact --include-media
+veoveo-installer fixture hub --include-artifact --include-media
 ```
 
 The helper adds only the reviewed private binding

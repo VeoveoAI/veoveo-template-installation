@@ -30,7 +30,7 @@ and it is refused access to an unrelated bucket and administrative identity APIs
 Ordinary reruns preserve existing identities and data. A SeaweedFS development
 reset also removes its IAM state: reprovision the dedicated Artifact identity and
 bucket policy before starting the fresh service. Credential provisioning is a
-trusted operator operation, not part of `configure-hub` or an agent factory.
+trusted operator operation, not part of `veoveo-installer fixture hub` or an agent factory.
 
 SeaweedFS 4.48's `s3.user.provision -role=readwrite` preset alone is insufficient:
 Artifact also initializes the bucket/lifecycle and manages multipart uploads.
@@ -113,9 +113,7 @@ choice; other installations must supply their own shared reachable S3 authority.
 Add the explicit static native binding with the existing trusted helper:
 
 ```sh
-./identity/configure-hub \
-  --hub-origin https://vv-control--hub--http.openshell.localhost:17670 \
-  --include-artifact
+veoveo-installer fixture hub --include-artifact
 ```
 
 The generated `hub.json` retains Time and adds only

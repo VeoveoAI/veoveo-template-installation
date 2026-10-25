@@ -378,12 +378,25 @@ starts, so a publication that changes it restarts Hub. To read or publish it, th
 operator signs in to Hub in the browser as themselves, an installation administrator,
 with `veoveo-installer login` (the Hub SDK's sign-in, as its `veoveo-hub-sdk-cli`
 client), so Hub's audit names the person and no standing administrator credential
-exists; Hub validates the document and keeps its active revision on rejection. A first installation needs no
-sign-in: Hub seeds an empty control plane from this repository. It prepares Hub's
-trusted files from the identity provider's registration (Hub's keys, the authorization
-server's key set and the seed document), which `identity/configure-hub`,
-`identity/configure-openshell` and `identity/provision` do today; those Python tools
-are retired with it.
+exists; Hub validates the document and keeps its active revision on rejection. A first
+installation needs no sign-in: Hub seeds an empty control plane from this repository.
+
+`veoveo-installer identity hub` prepares Hub's trusted files in the private
+directory from the identity provider's registration: `hub.env` with Hub's own keys
+(the forwarded-token and access-token Ed25519 keys, the audit and refresh-delivery keys
+and the registration secret), the secrets `[identity.secrets]` supplies and the
+settings `[identity.environment]` holds; the authorization server's public key set,
+whose key ID is its RFC 7638 thumbprint; and the seed `hub.json`, the repository's seed
+with that key ID and the people of the earlier seed or of `[identity] people`, never
+the examples. Keys are made once: over existing files it recovers them, checks that
+they agree with what the private directory supplies, and otherwise refuses without
+writing, since a rotation is a reviewed act of its own. The claim step writes these
+files into Hub's claim when the claim lacks them, as on a first installation, and a
+changed seed; a changed key is refused. The Mac fixtures are
+`veoveo-installer fixture keycloak` (the persistent local Keycloak, its TLS leaf and
+realm), `fixture openshell` (the native gateway's OIDC clients), `fixture hub` (the
+fixture Hub's catalog, keys and service clients) and `fixture public-client` (a local
+human PKCE client), each changing Keycloak only through its administration API.
 
 The installer is Rust source in this repository, `installer/`, with its own check, and it
 reads the lock with core's installation contract crate. Each installation owns its copy

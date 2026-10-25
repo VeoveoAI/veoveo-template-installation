@@ -158,6 +158,20 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
             writes.push((file.clone(), content.clone()));
         }
     }
+    let mut items = Vec::new();
+    if !claim.private.is_empty() {
+        match private_files(inputs, claim, gateway, present.is_some()).await {
+            Ok((private_differences, private_writes, refused)) => {
+                differences.extend(private_differences);
+                writes.extend(private_writes);
+                items.extend(refused);
+            }
+            Err(error) => items.push(Item::unread(
+                format!("Hub's private trusted files in {}", claim.directory),
+                format!("{error:#}"),
+            )),
+        }
+    }
     let note = present.is_none().then(|| {
         format!(
             "{}/{} does not run, so its claim was not read",
@@ -168,7 +182,74 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
         claim: claim.clone(),
         files: writes,
     });
-    vec![item]
+    items.insert(0, item);
+    items
+}
+
+/// The claim's private files against the private directory's, which `identity hub`
+/// prepares, by SHA-256, read in Hub's sandbox; no content leaves either side. Hub
+/// reads them when it starts, so a missing one is written, and so is a changed seed,
+/// which Hub reads only for an empty control plane; a changed key or key set is a
+/// reviewed rotation, which apply does not make.
+async fn private_files(
+    inputs: &Inputs,
+    claim: &HubClaim,
+    gateway: &Gateway,
+    running: bool,
+) -> Result<(Vec<Difference>, Vec<(String, String)>, Vec<Item>)> {
+    let (directory, _) = crate::identity::hub::directory(inputs)?;
+    let mut local = Vec::new();
+    for name in &claim.private {
+        let path = directory.join(name);
+        let text = std::fs::read_to_string(&path).with_context(|| {
+            format!(
+                "{} is not there; prepare Hub's trusted files with `veoveo-installer identity hub`",
+                path.display()
+            )
+        })?;
+        local.push((name.clone(), text));
+    }
+    let active = if running {
+        let paths: Vec<String> = claim
+            .private
+            .iter()
+            .map(|name| format!("{}/{name}", claim.directory))
+            .collect();
+        gateway
+            .digests(&claim.workspace, &claim.sandbox, &paths)
+            .await?
+    } else {
+        Default::default()
+    };
+    let (mut differences, mut writes, mut refused) = (Vec::new(), Vec::new(), Vec::new());
+    for (name, text) in local {
+        let digest = sha256_hex(&text);
+        let held = active.get(&format!("{}/{name}", claim.directory));
+        if held == Some(&digest) {
+            continue;
+        }
+        if held.is_some() && name != crate::identity::hub::SEED_FILE {
+            refused.push(Item::new(
+                format!("Hub's private trusted file {}/{name}", claim.directory),
+                State::Refused("it differs from the private directory's; Hub reads it when it starts, and replacing it is a reviewed rotation".to_owned()),
+            ));
+            continue;
+        }
+        differences.push(Difference::new(
+            ValuePath::root().member(&name),
+            Some(Value::String("the private directory's".to_owned())),
+            held.map(|_| Value::String("another".to_owned())),
+        ));
+        writes.push((name, text));
+    }
+    Ok((differences, writes, refused))
+}
+
+fn sha256_hex(text: &str) -> String {
+    Sha256::digest(text.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 // ----- the seed -----
