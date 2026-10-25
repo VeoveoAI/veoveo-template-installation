@@ -290,7 +290,8 @@ startup and restarts until Hub serves its issuer; no init Job orders them.
 
 ## Applying An Installation
 
-`veoveo-installer` makes a cluster match this repository. It is an operator's command,
+This repository's installer, `veoveo-installer`, makes a cluster match this
+repository. It is an operator's command,
 not a service: it keeps no state of its own, runs only when an operator runs it, and
 exits, so it is neither an orchestrator nor a second launcher. It installs and
 upgrades only the substrate the platform cannot deploy itself: the Kubernetes
@@ -315,13 +316,19 @@ changes nothing. First installation and every upgrade take the same path.
 It changes each piece through its owner's interface and adds no logic the owner
 already has: Kubernetes through its API, Helm releases with `helm`, OpenShell through
 its Rust SDK as the operator's OpenShell identity, and Hub's live control plane through
-Hub's administrative route as an installation administrator, who signs in through the
-browser as any Hub client does; Hub validates the document it is given and keeps its
-active revision on rejection. It prepares Hub's trusted files from the identity
+Hub's administrative route. It publishes only what differs from the active revision and
+never resets the control plane, so what people created since the seed, such as their
+repositories, survives every apply. To publish, the operator signs in to Hub in the
+browser as themselves, an installation administrator, so Hub's audit names the person
+and no standing administrator credential exists; Hub validates the document and keeps
+its active revision on rejection. A first installation needs no sign-in: Hub seeds an
+empty control plane from this repository. It prepares Hub's trusted files from the identity
 provider's registration (Hub's keys, the authorization server's key set and the seed
 document), which `identity/configure-hub`, `identity/configure-openshell` and
 `identity/provision` do today; those Python tools are retired with it.
 
-`veoveo-installer` is a component of its own, in Rust, with its own repository and
-check, built into an image this repository's lock pins like any other. It reads the
-lock with core's installation contract crate.
+The installer is Rust source in this repository, `installer/`, with its own check, and it
+reads the lock with core's installation contract crate. Each installation owns its copy
+and changes it freely: its steps are the first thing an installation customizes. An
+installation brings in the template's later improvements by comparing its installer with
+the latest template's and taking what applies, as it does with the rest of its files.
