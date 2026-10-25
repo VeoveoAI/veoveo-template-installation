@@ -15,6 +15,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::{
+    action::Action,
     declaration::{Profile, Sandbox, Service, Template},
     difference::{Difference, Path as ValuePath, compare, remove},
     inputs::Inputs,
@@ -24,6 +25,11 @@ use crate::{
 
 /// A template annotation each publish writes for itself.
 pub const RELEASE_NOTE: &str = "veoveo.ai/release-note";
+
+/// How long a sandbox may take to stop or to be deleted.
+const STOP_TIMEOUT: Duration = Duration::from_secs(300);
+/// How long a sandbox may take to become ready; a GPU runtime loads its model first.
+const READY_TIMEOUT: Duration = Duration::from_secs(1200);
 
 /// The members of `metadata.json` in the CLI's gateway directory that the connection
 /// needs (`openshell-bootstrap`'s `GatewayMetadata`).
@@ -149,6 +155,7 @@ impl Gateway {
                 Ok(_) => Item::new(subject, State::Same),
                 Err(status) if not_found(&status) => {
                     Item::new(subject, State::Absent { note: None })
+                        .with_action(Action::CreateWorkspace(name.clone()))
                 }
                 Err(status) => Item::unread(subject, status.message()),
             });
@@ -165,11 +172,12 @@ impl Gateway {
     }
 
     async fn plan_profile(&self, inputs: &Inputs, profile: &Profile) -> Item {
-        let declared = match inputs
-            .text(&profile.file)
-            .and_then(|text| declared_profile(&text))
-        {
-            Ok(declared) => declared,
+        let stored = match inputs.text(&profile.file).and_then(|text| {
+            openshell_providers::parse_profile_yaml(&text)
+                .map(|parsed| parsed.to_proto())
+                .map_err(|error| anyhow!("{error}"))
+        }) {
+            Ok(stored) => stored,
             Err(error) => {
                 return Item::new(
                     profile.file.display().to_string(),
@@ -177,6 +185,9 @@ impl Gateway {
                 );
             }
         };
+        let source = profile.file.display().to_string();
+        // Through the protobuf form the gateway stores, so defaults compare as stored.
+        let declared = active_profile(&stored);
         let id = declared["id"].as_str().unwrap_or_default().to_owned();
         let subject = match &profile.workspace {
             Some(workspace) => format!("profile {workspace}/{id}"),
@@ -192,10 +203,17 @@ impl Gateway {
                 None => return Item::unread(subject, "the gateway answered no profile"),
             },
             Err(status) if not_found(&status) => {
-                return Item::new(subject, State::Absent { note: None });
+                return Item::new(subject, State::Absent { note: None }).with_action(
+                    Action::ImportProfile {
+                        workspace: profile.workspace.clone(),
+                        profile: Box::new(stored),
+                        source,
+                    },
+                );
             }
             Err(status) => return Item::unread(subject, status.message()),
         };
+        let resource_version = live.resource_version;
         let live = active_profile(&live);
         let mut differences = profile_scope(profile, &live);
         let mut declared = declared;
@@ -206,7 +224,22 @@ impl Gateway {
             }
         }
         differences.extend(compare(&declared, &live));
-        Item::compared(subject, differences, None)
+        let action = if live["scope"].as_str() == Some("platform") && profile.workspace.is_some() {
+            // Only a platform profile of this id exists: the workspace's is imported.
+            Action::ImportProfile {
+                workspace: profile.workspace.clone(),
+                profile: Box::new(stored),
+                source,
+            }
+        } else {
+            Action::UpdateProfile {
+                workspace: profile.workspace.clone(),
+                profile: Box::new(stored),
+                source,
+                resource_version,
+            }
+        };
+        Item::compared(subject, differences, None).with_action(action)
     }
 
     pub async fn plan_templates(&self, inputs: &Inputs, templates: &[Template]) -> Vec<Item> {
@@ -219,7 +252,7 @@ impl Gateway {
 
     async fn plan_template(&self, inputs: &Inputs, template: &Template) -> Item {
         let subject = format!("template {}/{}", template.workspace, template.name);
-        let declared = match declared_template(inputs, template) {
+        let declared = match template_proto(inputs, template, None) {
             Ok(declared) => declared,
             Err(error) => return Item::new(subject, State::NotCompared(format!("{error:#}"))),
         };
@@ -233,18 +266,28 @@ impl Gateway {
                 None => return Item::unread(subject, "the gateway answered no template"),
             },
             Err(status) if not_found(&status) => {
-                return Item::new(subject, State::Absent { note: None });
+                return Item::new(subject, State::Absent { note: None }).with_action(
+                    Action::ReplaceTemplate {
+                        workspace: template.workspace.clone(),
+                        template: Box::new(declared),
+                        exists: false,
+                    },
+                );
             }
             Err(status) => return Item::unread(subject, status.message()),
         };
-        Item::compared(
-            subject,
-            compare(&declared, &active_template(&live)),
-            Some(
-                "OpenShell has no template update: apply deletes the template and creates it again"
-                    .to_owned(),
-            ),
-        )
+        let differences = compare(&active_template(&declared), &active_template(&live));
+        // Whoever publishes a template writes its release note; a replacement keeps it.
+        let note = live
+            .metadata
+            .as_ref()
+            .and_then(|metadata| metadata.annotations.get(RELEASE_NOTE).cloned());
+        let declared = with_release_note(declared, note);
+        Item::compared(subject, differences, None).with_action(Action::ReplaceTemplate {
+            workspace: template.workspace.clone(),
+            template: Box::new(declared),
+            exists: true,
+        })
     }
 
     pub async fn plan_sandboxes(&self, inputs: &Inputs, sandboxes: &[Sandbox]) -> Vec<Item> {
@@ -257,11 +300,20 @@ impl Gateway {
 
     async fn plan_sandbox(&self, inputs: &Inputs, sandbox: &Sandbox) -> Vec<Item> {
         let subject = format!("sandbox {}", sandbox.key());
-        let declared = match declared_sandbox(inputs, sandbox) {
+        let (create, declared) = match sandbox_request(inputs, sandbox)
+            .and_then(|create| requested_sandbox(&create).map(|declared| (create, declared)))
+        {
             Ok(declared) => declared,
             Err(error) => {
                 return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))];
             }
+        };
+        let replace = |exists| Action::ReplaceSandbox {
+            workspace: sandbox.workspace.clone(),
+            name: sandbox.name.clone(),
+            request: Box::new(create.clone()),
+            services: sandbox.services.clone(),
+            exists,
         };
         let request = proto::GetSandboxRequest {
             name: sandbox.name.clone(),
@@ -273,7 +325,17 @@ impl Gateway {
                 None => return vec![Item::unread(subject, "the gateway answered no sandbox")],
             },
             Err(status) if not_found(&status) => {
-                return vec![Item::new(subject, State::Absent { note: None })];
+                let mut items = vec![
+                    Item::new(subject, State::Absent { note: None }).with_action(replace(false)),
+                ];
+                items.extend(sandbox.services.iter().map(|service| {
+                    Item::new(
+                        service_subject(sandbox, service),
+                        State::Absent { note: None },
+                    )
+                    .with_action(expose(sandbox, service, false))
+                }));
+                return items;
             }
             Err(status) => return vec![Item::unread(subject, status.message())],
         };
@@ -281,11 +343,9 @@ impl Gateway {
             Ok(active) => active,
             Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
         };
-        let mut items = vec![Item::compared(
-            subject,
-            compare(&declared, &active),
-            Some("OpenShell has no sandbox update: apply stops, deletes and creates it again, keeping its claims and providers".to_owned()),
-        )];
+        let mut items = vec![
+            Item::compared(subject, compare(&declared, &active), None).with_action(replace(true)),
+        ];
         if !sandbox.services.is_empty() {
             items.extend(self.plan_services(sandbox).await);
         }
@@ -317,22 +377,421 @@ impl Gateway {
             .services
             .iter()
             .map(|service| {
-                let subject = format!(
-                    "service {}/{}:{}",
-                    sandbox.key(),
-                    service.name,
-                    service.port
-                );
+                let subject = service_subject(sandbox, service);
                 let declared = declared_service(service);
                 match active
                     .iter()
                     .find(|active| active["name"] == declared["name"])
                 {
-                    Some(active) => Item::compared(subject, compare(&declared, active), None),
-                    None => Item::new(subject, State::Absent { note: None }),
+                    Some(active) => Item::compared(subject, compare(&declared, active), None)
+                        .with_action(expose(sandbox, service, true)),
+                    None => Item::new(subject, State::Absent { note: None })
+                        .with_action(expose(sandbox, service, false)),
                 }
             })
             .collect()
+    }
+
+    /// Whether the sandbox exists.
+    pub async fn sandbox_exists(&self, workspace: &str, name: &str) -> Result<bool> {
+        Ok(self.phase(workspace, name).await?.is_some())
+    }
+
+    /// The sandbox's phase, `None` when it does not exist.
+    pub async fn phase(&self, workspace: &str, name: &str) -> Result<Option<proto::SandboxPhase>> {
+        let request = proto::GetSandboxRequest {
+            name: name.to_owned(),
+            workspace_scope: Some(proto::workspace_selector(workspace)),
+        };
+        match self.client.raw_grpc().get_sandbox(request).await {
+            Ok(response) => Ok(response
+                .into_inner()
+                .sandbox
+                .map(|sandbox| sandbox.status.unwrap_or_default().phase())),
+            Err(status) if not_found(&status) => Ok(None),
+            Err(status) => bail!(
+                "cannot read sandbox {workspace}/{name}: {}",
+                status.message()
+            ),
+        }
+    }
+
+    /// Waits until the sandbox's phase is `want`, or it is gone when `want` is `None`.
+    pub async fn await_phase(
+        &self,
+        workspace: &str,
+        name: &str,
+        want: Option<proto::SandboxPhase>,
+        timeout: Duration,
+    ) -> Result<()> {
+        let started = std::time::Instant::now();
+        loop {
+            let phase = self.phase(workspace, name).await?;
+            if phase == want {
+                return Ok(());
+            }
+            if phase == Some(proto::SandboxPhase::Error) && want.is_some() {
+                bail!("{}", self.evidence(workspace, name).await);
+            }
+            if started.elapsed() > timeout {
+                bail!(
+                    "{workspace}/{name} is {} after {} s, not {}; {}",
+                    phase.map_or("absent", |phase| phase.as_str_name()),
+                    timeout.as_secs(),
+                    want.map_or("absent", |phase| phase.as_str_name()),
+                    self.evidence(workspace, name).await
+                );
+            }
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
+    }
+
+    /// The sandbox's phase and conditions, for a failure's evidence.
+    pub async fn evidence(&self, workspace: &str, name: &str) -> String {
+        let request = proto::GetSandboxRequest {
+            name: name.to_owned(),
+            workspace_scope: Some(proto::workspace_selector(workspace)),
+        };
+        match self.client.raw_grpc().get_sandbox(request).await {
+            Ok(response) => {
+                let status = response
+                    .into_inner()
+                    .sandbox
+                    .and_then(|sandbox| sandbox.status);
+                match status {
+                    Some(status) => format!(
+                        "phase {}; conditions: {}",
+                        status.phase().as_str_name(),
+                        status
+                            .conditions
+                            .iter()
+                            .map(|condition| format!(
+                                "{}={} ({}: {})",
+                                condition.r#type,
+                                condition.status,
+                                condition.reason,
+                                condition.message
+                            ))
+                            .collect::<Vec<_>>()
+                            .join("; ")
+                    ),
+                    None => "no status".to_owned(),
+                }
+            }
+            Err(status) => format!("its status could not be read: {}", status.message()),
+        }
+    }
+
+    pub async fn create_workspace(&self, name: &str) -> Result<()> {
+        let request = proto::CreateWorkspaceRequest {
+            name: name.to_owned(),
+            ..Default::default()
+        };
+        self.client
+            .raw_grpc()
+            .create_workspace(request)
+            .await
+            .map_err(|status| anyhow!("CreateWorkspace {name}: {}", status.message()))?;
+        Ok(())
+    }
+
+    /// Lints the profile, then imports it or updates it at `resource_version`.
+    pub async fn put_profile(
+        &self,
+        workspace: Option<&str>,
+        profile: &proto::ProviderProfile,
+        source: &str,
+        resource_version: Option<u64>,
+    ) -> Result<()> {
+        let scope = workspace.map(proto::workspace_selector);
+        let item = proto::ProviderProfileImportItem {
+            profile: Some(profile.clone()),
+            source: source.to_owned(),
+        };
+        let lint = self
+            .client
+            .raw_grpc()
+            .lint_provider_profiles(proto::LintProviderProfilesRequest {
+                workspace_scope: scope.clone(),
+                profiles: vec![item.clone()],
+            })
+            .await
+            .map_err(|status| anyhow!("LintProviderProfiles {source}: {}", status.message()))?
+            .into_inner();
+        if !lint.valid {
+            bail!("{source} does not lint: {:?}", lint.diagnostics);
+        }
+        match resource_version {
+            None => {
+                let response = self
+                    .client
+                    .raw_grpc()
+                    .import_provider_profiles(proto::ImportProviderProfilesRequest {
+                        workspace_scope: scope,
+                        profiles: vec![item],
+                        request_id: String::new(),
+                    })
+                    .await
+                    .map_err(|status| {
+                        anyhow!("ImportProviderProfiles {source}: {}", status.message())
+                    })?
+                    .into_inner();
+                if !response.imported {
+                    bail!("{source} was not imported: {:?}", response.diagnostics);
+                }
+            }
+            Some(version) => {
+                let response = self
+                    .client
+                    .raw_grpc()
+                    .update_provider_profiles(proto::UpdateProviderProfilesRequest {
+                        workspace_scope: scope,
+                        profile: Some(item),
+                        expected_resource_version: version,
+                        id: profile.id.clone(),
+                        request_id: String::new(),
+                    })
+                    .await
+                    .map_err(|status| {
+                        anyhow!("UpdateProviderProfiles {source}: {}", status.message())
+                    })?
+                    .into_inner();
+                if !response.updated {
+                    bail!("{source} was not updated: {:?}", response.diagnostics);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Deletes the template if it exists and creates it.
+    pub async fn replace_template(
+        &self,
+        workspace: &str,
+        template: &proto::SandboxWorkloadTemplate,
+        exists: bool,
+    ) -> Result<()> {
+        let name = template
+            .metadata
+            .as_ref()
+            .map(|metadata| metadata.name.clone())
+            .unwrap_or_default();
+        let scope = Some(proto::workspace_selector(workspace));
+        if exists {
+            self.client
+                .raw_grpc()
+                .delete_sandbox_template(proto::DeleteSandboxTemplateRequest {
+                    workspace_scope: scope.clone(),
+                    name: name.clone(),
+                    allow_missing: true,
+                    request_id: String::new(),
+                })
+                .await
+                .map_err(|status| {
+                    anyhow!(
+                        "DeleteSandboxTemplate {workspace}/{name}: {}",
+                        status.message()
+                    )
+                })?;
+        }
+        self.client
+            .raw_grpc()
+            .create_sandbox_template(proto::CreateSandboxTemplateRequest {
+                workspace_scope: scope,
+                template: Some(template.clone()),
+                request_id: String::new(),
+            })
+            .await
+            .map_err(|status| {
+                anyhow!(
+                    "CreateSandboxTemplate {workspace}/{name}: {}",
+                    status.message()
+                )
+            })?;
+        Ok(())
+    }
+
+    /// Stops and deletes the sandbox if it exists, keeping its workspace, then creates it,
+    /// exposes its services and waits until it is ready.
+    pub async fn replace_sandbox(
+        &self,
+        workspace: &str,
+        name: &str,
+        request: &proto::CreateSandboxRequest,
+        services: &[Service],
+        exists: bool,
+    ) -> Result<()> {
+        let scope = Some(proto::workspace_selector(workspace));
+        if exists {
+            if self.phase(workspace, name).await? != Some(proto::SandboxPhase::Stopped) {
+                self.client
+                    .raw_grpc()
+                    .stop_sandbox(proto::StopSandboxRequest {
+                        workspace_scope: scope.clone(),
+                        name: name.to_owned(),
+                        request_id: String::new(),
+                    })
+                    .await
+                    .map_err(|status| {
+                        anyhow!("StopSandbox {workspace}/{name}: {}", status.message())
+                    })?;
+                self.await_phase(
+                    workspace,
+                    name,
+                    Some(proto::SandboxPhase::Stopped),
+                    STOP_TIMEOUT,
+                )
+                .await?;
+            }
+            self.client
+                .raw_grpc()
+                .delete_sandbox(proto::DeleteSandboxRequest {
+                    workspace_scope: scope.clone(),
+                    name: name.to_owned(),
+                    allow_missing: true,
+                    keep_workspace: true,
+                    request_id: String::new(),
+                })
+                .await
+                .map_err(|status| {
+                    anyhow!("DeleteSandbox {workspace}/{name}: {}", status.message())
+                })?;
+            self.await_phase(workspace, name, None, STOP_TIMEOUT)
+                .await?;
+        }
+        self.client
+            .raw_grpc()
+            .create_sandbox(request.clone())
+            .await
+            .map_err(|status| anyhow!("CreateSandbox {workspace}/{name}: {}", status.message()))?;
+        self.await_phase(
+            workspace,
+            name,
+            Some(proto::SandboxPhase::Ready),
+            READY_TIMEOUT,
+        )
+        .await?;
+        for service in services {
+            self.ensure_service(workspace, name, service).await?;
+        }
+        Ok(())
+    }
+
+    /// Stops and starts a sandbox, keeping its specification, and waits until it is ready.
+    pub async fn restart_sandbox(&self, workspace: &str, name: &str) -> Result<()> {
+        let scope = Some(proto::workspace_selector(workspace));
+        self.client
+            .raw_grpc()
+            .stop_sandbox(proto::StopSandboxRequest {
+                workspace_scope: scope.clone(),
+                name: name.to_owned(),
+                request_id: String::new(),
+            })
+            .await
+            .map_err(|status| anyhow!("StopSandbox {workspace}/{name}: {}", status.message()))?;
+        self.await_phase(
+            workspace,
+            name,
+            Some(proto::SandboxPhase::Stopped),
+            STOP_TIMEOUT,
+        )
+        .await?;
+        self.client
+            .raw_grpc()
+            .start_sandbox(proto::StartSandboxRequest {
+                workspace_scope: scope,
+                name: name.to_owned(),
+                request_id: String::new(),
+            })
+            .await
+            .map_err(|status| anyhow!("StartSandbox {workspace}/{name}: {}", status.message()))?;
+        self.await_phase(
+            workspace,
+            name,
+            Some(proto::SandboxPhase::Ready),
+            READY_TIMEOUT,
+        )
+        .await
+    }
+
+    /// Exposes the service unless an exposure of its name already matches it.
+    pub async fn ensure_service(
+        &self,
+        workspace: &str,
+        sandbox: &str,
+        service: &Service,
+    ) -> Result<()> {
+        let scope = Some(proto::workspace_selector(workspace));
+        let listed = self
+            .client
+            .raw_grpc()
+            .list_services(proto::ListServicesRequest {
+                workspace_scope: scope.clone(),
+                page_size: 100,
+                page_token: String::new(),
+                sandbox: sandbox.to_owned(),
+            })
+            .await
+            .map_err(|status| anyhow!("ListServices {workspace}/{sandbox}: {}", status.message()))?
+            .into_inner()
+            .services;
+        let declared = declared_service(service);
+        let existing = listed
+            .iter()
+            .filter_map(|listed| listed.endpoint.as_ref())
+            .map(active_service)
+            .find(|active| active["name"] == declared["name"]);
+        match existing {
+            Some(active) if compare(&declared, &active).is_empty() => return Ok(()),
+            Some(_) => {
+                self.client
+                    .raw_grpc()
+                    .delete_service(proto::DeleteServiceRequest {
+                        workspace_scope: scope.clone(),
+                        name: service.name.clone(),
+                        sandbox: sandbox.to_owned(),
+                        allow_missing: true,
+                        request_id: String::new(),
+                    })
+                    .await
+                    .map_err(|status| {
+                        anyhow!(
+                            "DeleteService {workspace}/{sandbox}/{}: {}",
+                            service.name,
+                            status.message()
+                        )
+                    })?;
+            }
+            None => {}
+        }
+        let authorization_mode = match service.authorization.as_str() {
+            "bearer-passthrough" => proto::ServiceAuthorizationMode::BearerPassthrough,
+            "strip" => proto::ServiceAuthorizationMode::Strip,
+            other => bail!(
+                "service {} names the unknown authorization mode {other}",
+                service.name
+            ),
+        };
+        self.client
+            .raw_grpc()
+            .expose_service(proto::ExposeServiceRequest {
+                workspace_scope: scope,
+                name: service.name.clone(),
+                target_port: service.port,
+                domain: false,
+                sandbox: sandbox.to_owned(),
+                request_id: String::new(),
+                authorization_mode: authorization_mode as i32,
+            })
+            .await
+            .map_err(|status| {
+                anyhow!(
+                    "ExposeService {workspace}/{sandbox}/{}: {}",
+                    service.name,
+                    status.message()
+                )
+            })?;
+        Ok(())
     }
 
     /// A file in a sandbox, read with `cat` through native exec.
@@ -417,25 +876,65 @@ fn profile_scope(profile: &Profile, live: &Value) -> Vec<Difference> {
     }
 }
 
-fn declared_template(inputs: &Inputs, template: &Template) -> Result<Value> {
+/// The template as `sandbox template create` makes it, from the lock and the filled
+/// driver configuration.
+pub fn template_proto(
+    inputs: &Inputs,
+    template: &Template,
+    release_note: Option<String>,
+) -> Result<proto::SandboxWorkloadTemplate> {
     let image = template
         .image
         .as_deref()
         .map(|name| inputs.image(name))
         .transpose()?;
-    let driver_config = match &template.driver_config {
-        Some(file) => serde_json::from_str::<Value>(&inputs.filled(file)?)
-            .with_context(|| format!("{} is not JSON", file.display()))?,
-        None => Value::Null,
+    let driver_config = template
+        .driver_config
+        .as_ref()
+        .map(|file| driver_config(inputs, file))
+        .transpose()?;
+    let resources =
+        (template.cpu.is_some() || template.memory.is_some()).then(|| proto::SandboxResources {
+            cpu: template.cpu.clone().unwrap_or_default(),
+            memory: template.memory.clone().unwrap_or_default(),
+            gpu: None,
+        });
+    let template = proto::SandboxWorkloadTemplate {
+        metadata: Some(proto::ObjectMeta {
+            name: template.name.clone(),
+            workspace: template.workspace.clone(),
+            ..Default::default()
+        }),
+        spec: Some(proto::SandboxWorkloadTemplateSpec {
+            workload: Some(proto::SandboxWorkloadConfig {
+                image: image.unwrap_or_default(),
+                environment: template.environment.clone().into_iter().collect(),
+                resources,
+            }),
+            driver_config,
+            desired_service_level: None,
+        }),
     };
-    Ok(json!({
-        "image": image.unwrap_or_default(),
-        "environment": template.environment,
-        "resources": {"cpu": template.cpu.clone().unwrap_or_default(), "memory": template.memory.clone().unwrap_or_default()},
-        "driver_config": driver_config,
-        "labels": {},
-        "annotations": {},
-    }))
+    Ok(with_release_note(template, release_note))
+}
+
+fn with_release_note(
+    mut template: proto::SandboxWorkloadTemplate,
+    note: Option<String>,
+) -> proto::SandboxWorkloadTemplate {
+    if let (Some(note), Some(metadata)) = (note, template.metadata.as_mut()) {
+        metadata.annotations.insert(RELEASE_NOTE.to_owned(), note);
+    }
+    template
+}
+
+fn driver_config(inputs: &Inputs, file: &std::path::Path) -> Result<prost_types::Struct> {
+    let value: Value = serde_json::from_str(&inputs.filled(file)?)
+        .with_context(|| format!("{} is not JSON", file.display()))?;
+    match json_to_protobuf(&value).kind {
+        Some(prost_types::value::Kind::StructValue(config)) => Ok(config),
+        _ => bail!("{} is not a JSON object", file.display()),
+    }
 }
 
 pub fn active_template(template: &proto::SandboxWorkloadTemplate) -> Value {
@@ -459,15 +958,23 @@ pub fn active_template(template: &proto::SandboxWorkloadTemplate) -> Value {
     value
 }
 
-fn declared_sandbox(inputs: &Inputs, sandbox: &Sandbox) -> Result<Value> {
+/// The creation of a sandbox as `sandbox create --no-auto-providers --detach` makes it,
+/// with the image from the lock, the canonical policy, the filled driver configuration
+/// and the private environment values.
+pub fn sandbox_request(inputs: &Inputs, sandbox: &Sandbox) -> Result<proto::CreateSandboxRequest> {
     let image = inputs.image(&sandbox.image)?;
-    let policy = declared_policy(&inputs.filled(&sandbox.policy)?)
+    let policy = openshell_policy::parse_sandbox_policy(&inputs.filled(&sandbox.policy)?)
+        .map_err(|error| anyhow!("{error}"))
+        .and_then(|policy| {
+            openshell_policy::validate_and_canonicalize_sandbox_policy(policy)
+                .map_err(|error| anyhow!("{error}"))
+        })
         .with_context(|| format!("{} is not a valid policy", sandbox.policy.display()))?;
-    let driver_config = match &sandbox.driver_config {
-        Some(file) => serde_json::from_str::<Value>(&inputs.filled(file)?)
-            .with_context(|| format!("{} is not JSON", file.display()))?,
-        None => Value::Null,
-    };
+    let driver_config = sandbox
+        .driver_config
+        .as_ref()
+        .map(|file| driver_config(inputs, file))
+        .transpose()?;
     let mut environment = sandbox.environment.clone();
     if !sandbox.private_environment.is_empty() {
         let private = inputs.private.sandbox_environment(&sandbox.key());
@@ -480,19 +987,51 @@ fn declared_sandbox(inputs: &Inputs, sandbox: &Sandbox) -> Result<Value> {
             environment.insert(key.clone(), value.clone());
         }
     }
-    let mut providers = sandbox.providers.clone();
-    providers.sort();
-    Ok(json!({
-        "image": image,
-        "command": sandbox.command,
-        "environment": environment,
-        "providers": providers,
-        "restart_policy": sandbox.restart_policy.as_str(),
-        "resources": resource_limits(sandbox.cpu.as_deref(), sandbox.memory.as_deref()),
-        "gpu": sandbox.gpu,
-        "driver_config": driver_config,
-        "policy": policy,
-    }))
+    let resources = match json_to_protobuf(&resource_limits(
+        sandbox.cpu.as_deref(),
+        sandbox.memory.as_deref(),
+    ))
+    .kind
+    {
+        Some(prost_types::value::Kind::StructValue(resources)) => Some(resources),
+        _ => None,
+    };
+    Ok(proto::CreateSandboxRequest {
+        workspace_scope: Some(proto::workspace_selector(&sandbox.workspace)),
+        name: sandbox.name.clone(),
+        spec: Some(proto::SandboxSpec {
+            environment: environment.into_iter().collect(),
+            template: Some(proto::SandboxTemplate {
+                image,
+                resources,
+                driver_config,
+                ..Default::default()
+            }),
+            policy: Some(policy),
+            providers: sandbox.providers.clone(),
+            command: sandbox.command.clone(),
+            restart_policy: match sandbox.restart_policy {
+                crate::declaration::RestartPolicy::Always => proto::SandboxRestartPolicy::Always,
+                crate::declaration::RestartPolicy::OnFailure => {
+                    proto::SandboxRestartPolicy::OnFailure
+                }
+                crate::declaration::RestartPolicy::Never => proto::SandboxRestartPolicy::Never,
+            } as i32,
+            resource_requirements: sandbox.gpu.map(|count| proto::ResourceRequirements {
+                gpu: Some(proto::GpuResourceRequirements { count: Some(count) }),
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    })
+}
+
+/// What a creation request makes, in the form `active_sandbox` reads.
+pub fn requested_sandbox(request: &proto::CreateSandboxRequest) -> Result<Value> {
+    active_sandbox(&proto::Sandbox {
+        spec: request.spec.clone(),
+        ..Default::default()
+    })
 }
 
 /// A declared policy as the gateway admits it: parsed, validated and canonicalized.
@@ -562,6 +1101,24 @@ fn resource_limits(cpu: Option<&str>, memory: Option<&str>) -> Value {
     }
 }
 
+fn service_subject(sandbox: &Sandbox, service: &Service) -> String {
+    format!(
+        "service {}/{}:{}",
+        sandbox.key(),
+        service.name,
+        service.port
+    )
+}
+
+fn expose(sandbox: &Sandbox, service: &Service, exists: bool) -> Action {
+    Action::ExposeService {
+        workspace: sandbox.workspace.clone(),
+        sandbox: sandbox.name.clone(),
+        service: service.clone(),
+        exists,
+    }
+}
+
 fn declared_service(service: &Service) -> Value {
     json!({"name": service.name, "port": service.port, "authorization": service.authorization})
 }
@@ -574,6 +1131,27 @@ pub fn active_service(endpoint: &proto::ServiceEndpoint) -> Value {
         }
     };
     json!({"name": endpoint.name, "port": endpoint.target_port, "authorization": authorization})
+}
+
+/// JSON as a protobuf `Value`, as `--driver-config-json` sends it.
+pub fn json_to_protobuf(value: &Value) -> prost_types::Value {
+    use prost_types::value::Kind;
+    let kind = match value {
+        Value::Null => Kind::NullValue(0),
+        Value::Bool(value) => Kind::BoolValue(*value),
+        Value::Number(number) => Kind::NumberValue(number.as_f64().unwrap_or_default()),
+        Value::String(text) => Kind::StringValue(text.clone()),
+        Value::Array(items) => Kind::ListValue(prost_types::ListValue {
+            values: items.iter().map(json_to_protobuf).collect(),
+        }),
+        Value::Object(members) => Kind::StructValue(prost_types::Struct {
+            fields: members
+                .iter()
+                .map(|(name, member)| (name.clone(), json_to_protobuf(member)))
+                .collect(),
+        }),
+    };
+    prost_types::Value { kind: Some(kind) }
 }
 
 /// A protobuf `Struct` as JSON; whole numbers stay integers.
@@ -735,31 +1313,12 @@ scope: platform
             "on": true,
             "none": null,
         }});
-        let Some(prost_types::value::Kind::StructValue(as_struct)) = to_protobuf(&declared).kind
+        let Some(prost_types::value::Kind::StructValue(as_struct)) =
+            json_to_protobuf(&declared).kind
         else {
             panic!("an object is a Struct");
         };
         assert_eq!(struct_to_json(&as_struct), declared);
-    }
-
-    fn to_protobuf(value: &Value) -> prost_types::Value {
-        use prost_types::value::Kind;
-        let kind = match value {
-            Value::Null => Kind::NullValue(0),
-            Value::Bool(value) => Kind::BoolValue(*value),
-            Value::Number(number) => Kind::NumberValue(number.as_f64().unwrap()),
-            Value::String(text) => Kind::StringValue(text.clone()),
-            Value::Array(items) => Kind::ListValue(prost_types::ListValue {
-                values: items.iter().map(to_protobuf).collect(),
-            }),
-            Value::Object(members) => Kind::StructValue(prost_types::Struct {
-                fields: members
-                    .iter()
-                    .map(|(name, member)| (name.clone(), to_protobuf(member)))
-                    .collect(),
-            }),
-        };
-        prost_types::Value { kind: Some(kind) }
     }
 
     #[test]
@@ -769,7 +1328,7 @@ scope: platform
         let mut limits = prost_types::Struct::default();
         limits.fields.insert(
             "limits".to_owned(),
-            to_protobuf(&json!({"cpu": "1", "memory": "1Gi"})),
+            json_to_protobuf(&json!({"cpu": "1", "memory": "1Gi"})),
         );
         let sandbox = proto::Sandbox {
             spec: Some(proto::SandboxSpec {

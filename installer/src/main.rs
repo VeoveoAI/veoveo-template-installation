@@ -2,7 +2,7 @@ use std::{path::PathBuf, process::ExitCode};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use veoveo_installer::{hub, inputs::Inputs, run};
+use veoveo_installer::{apply, hub, inputs::Inputs, run};
 
 /// Makes a cluster match this installation repository.
 #[derive(Parser)]
@@ -25,6 +25,14 @@ enum Command {
     /// matches, 2 otherwise.
     Plan {
         /// Plan only this step; repeat for several.
+        #[arg(long = "step")]
+        steps: Vec<String>,
+    },
+    /// Make exactly the plan's changes, step by step, checking each, and stop at the first
+    /// failure with its evidence. Changes nothing unless the plan read every piece and
+    /// has a change for every difference. Run again, it changes nothing.
+    Apply {
+        /// Apply only this step; repeat for several.
         #[arg(long = "step")]
         steps: Vec<String>,
     },
@@ -53,13 +61,17 @@ async fn run(cli: Cli) -> Result<ExitCode> {
     let inputs = Inputs::read(&cli.repository, &cli.private)?;
     match cli.command {
         Command::Plan { steps } => {
-            let plan = run::plan(&inputs, &steps).await?;
+            let (plan, _) = run::plan(&inputs, &steps).await?;
             print!("{}", plan.render());
             Ok(if plan.matches() {
                 ExitCode::SUCCESS
             } else {
                 ExitCode::from(2)
             })
+        }
+        Command::Apply { steps } => {
+            apply::apply(&inputs, &steps).await?;
+            Ok(ExitCode::SUCCESS)
         }
         Command::Login { no_browser } => {
             hub::login(&inputs, no_browser).await?;

@@ -31,6 +31,10 @@ struct StepFile {
     kustomize: Option<PathBuf>,
     #[serde(default, rename = "config_map")]
     config_maps: Vec<ConfigMap>,
+    #[serde(default)]
+    restart: BTreeMap<String, Vec<String>>,
+    #[serde(default)]
+    after_hub: Vec<String>,
     helm: Option<HelmRelease>,
     #[serde(default)]
     workspaces: Vec<String>,
@@ -40,6 +44,7 @@ struct StepFile {
     templates: Vec<Template>,
     #[serde(default, rename = "sandbox")]
     sandboxes: Vec<Sandbox>,
+    claim: Option<HubClaim>,
     hub: Option<Hub>,
 }
 
@@ -65,6 +70,7 @@ pub enum StepKind {
     Profiles(Vec<Profile>),
     Templates(Vec<Template>),
     Sandboxes(Vec<Sandbox>),
+    Claim(HubClaim),
     Hub(Hub),
 }
 
@@ -77,18 +83,24 @@ impl StepKind {
             Self::Workspaces(_) | Self::Profiles(_) | Self::Templates(_) | Self::Sandboxes(_) => {
                 "OpenShell"
             }
+            Self::Claim(_) => "Hub's trusted claim",
             Self::Hub(_) => "Hub",
         }
     }
 }
 
 /// Kubernetes objects: manifest files, one kustomization and ConfigMaps built from
-/// repository files.
+/// repository files. Objects are named by their subject, `<Kind> <namespace>/<name>`.
 #[derive(Debug, Clone, Default)]
 pub struct KubernetesObjects {
     pub manifests: Vec<PathBuf>,
     pub kustomize: Option<PathBuf>,
     pub config_maps: Vec<ConfigMap>,
+    /// Workloads that read an object only when they start, restarted when it changes.
+    pub restart: BTreeMap<String, Vec<String>>,
+    /// Workloads that become ready only once Hub serves, such as Lore, which reads Hub's
+    /// issuer at startup; apply checks them after the last step.
+    pub after_hub: Vec<String>,
 }
 
 /// A ConfigMap whose keys are repository files, as `kubectl create configmap
@@ -165,6 +177,13 @@ pub struct Sandbox {
     pub command: Vec<String>,
     #[serde(default, rename = "service")]
     pub services: Vec<Service>,
+    /// The server slug it registers with Hub as, under its `VEOVEO_DEPLOYMENT_ID`.
+    pub registers: Option<String>,
+}
+
+impl Sandbox {
+    /// The deployment ID it registers under, from its environment or private values.
+    pub const DEPLOYMENT_ID: &str = "VEOVEO_DEPLOYMENT_ID";
 }
 
 impl Sandbox {
@@ -200,7 +219,7 @@ pub struct Service {
     pub authorization: String,
 }
 
-/// Hub's control plane and the trusted files its claim holds.
+/// Hub's control plane.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Hub {
@@ -210,17 +229,37 @@ pub struct Hub {
     pub seed: Vec<PathBuf>,
     /// The file published as `computers.handbook`.
     pub handbook: PathBuf,
-    pub claim: Option<HubClaim>,
+    /// The claim step whose files the seed names as `@claim:<name>@`.
+    pub claim: String,
+    /// Hub's sandbox, restarted when a member Hub reads only at its start changes.
+    pub workspace: String,
+    pub sandbox: String,
 }
 
-/// Files of Hub's trusted claim that come from this repository, read in Hub's sandbox.
+/// The files of Hub's trusted claim that come from this repository. Each is named by
+/// its content, `<name>-<the first 12 hexadecimal digits of its SHA-256>.yaml`, so a
+/// changed file is a new file and the control plane names the one it uses. They are
+/// read in Hub's sandbox and written by the claim's seed Job, from a temporary Secret.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HubClaim {
     pub workspace: String,
     pub sandbox: String,
+    /// Where Hub's sandbox mounts the claim.
     pub directory: String,
-    pub files: BTreeMap<String, PathBuf>,
+    /// The manifest holding the claim's seed Job, which copies every key of its Secret.
+    pub manifest: PathBuf,
+    pub job: String,
+    pub secret: String,
+    #[serde(rename = "file")]
+    pub files: Vec<ClaimFile>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClaimFile {
+    pub name: String,
+    pub source: PathBuf,
 }
 
 impl Declaration {
@@ -250,6 +289,7 @@ impl Declaration {
         }
         let declaration = Self { steps };
         declaration.check_unique_targets()?;
+        declaration.check_hub_claim()?;
         Ok(declaration)
     }
 
@@ -277,6 +317,32 @@ impl Declaration {
             }
         }
         Ok(())
+    }
+
+    /// A Hub step names a claim step that comes before it.
+    fn check_hub_claim(&self) -> Result<()> {
+        for (position, step) in self.steps.iter().enumerate() {
+            if let StepKind::Hub(hub) = &step.kind {
+                let claim = self.steps[..position].iter().any(|earlier| {
+                    earlier.name == hub.claim && matches!(earlier.kind, StepKind::Claim(_))
+                });
+                ensure!(
+                    claim,
+                    "Hub step {} names no earlier claim step {}",
+                    step.name,
+                    hub.claim
+                );
+            }
+        }
+        Ok(())
+    }
+
+    /// The claim step named `name`.
+    pub fn claim(&self, name: &str) -> Option<&HubClaim> {
+        self.steps.iter().find_map(|step| match &step.kind {
+            StepKind::Claim(claim) if step.name == name => Some(claim),
+            _ => None,
+        })
     }
 
     /// Every repository file or directory the steps name.
@@ -311,12 +377,13 @@ impl Declaration {
                         files.extend(sandbox.driver_config.as_deref());
                     }
                 }
+                StepKind::Claim(claim) => {
+                    files.push(&claim.manifest);
+                    files.extend(claim.files.iter().map(|file| file.source.as_path()));
+                }
                 StepKind::Hub(hub) => {
                     files.extend(hub.seed.iter().map(PathBuf::as_path));
                     files.push(&hub.handbook);
-                    if let Some(claim) = &hub.claim {
-                        files.extend(claim.files.values().map(PathBuf::as_path));
-                    }
                 }
             }
         }
@@ -353,6 +420,7 @@ impl StepFile {
             !self.profiles.is_empty(),
             !self.templates.is_empty(),
             !self.sandboxes.is_empty(),
+            self.claim.is_some(),
             self.hub.is_some(),
         ];
         match kinds.iter().filter(|declared| **declared).count() {
@@ -365,6 +433,8 @@ impl StepFile {
                 manifests: self.manifests,
                 kustomize: self.kustomize,
                 config_maps: self.config_maps,
+                restart: self.restart,
+                after_hub: self.after_hub,
             }));
         }
         if let Some(helm) = self.helm {
@@ -398,6 +468,17 @@ impl StepFile {
                 }
             }
             return Ok(StepKind::Sandboxes(self.sandboxes));
+        }
+        if let Some(claim) = self.claim {
+            let mut names = BTreeSet::new();
+            for file in &claim.files {
+                ensure!(
+                    names.insert(&file.name),
+                    "claim file {} is declared twice",
+                    file.name
+                );
+            }
+            return Ok(StepKind::Claim(claim));
         }
         let hub = self.hub.expect("one kind is declared");
         ensure!(!hub.seed.is_empty(), "the Hub step names no seed document");

@@ -138,12 +138,12 @@ updating it, so it needs no `config:write`
 No broader native role, wildcard RPC, credential export or new token worker.
 
 Create `hub-config-bootstrap` in that actual namespace from only reviewed private
-`hub.json`, `hub.env`, `computer-policy-v1.yaml`, `factory-base-v1.yaml` (the
-[factory base policy](policies/factory-base.yaml) rendered with Hub's host) and the
-selected public `authorization-server.jwks.json`, using native Secret `--from-file`
-arguments. The JWKS file preserves the file-backed JWKS path in
-`identity/entra.example.json`; it contains public verification keys, never signing
-keys. Match these five names to `hub-config-pvc.yaml`. Before
+`hub.json`, `hub.env` and the selected public `authorization-server.jwks.json`, using
+native Secret `--from-file` arguments; the seed Job copies every key of the Secret.
+The JWKS file preserves the file-backed JWKS path in `identity/entra.example.json`; it
+contains public verification keys, never signing keys. The Computer and factory base
+policies are named by their content, and veoveo-installer writes them with the same
+Job. Before
 running the seed Job, replace its copy-image marker with the verified immutable
 Linux utility image. Hub and MCP runtime images use UID `10001`; the config
 seed Job uses that UID so mode `0600` files remain readable to the component.
@@ -278,8 +278,8 @@ identifiers, which an installation replaces with its own: Entra tenant
 application `33333333-3333-4333-8333-333333333333` (the `entra` client) and the example
 people `44444444-…` (member), `55555555-…` (administrator) and `66666666-…` (billed).
 `execution.baseBranch` (`main`) is the branch whose instance serves a server a user's selection does not name. `factory` names the
-same gateway as `nativeUpstreams`, the `vv-factory` workspace, the base policy at
-`/etc/veoveo/hub/factory-base-v1.yaml`, the
+same gateway as `nativeUpstreams`, the `vv-factory` workspace, the base policy
+(`@claim:factory-base@`, the claim file named by its content), the
 [factory template](README.md#factory-sandbox-policy-and-providers) `factory-v1` in
 workspace `installation`, which sizes every factory sandbox and mounts Lore, the
 loopback port, Hub's issuer, the Lore server, the two global provider profiles, the

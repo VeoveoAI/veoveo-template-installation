@@ -342,18 +342,40 @@ once and is deleted, so plan does not read the claim it fills.
 `veoveo-installer apply` makes only those changes, in dependency order, checks each one
 (readiness, registration with Hub, the standard probes) and stops at the first failure
 with its evidence; run again, it changes nothing. First installation and every upgrade
-take the same path.
+take the same path. It changes nothing unless the plan read every piece and has a
+change for each difference. A Kubernetes object is server-side applied as
+`veoveo-installer`, which takes over the fields an earlier `kubectl apply` set and
+removes the members it no longer declares, and a workload that reads a changed object
+only when it starts is restarted; a release is upgraded with exactly its declared
+values; a profile is linted, then imported or updated at the version read. OpenShell
+has no template or sandbox update, so a template or a platform sandbox whose declared
+state differs is deleted and created again: a template keeps its release note, and a
+sandbox is stopped first and keeps its workspace, claims and providers. Each change is
+checked (a rollout complete, a sandbox ready, Hub serving its issuer and the Computer
+version, a server's deployment healthy in Hub's server health), and its step is then
+planned again and must match; workloads that become ready only once Hub serves, such
+as Lore, are checked after the last step.
+
+Hub's trusted files that come from this repository, the Computer and factory base
+policies, are named by their content: `<name>-<the first 12 hexadecimal digits of
+their SHA-256>.yaml`. The seed names them as `@claim:<name>@`; the installer writes a
+missing one into Hub's claim with the claim's seed Job, which copies every key of a
+temporary Secret, and the control plane names the one Hub uses. A changed policy is a
+new file, so no revision reads a file it did not name. The claim's policy files that
+the new revision does not name are removed only after it is active.
 
 It changes each piece through its owner's interface and adds no logic the owner
 already has: Kubernetes through its API, Helm releases with `helm`, OpenShell through
 its Rust SDK as the operator's OpenShell identity, and Hub's live control plane through
 Hub's administrative route. It publishes only what differs from the active revision and
 never resets the control plane, so what people created since the seed, such as their
-repositories, survives every apply. To read or publish it, the operator signs in to Hub
-in the browser as themselves, an installation administrator, with `veoveo-installer
-login` (the Hub SDK's sign-in, as its `veoveo-hub-sdk-cli` client), so Hub's audit
-names the person and no standing administrator credential exists; Hub validates the
-document and keeps its active revision on rejection. A first installation needs no
+repositories, survives every apply: a publication takes the members people change from
+the revision active at that moment. Hub reads its `factory` section only when it
+starts, so a publication that changes it restarts Hub. To read or publish it, the
+operator signs in to Hub in the browser as themselves, an installation administrator,
+with `veoveo-installer login` (the Hub SDK's sign-in, as its `veoveo-hub-sdk-cli`
+client), so Hub's audit names the person and no standing administrator credential
+exists; Hub validates the document and keeps its active revision on rejection. A first installation needs no
 sign-in: Hub seeds an empty control plane from this repository. It prepares Hub's
 trusted files from the identity provider's registration (Hub's keys, the authorization
 server's key set and the seed document), which `identity/configure-hub`,

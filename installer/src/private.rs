@@ -62,6 +62,9 @@ pub struct HubAccess {
 pub struct HelmValues {
     #[serde(default)]
     pub values: Vec<PathBuf>,
+    /// The source checkout holding a chart that comes from no repository, such as
+    /// OpenShell's at the gateway's revision. Not relative to the private directory.
+    pub source: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]

@@ -3,6 +3,8 @@
 //! an operator runs it. `plan` compares each declared piece with what runs, through that
 //! piece's owner, and changes nothing.
 
+pub mod action;
+pub mod apply;
 pub mod declaration;
 pub mod difference;
 pub mod helm;

@@ -9,7 +9,7 @@
       "workspace": "installation",
       "name": "computer-v1"
     },
-    "policyFile": "/etc/veoveo/hub/computer-policy-v1.yaml",
+    "policyFile": "@claim:computer-policy@",
     "command": [
       "/bin/sh",
       "-ec",
@@ -88,7 +88,7 @@
       "bearerEnvironment": "HUB_NATIVE_CONTROL_REFERENCE"
     },
     "workspace": "vv-factory",
-    "policyFile": "/etc/veoveo/hub/factory-base-v1.yaml",
+    "policyFile": "@claim:factory-base@",
     "template": {
       "workspace": "installation",
       "name": "factory-v1"

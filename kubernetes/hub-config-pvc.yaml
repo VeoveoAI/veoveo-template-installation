@@ -39,11 +39,14 @@ spec:
           image: REPLACE_WITH_REVIEWED_COPY_IMAGE_AT_SHA256
           command: [/bin/sh, -ec]
           args:
-            # Replace each file in the existing claim by renaming a complete copy over it,
-            # so the claim and its UID stay. No file changes unless every copy succeeds.
+            # Copy every key of the bootstrap Secret into the claim, replacing each file by
+            # renaming a complete copy over it, so the claim and its UID stay. No file
+            # changes unless every copy succeeds; files the Secret does not hold stay.
             - |
               umask 077
-              files="hub.json hub.env computer-policy-v1.yaml factory-base-v1.yaml authorization-server.jwks.json"
+              cd /input
+              files=$(ls)
+              test -n "$files"
               trap 'for f in $files; do rm -f "/output/.$f.new"; done' EXIT
               for f in $files; do
                 cp "/input/$f" "/output/.$f.new"
@@ -65,17 +68,6 @@ spec:
           secret:
             secretName: hub-config-bootstrap
             defaultMode: 0440
-            items:
-              - key: hub.json
-                path: hub.json
-              - key: hub.env
-                path: hub.env
-              - key: computer-policy-v1.yaml
-                path: computer-policy-v1.yaml
-              - key: factory-base-v1.yaml
-                path: factory-base-v1.yaml
-              - key: authorization-server.jwks.json
-                path: authorization-server.jwks.json
         - name: output
           persistentVolumeClaim:
             claimName: hub-config-v1

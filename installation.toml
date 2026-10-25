@@ -38,10 +38,14 @@ values = ["kubernetes/nvidia-device-plugin.values.yaml"]
 [[step]]
 name = "registry-builder-logs"
 manifests = ["kubernetes/builder.yaml", "kubernetes/logs.yaml"]
+# BuildKit and Vector read their configuration when they start.
+restart = { "ConfigMap veoveo-system/buildkitd" = ["StatefulSet veoveo-system/buildkitd"], "ConfigMap veoveo-system/vector" = ["DaemonSet veoveo-system/vector"] }
 
 [[step]]
 name = "postgres"
 manifests = ["kubernetes/postgres.yaml"]
+# PostgreSQL reads pg_hba.conf when it starts.
+restart = { "ConfigMap veoveo-system/veoveo-postgres-hba" = ["StatefulSet veoveo-system/veoveo-postgres"] }
 [[step.config_map]]
 namespace = "veoveo-system"
 name = "veoveo-postgres-initdb"
@@ -69,6 +73,10 @@ values = ["kubernetes/openshell.values.yaml"]
 [[step]]
 name = "lore"
 manifests = ["kubernetes/lore.yaml"]
+# Lore reads its settings when it starts, and becomes ready only once Hub serves the
+# issuer it trusts, so its readiness is checked after the last step.
+restart = { "ConfigMap veoveo-system/lore-settings" = ["Deployment veoveo-system/lore"] }
+after_hub = ["Deployment veoveo-system/lore"]
 [[step.config_map]]
 namespace = "veoveo-system"
 name = "lore-settings"
@@ -148,6 +156,25 @@ cpu = "4"
 memory = "8Gi"
 driver_config = "kubernetes/factory-driver-config.json"
 
+# The files of Hub's trusted claim that come from this repository, each named by its
+# content; the seed names them as @claim:<name>@. Written before Hub starts, which
+# reads them, by the claim's seed Job.
+[[step]]
+name = "hub-claim"
+[step.claim]
+workspace = "vv-control"
+sandbox = "hub"
+directory = "/etc/veoveo/hub"
+manifest = "kubernetes/hub-config-pvc.yaml"
+job = "seed-hub-config-v1"
+secret = "hub-config-bootstrap"
+[[step.claim.file]]
+name = "computer-policy"
+source = "kubernetes/policies/computer-v1.yaml"
+[[step.claim.file]]
+name = "factory-base"
+source = "kubernetes/policies/factory-base.yaml"
+
 [[step]]
 name = "hub"
 [[step.sandbox]]
@@ -178,6 +205,7 @@ restart_policy = "always"
 environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://console.internal:8805", VEOVEO_PORT = "8805" }
 private_environment = ["VEOVEO_DEPLOYMENT_ID"]
 command = ["/usr/local/bin/veoveo-mcp-console"]
+registers = "console"
 
 [[step.sandbox]]
 workspace = "vv-services"
@@ -190,6 +218,7 @@ restart_policy = "always"
 environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://artifact.internal:8801", VEOVEO_PORT = "8801", SSL_CERT_DIR = "/etc/veoveo/tls" }
 private_environment = ["VEOVEO_DEPLOYMENT_ID"]
 command = ["/bin/sh", "-ec", "set -a; . /etc/veoveo/artifact/storage.env; set +a; exec /usr/local/bin/veoveo-mcp-artifact"]
+registers = "artifact"
 
 [[step.sandbox]]
 workspace = "vv-services"
@@ -216,6 +245,7 @@ restart_policy = "always"
 environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://media.internal:8802", VEOVEO_PORT = "8802", VEOVEO_KEY_DIRECTORY = "/var/lib/veoveo/media/keys", MEDIA_PROVIDER_URL = "https://vv-services--media-provider--http.openshell.localhost:8080", SSL_CERT_DIR = "/etc/veoveo/tls" }
 private_environment = ["VEOVEO_DEPLOYMENT_ID"]
 command = ["/bin/sh", "-c", "set -a; . /etc/veoveo/media/provider.env; set +a; exec /usr/local/bin/veoveo-mcp-media"]
+registers = "media"
 
 [[step.sandbox]]
 workspace = "vv-services"
@@ -248,16 +278,18 @@ memory = "1Gi"
 environment = { VEOVEO_HUB_ISSUER = "https://veoveo.example.com", VEOVEO_PUBLIC_BASE_URL = "http://embedding.internal:8803", VEOVEO_PORT = "8803", VEOVEO_EMBEDDING_RUNTIME_URL = "https://vv-services--embedding-runtime--http.openshell.localhost:8080", VEOVEO_EMBEDDING_DEVICE = "cuda" }
 private_environment = ["VEOVEO_DEPLOYMENT_ID"]
 command = ["/usr/local/bin/veoveo-mcp-embedding"]
+registers = "embedding"
 
-# Hub's live control plane, published through its administrative route, never reset.
+# Hub's live control plane, published through its administrative route, never reset;
+# a first installation's Hub seeds itself from its claim. Hub restarts when a section it
+# reads only at its start changes. Then the servers' registrations are checked, and
+# the claim's files no revision names any longer are removed.
 [[step]]
 name = "hub-control-plane"
 [step.hub]
 profile = "local"
 seed = ["identity/entra.example.json", "kubernetes/hub.example.json"]
 handbook = "computer/instructions.md"
-[step.hub.claim]
+claim = "hub-claim"
 workspace = "vv-control"
 sandbox = "hub"
-directory = "/etc/veoveo/hub"
-files = { "computer-policy-v1.yaml" = "kubernetes/policies/computer-v1.yaml", "factory-base-v1.yaml" = "kubernetes/policies/factory-base.yaml" }

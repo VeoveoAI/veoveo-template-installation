@@ -45,6 +45,44 @@ impl Path {
         Self(segments)
     }
 
+    /// The value at this path in `value`.
+    pub fn get<'a>(&self, value: &'a Value) -> Option<&'a Value> {
+        let mut current = value;
+        for segment in &self.0 {
+            current = match segment {
+                Segment::Member(name) => current.get(name)?,
+                Segment::Index(index) => current.get(*index)?,
+                Segment::Keyed { key, value } => current
+                    .as_array()?
+                    .iter()
+                    .find(|item| item[*key].as_str() == Some(value.as_str()))?,
+            };
+        }
+        Some(current)
+    }
+
+    /// The member names of a path through objects only; `None` when it enters a list.
+    pub fn members(&self) -> Option<Vec<&str>> {
+        self.0
+            .iter()
+            .map(|segment| match segment {
+                Segment::Member(name) => Some(name.as_str()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// A JSON merge patch that removes the member at this path, when it enters no list.
+    pub fn removal_patch(&self) -> Option<Value> {
+        let members = self.members()?;
+        let (last, parents) = members.split_last()?;
+        let mut patch = Value::Object([((*last).to_owned(), Value::Null)].into_iter().collect());
+        for parent in parents.iter().rev() {
+            patch = Value::Object([((*parent).to_owned(), patch)].into_iter().collect());
+        }
+        Some(patch)
+    }
+
     /// The last member name on the path, which decides whether its value is shown.
     pub fn last_member(&self) -> Option<&str> {
         self.0.iter().rev().find_map(|segment| match segment {

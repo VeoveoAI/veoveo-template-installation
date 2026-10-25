@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 
 use serde_json::Value;
 
-use crate::difference::Difference;
+use crate::{action::Action, difference::Difference};
 
 #[derive(Debug)]
 pub struct Plan {
@@ -14,6 +14,8 @@ pub struct Plan {
 
 #[derive(Debug)]
 pub struct StepPlan {
+    /// The step's position in the declaration, from 1.
+    pub position: usize,
     pub name: String,
     pub owner: &'static str,
     pub items: Vec<Item>,
@@ -25,15 +27,17 @@ pub struct Item {
     /// What it is, such as `StatefulSet veoveo-system/registry` or `sandbox vv-control/hub`.
     pub subject: String,
     pub state: State,
+    /// What apply does about it.
+    pub action: Option<Action>,
 }
 
 #[derive(Debug)]
 pub enum State {
     /// What runs is what this repository declares.
     Same,
-    /// It does not exist; apply would create it.
+    /// It does not exist.
     Absent { note: Option<String> },
-    /// It differs; apply would change these.
+    /// It differs.
     Differs {
         differences: Vec<Difference>,
         note: Option<String>,
@@ -53,6 +57,27 @@ impl Item {
         Self {
             subject: subject.into(),
             state,
+            action: None,
+        }
+    }
+
+    /// This item with what apply does about it, when it differs or is absent.
+    pub fn with_action(mut self, action: Action) -> Self {
+        if matches!(self.state, State::Absent { .. } | State::Differs { .. }) {
+            self.action = Some(action);
+        }
+        self
+    }
+
+    /// Why apply cannot go ahead with this item, if it cannot.
+    pub fn blocker(&self) -> Option<String> {
+        match (&self.state, &self.action) {
+            (State::Unread(reason), _) => Some(format!("not read: {reason}")),
+            (State::Refused(reason), _) => Some(format!("refused: {reason}")),
+            (State::Absent { .. } | State::Differs { .. }, None) => {
+                Some("it differs and apply has no change for it".to_owned())
+            }
+            _ => None,
         }
     }
 
@@ -80,8 +105,9 @@ impl Item {
 }
 
 impl StepPlan {
-    pub fn new(name: &str, owner: &'static str, items: Vec<Item>) -> Self {
+    pub fn new(position: usize, name: &str, owner: &'static str, items: Vec<Item>) -> Self {
         Self {
+            position,
             name: name.to_owned(),
             owner,
             items,
@@ -101,15 +127,28 @@ impl Plan {
         self.steps.iter().all(StepPlan::matches)
     }
 
+    /// What keeps apply from changing anything, as `(step, subject, reason)`.
+    pub fn blockers(&self) -> Vec<(String, String, String)> {
+        self.steps
+            .iter()
+            .flat_map(|step| {
+                step.items.iter().filter_map(|item| {
+                    item.blocker()
+                        .map(|reason| (step.name.clone(), item.subject.clone(), reason))
+                })
+            })
+            .collect()
+    }
+
     /// The ordered list of what differs and what could not be read.
     pub fn render(&self) -> String {
         let mut out = String::new();
         let total = self.steps.len();
-        for (position, step) in self.steps.iter().enumerate() {
+        for step in &self.steps {
             if step.matches() {
                 continue;
             }
-            let _ = writeln!(out, "{}. {} ({})", position + 1, step.name, step.owner);
+            let _ = writeln!(out, "{}. {} ({})", step.position, step.name, step.owner);
             for item in step.items.iter().filter(|item| item.reported()) {
                 render_item(&mut out, item);
             }
@@ -126,7 +165,7 @@ fn render_item(out: &mut String, item: &Item) {
     match &item.state {
         State::Same => {}
         State::Absent { note } => {
-            let _ = writeln!(out, "   + {subject}: absent; apply creates it");
+            let _ = writeln!(out, "   + {subject}: absent");
             if let Some(note) = note {
                 let _ = writeln!(out, "       {note}");
             }
@@ -152,6 +191,9 @@ fn render_item(out: &mut String, item: &Item) {
         State::NotCompared(reason) => {
             let _ = writeln!(out, "   - {subject}: not compared: {reason}");
         }
+    }
+    if let Some(action) = &item.action {
+        let _ = writeln!(out, "       -> apply: {}", action.describe());
     }
 }
 
@@ -331,11 +373,13 @@ mod tests {
         Plan {
             steps: vec![
                 StepPlan::new(
+                    1,
                     "namespaces",
                     "Kubernetes",
                     vec![Item::compared("Namespace veoveo-system", vec![], None)],
                 ),
                 StepPlan::new(
+                    2,
                     "registry",
                     "Kubernetes",
                     vec![
@@ -354,6 +398,7 @@ mod tests {
                     ],
                 ),
                 StepPlan::new(
+                    3,
                     "hub",
                     "Hub",
                     vec![Item::unread(
@@ -363,6 +408,57 @@ mod tests {
                 ),
             ],
         }
+    }
+
+    #[test]
+    fn apply_goes_ahead_only_when_every_difference_has_a_change() {
+        let differs = || compare(&json!({"a": 1}), &json!({"a": 2}));
+        let workspace = || Action::CreateWorkspace("vv-control".into());
+        // A matching item keeps no action.
+        assert!(
+            Item::compared("x", vec![], None)
+                .with_action(workspace())
+                .action
+                .is_none()
+        );
+        let plan = Plan {
+            steps: vec![StepPlan::new(
+                1,
+                "s",
+                "OpenShell",
+                vec![
+                    Item::compared("changed", differs(), None).with_action(workspace()),
+                    Item::new("seed", State::NotCompared("a seed Job".into())),
+                    Item::new("extra", State::Undeclared("an old file".into())),
+                    Item::compared("unchangeable", differs(), None),
+                    Item::unread("control plane", "no sign-in"),
+                    Item::new("object", State::Refused("immutable field".into())),
+                ],
+            )],
+        };
+        let blockers: Vec<(String, String)> = plan
+            .blockers()
+            .into_iter()
+            .map(|(_, subject, reason)| (subject, reason))
+            .collect();
+        assert_eq!(
+            blockers,
+            [
+                (
+                    "unchangeable".to_owned(),
+                    "it differs and apply has no change for it".to_owned()
+                ),
+                (
+                    "control plane".to_owned(),
+                    "not read: no sign-in".to_owned()
+                ),
+                ("object".to_owned(), "refused: immutable field".to_owned()),
+            ]
+        );
+        assert!(
+            plan.render()
+                .contains("       -> apply: create workspace vv-control\n")
+        );
     }
 
     #[test]

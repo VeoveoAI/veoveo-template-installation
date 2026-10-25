@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
+    action::{Action, ValuesFile},
     declaration::HelmRelease,
     difference::{Difference, Path as ValuePath, compare, merge_values},
     inputs::Inputs,
@@ -25,13 +26,23 @@ pub struct Listed {
 
 pub async fn plan(inputs: &Inputs, release: &HelmRelease) -> Vec<Item> {
     let subject = format!("release {}/{}", release.namespace, release.release);
-    let declared = match layers(inputs, release).and_then(|layers| declared_values(&layers)) {
+    let (layers, files) = match layers(inputs, release) {
+        Ok(layers) => layers,
+        Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
+    };
+    let declared = match declared_values(&layers) {
         Ok(values) => values,
         Err(error) => return vec![Item::new(subject, State::NotCompared(format!("{error:#}")))],
     };
+    let upgrade = Action::UpgradeRelease {
+        release: release.clone(),
+        values: files,
+    };
     let listed = match list(release).await {
         Ok(Some(listed)) => listed,
-        Ok(None) => return vec![Item::new(subject, State::Absent { note: None })],
+        Ok(None) => {
+            return vec![Item::new(subject, State::Absent { note: None }).with_action(upgrade)];
+        }
         Err(error) => return vec![Item::unread(subject, format!("{error:#}"))],
     };
     let active = match values(release).await {
@@ -47,7 +58,7 @@ pub async fn plan(inputs: &Inputs, release: &HelmRelease) -> Vec<Item> {
         )
     }));
     let note = Some(format!("revision {}", listed.revision));
-    vec![Item::compared(subject, differences, note)]
+    vec![Item::compared(subject, differences, note).with_action(upgrade)]
 }
 
 /// The chart and status differences of a listed release.
@@ -74,19 +85,116 @@ pub fn release_differences(release: &HelmRelease, listed: &Listed) -> Vec<Differ
     differences
 }
 
-/// The release's values files as (name, text): the repository's, filled from the lock,
-/// then the private ones.
-fn layers(inputs: &Inputs, release: &HelmRelease) -> Result<Vec<(String, String)>> {
+/// Values files as (name, text), in the order Helm merges them.
+type Layers = Vec<(String, String)>;
+
+/// The release's values files as (name, text), and as files for `helm upgrade`: the
+/// repository's, filled from the lock, then the private ones.
+fn layers(inputs: &Inputs, release: &HelmRelease) -> Result<(Layers, Vec<ValuesFile>)> {
     let mut layers = Vec::new();
+    let mut files = Vec::new();
     for file in &release.values {
-        layers.push((file.display().to_string(), inputs.filled(file)?));
+        let text = inputs.filled(file)?;
+        layers.push((file.display().to_string(), text.clone()));
+        files.push(ValuesFile::Repository {
+            name: file.display().to_string(),
+            text,
+        });
     }
     for file in inputs.private.helm_values(&release.release) {
         let text = std::fs::read_to_string(&file)
             .with_context(|| format!("cannot read the private values file {}", file.display()))?;
         layers.push((file.display().to_string(), text));
+        files.push(ValuesFile::Private { path: file });
     }
-    Ok(layers)
+    Ok((layers, files))
+}
+
+/// The chart argument of `helm upgrade`: a repository chart's name, or a chart directory
+/// in the source checkout private.toml names.
+pub fn chart_reference(inputs: &Inputs, release: &HelmRelease) -> Result<String> {
+    if release.repository.is_some() {
+        return Ok(release.chart.clone());
+    }
+    let source = inputs
+        .private
+        .helm
+        .get(&release.release)
+        .and_then(|values| values.source.clone())
+        .with_context(|| {
+            format!(
+                "private.toml names no source checkout for the chart of release {}",
+                release.release
+            )
+        })?;
+    Ok(source.join(&release.chart).display().to_string())
+}
+
+/// The arguments of `helm upgrade --install` for the release, its chart and values files.
+pub fn upgrade_arguments(release: &HelmRelease, chart: &str, files: &[String]) -> Vec<String> {
+    let mut arguments = vec![
+        "upgrade".to_owned(),
+        "--install".to_owned(),
+        release.release.clone(),
+        chart.to_owned(),
+        "--namespace".to_owned(),
+        release.namespace.clone(),
+    ];
+    if let Some(repository) = &release.repository {
+        arguments.extend(["--repo".to_owned(), repository.clone()]);
+    }
+    if let Some(version) = &release.version {
+        arguments.extend(["--version".to_owned(), version.clone()]);
+    }
+    for file in files {
+        arguments.extend(["--values".to_owned(), file.clone()]);
+    }
+    arguments.extend([
+        "--wait".to_owned(),
+        "--timeout".to_owned(),
+        "15m".to_owned(),
+        "--history-max".to_owned(),
+        "20".to_owned(),
+    ]);
+    arguments
+}
+
+/// Upgrades or installs the release with exactly the declared values and waits for it.
+/// The repository's filled values go to a private temporary directory, removed after.
+pub async fn upgrade(inputs: &Inputs, release: &HelmRelease, values: &[ValuesFile]) -> Result<()> {
+    let chart = chart_reference(inputs, release)?;
+    let directory = std::env::temp_dir().join(format!(
+        "veoveo-installer-{}-{}",
+        std::process::id(),
+        release.release
+    ));
+    create_private_directory(&directory)?;
+    let mut files = Vec::new();
+    for (position, file) in values.iter().enumerate() {
+        match file {
+            ValuesFile::Repository { text, .. } => {
+                let path = directory.join(format!("{position}.yaml"));
+                std::fs::write(&path, text)
+                    .with_context(|| format!("cannot write {}", path.display()))?;
+                files.push(path.display().to_string());
+            }
+            ValuesFile::Private { path } => files.push(path.display().to_string()),
+        }
+    }
+    let arguments = upgrade_arguments(release, &chart, &files);
+    let arguments: Vec<&str> = arguments.iter().map(String::as_str).collect();
+    let result = helm(&arguments).await;
+    let _ = std::fs::remove_dir_all(&directory);
+    result.map(|_| ())
+}
+
+fn create_private_directory(directory: &std::path::Path) -> Result<()> {
+    let mut builder = std::fs::DirBuilder::new();
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder
+        .create(directory)
+        .with_context(|| format!("cannot create {}", directory.display()))
 }
 
 /// The values files merged in order.
@@ -230,6 +338,65 @@ mod tests {
         assert_eq!(
             differences[0].path.under("values").to_string(),
             "values.a.items[name=x].b"
+        );
+    }
+}
+
+#[cfg(test)]
+mod upgrade_tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+
+    #[test]
+    fn an_upgrade_sets_exactly_the_declared_values_and_waits() {
+        let release = HelmRelease {
+            release: "seaweedfs".into(),
+            namespace: "veoveo-system".into(),
+            chart: "seaweedfs".into(),
+            repository: Some("https://seaweedfs.github.io/seaweedfs/helm".into()),
+            version: Some("4.48.0".into()),
+            values: vec![],
+        };
+        assert_eq!(
+            upgrade_arguments(
+                &release,
+                "seaweedfs",
+                &["/tmp/v/0.yaml".to_owned(), "/private/s.yaml".to_owned()]
+            ),
+            [
+                "upgrade",
+                "--install",
+                "seaweedfs",
+                "seaweedfs",
+                "--namespace",
+                "veoveo-system",
+                "--repo",
+                "https://seaweedfs.github.io/seaweedfs/helm",
+                "--version",
+                "4.48.0",
+                "--values",
+                "/tmp/v/0.yaml",
+                "--values",
+                "/private/s.yaml",
+                "--wait",
+                "--timeout",
+                "15m",
+                "--history-max",
+                "20",
+            ]
+        );
+        // No --reuse-values: the release's values become exactly the declared ones.
+        let source = HelmRelease {
+            repository: None,
+            version: None,
+            ..release
+        };
+        let arguments = upgrade_arguments(&source, "/src/OpenShell/deploy/helm/openshell", &[]);
+        assert!(
+            !arguments
+                .iter()
+                .any(|argument| argument == "--repo" || argument == "--reuse-values")
         );
     }
 }

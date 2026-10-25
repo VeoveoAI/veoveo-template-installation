@@ -286,10 +286,11 @@ openshell workspace create --name vv-factory
 
 Hub creates each instance's providers and sandbox from these. Its configuration
 names them in the `factory` section (`registrationProfile`, `loreProfile`,
-`workspace`); the rendered base policy goes into Hub's configuration claim as
-`factory-base-v1.yaml` ([hub-config-pvc.yaml](hub-config-pvc.yaml)), which
-`factory.policyFile` names as `/etc/veoveo/hub/factory-base-v1.yaml`. Hub reads it at
-startup and exits if it is invalid.
+`workspace`); the rendered base policy goes into Hub's configuration claim
+([hub-config-pvc.yaml](hub-config-pvc.yaml)) named by its content, as
+`factory-base-<digest>.yaml`, which `factory.policyFile` names (the seed's
+`@claim:factory-base@`; see the [design](../DESIGN.md#applying-an-installation)). Hub
+reads it at startup and exits if it is invalid.
 
 Every factory sandbox's size and mounts come from the factory template, which
 `factory.template` names, created as the Computer template is, with the
