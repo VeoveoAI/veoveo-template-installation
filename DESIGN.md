@@ -111,6 +111,13 @@ which Hub reads from the token's `roles` claim and which the control-plane polic
 `installation-administration` names. Hub's `admin` installation role governs only
 server tool permissions.
 
+Hub's seed catalog is [identity/entra.example.json](identity/entra.example.json) merged
+with [kubernetes/hub.example.json](kubernetes/hub.example.json) by typed keys. Its names
+are one set: identity provider and broker client `entra`, tenant `reference`, Work
+Context `reference-work`, policy revision `reference-policy`, profiles `local` and
+`computer`, and authorization server `hub`. The OpenShell gateway accepts the same
+provider for its management API, with its role names in the `roles` claim.
+
 Lore's server settings ([lore.toml](kubernetes/lore.toml)) trust only Hub's
 `{origin}/oauth` issuer, with audience `{origin}/resources/lore`, `at+jwt` tokens,
 resource IDs `urc-{id}` and `baseline_access = "denied"`; Lore's public client is
@@ -176,11 +183,15 @@ instances, refreshed by the gateway with each one's own Hub client),
 
 ## Public Ingress
 
-One public host serves the installation. The remotely managed Cloudflare tunnel has two
-routes, in order: `/artifacts/` goes to SeaweedFS's S3 Service with the public Host,
-path, query and headers unchanged, because SigV4 binds them; everything else goes to
-Hub through OpenShell's native service exposure. The tunnel verifies TLS to both
-Services against their public CAs. Public origins stay installation data.
+One public host serves the installation. The remotely managed Cloudflare tunnel's
+routes are, in order: `/artifacts/` goes to SeaweedFS's S3 Service with the public Host,
+path, query and headers unchanged, because SigV4 binds them; when Media completes its
+runs by provider webhooks, `/media/operations/{operation_id}/{token}` goes to Media
+through OpenShell's native service exposure, and no other Media path is public;
+everything else goes to Hub through OpenShell's native service exposure. An
+installation whose Media checks run status instead publishes no Media route. The
+tunnel verifies TLS to every Service against its public CA. Public origins stay
+installation data.
 
 ## Factory
 
