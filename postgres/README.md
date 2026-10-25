@@ -1,5 +1,10 @@
 # PostgreSQL extensions
 
+**Mac development fixture.** The Compose steps below build and run the Mac's
+application PostgreSQL. On Linux the same [Dockerfile](Dockerfile) builds the image
+the [K3s foundation](../kubernetes/README.md) publishes to its registry and runs as a
+StatefulSet.
+
 The application database uses the existing pinned PostgreSQL 18.6 image with
 pinned PGDG pgvector 0.8.7 and PostGIS 3.6.4 packages. Keycloak's separate database is unchanged.
 The build context is only this directory; no installation credentials enter it.

@@ -548,8 +548,8 @@ Builder owns chart rendering, schema checks, immutable image verification and
 deployed probes. These source inputs alone do not prove PostgreSQL extension-image
 compatibility, Seaweed TLS/IAM, signed bytes, service recovery or a Kubernetes
 Computer. Keep deterministic checks, deployed checks and final exact MiMo
-acceptance separate. Remove obsolete Linux platform Compose launch paths only
-after replacement acceptance; preserve Mac test fixtures and external identity.
+acceptance separate. Compose recipes serve only the Mac fixtures; no Linux step uses
+them.
 
 
 ## Reference qualification checkpoint — 2026-10-20

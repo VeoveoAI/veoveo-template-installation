@@ -1,87 +1,66 @@
 # veoveo-template-installation
 
 A Veoveo installation records approved identity, component revisions and environment
-configuration. Lore owns source/revisions; native OpenShell executes Computers,
-factories and managed MCP workloads through its Kubernetes driver on Linux.
+configuration. Lore owns source and revisions; native OpenShell executes Computers,
+factories and the platform's MCP workloads. The [design](DESIGN.md) says how an
+installation is assembled, and [component-lock.json](component-lock.json) pins each
+component's revision and, once built, each image's digest.
 
-For Linux, start with the [K3s foundation](kubernetes/README.md) and
-[native workload bootstrap](kubernetes/WORKLOADS.md). Kubernetes owns PostgreSQL,
-SeaweedFS, Lore, the OpenShell gateway and the tunnel. OpenShell's native APIs own
-dynamic sandboxes; Helm does not inventory them. These installation inputs are
-being qualified on Linux; see the execution record for measured results.
-Mac remains ordinary source development and component/integration testing with
-local fixtures. No Mac Kubernetes cluster is required.
+## Linux: K3s
 
-The selected [Lore storage backend](openshell/LORE_STORAGE.md) uses a dedicated
-schema and login in the existing `veoveo` PostgreSQL database and a dedicated
-SeaweedFS bucket. Its source/deployed qualification precedes the live backend switch.
+Linux deploys only on K3s, with OpenShell's Kubernetes driver. Start with the
+[K3s foundation](kubernetes/README.md), then the
+[native workload bootstrap](kubernetes/WORKLOADS.md) and, for Embedding, the
+[Kubernetes embedding guide](kubernetes/EMBEDDING.md). Kubernetes owns PostgreSQL,
+SeaweedFS, Lore, the OpenShell gateway, the log store, the image builder, the
+registry and the tunnel; OpenShell's native APIs own every sandbox, and Helm does not
+inventory them.
 
-For user Computers, Entra authenticates people into Hub. Hub's existing issuer
-uses explicit repository registrations and tenant/principal assignments to issue
-Lore's native signed resource grants. Native Lore enforces its existing token
-contract; native OpenShell renews/injects separate factory credentials. There is
-no additional issuer service, signer, refresh daemon or custom Lore authorization
-layer. See Hub's [Lore credentials](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle). Local Keycloak remains management/identity bootstrap. The existing pre-push hook
-is not comprehensive branch isolation.
+Entra authenticates people into Hub. Hub's issuer issues Lore's native tokens from
+explicit repository assignments, and whoever creates a repository through Hub owns
+it; native Lore enforces its token contract and OpenShell renews and injects each
+workload's credentials. There is no other issuer, signer, refresh daemon or Lore
+authorization layer. See Hub's
+[Lore credentials](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#native-contributed-credential-lifecycle).
 
-## Mac development bootstrap
+`factory/` packages a pinned Rust toolchain as the base of user Computers, which
+mount the Lore CLI and the Hub SDK CLI from their own images. A pushed Lore branch of
+a server repository with `openshell/run` is served from its own factory sandbox,
+built from that repository's `openshell/image/`; the installation supplies the
+[base policy, provider profiles, log store, image builder and registry](kubernetes/README.md#factory-sandbox-policy-and-providers).
+[User Computers](computer/README.md) extend the factory toolchain with OpenCode; their
+K3s template is in the [workload bootstrap](kubernetes/WORKLOADS.md#hub-and-automatic-private-computers).
+OpenCode and model credentials belong in Computers only.
 
-The application PostgreSQL image includes pgvector and PostGIS. Follow the
-[build, existing-database enablement and rollback-only service checks](postgres/README.md);
-Keycloak's separate database and application schema ownership are unchanged.
+## Mac development fixtures
 
-Keep the ignored `.env`, installation CA and private operator state. Local Keycloak
-and its dedicated PostgreSQL are permanent bootstrap, alongside Lore, PostgreSQL,
-SeaweedFS and the Keycloak HTTPS ingress. Their external data volumes survive
-Compose cleanup. The native OpenShell gateway runs as the macOS service.
+Mac is ordinary source development and component and integration testing; it runs no
+cluster. These fixtures are for that alone and never launch a Linux installation:
 
-Complete the one-time [CA trust setup](identity/README.md#macos-certificate-trust),
-then follow [native OpenShell setup](openshell/README.md). Local management bootstrap uses
-`docker compose --profile keycloak up -d`. Lore repository registrations and
-explicit assignments use [Hub's live control plane](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#live-native-destinations-and-computer-defaults),
-not directory client/resource mappers. The former OIDC egress proxy is retired;
-workload egress follows native OpenShell policy and credential mediation.
-A fresh installation must first provision identity credentials and external volumes.
+- Compose recipes ([compose.yaml](compose.yaml)) run local Keycloak with its own
+  PostgreSQL, the Keycloak HTTPS ingress, the application PostgreSQL with pgvector and
+  PostGIS ([postgres](postgres/README.md)), SeaweedFS and Lore. Their external data
+  volumes survive Compose cleanup. Keep the ignored `.env`, the installation CA and
+  private operator state. A fresh fixture first provisions identity credentials and
+  the external volumes: complete the one-time
+  [CA trust setup](identity/README.md#macos-certificate-trust), then
+  `docker compose --profile keycloak up -d`.
+- The native OpenShell gateway runs as a macOS service with its Docker driver
+  ([native OpenShell setup](openshell/README.md)). The `openshell/` documents and
+  policies, `computer/policy.yaml` and `computer/hub.example.json` are that fixture's
+  inputs. OpenShell's Docker driver has no image volumes, so the fixture's Computer
+  has neither mounted CLI.
+- The [Entra reference](openshell/REFERENCE.md) keeps identity contracts from the
+  earlier Docker deployment; its placement commands launch nothing on Linux.
+
 No agent joins bootstrap networks, mounts operator state or accesses Docker.
 
-`factory/` packages a pinned Rust toolchain as the base of user Computers, which mount
-the Lore CLI and the Hub SDK client from their own images. A pushed Lore branch of a server
-repository with `openshell/run` is served from its own factory sandbox, built from
-that repository's `openshell/image/`; the installation supplies the
-[base policy, provider profiles, log store, image builder and registry](kubernetes/README.md#factory-sandbox-policy-and-providers).
-OpenCode and model credentials belong in user Computers. The
-[qualification checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/QUALIFICATION_CHECKLIST.md) records current acceptance.
+## Bioma's installation
 
-The [Entra reference](openshell/REFERENCE.md) retains identity contracts and
-historical Docker deployment receipts. Its Docker/Compose placement commands do
-not launch the replacement Linux installation; use the Kubernetes instructions
-above. Linux uses Entra and does not require local Keycloak.
-
-[Bioma's installation](https://github.com/BiomaAI/veoveo-installation) is the concrete
-Linux reference implementation derived from this template. It records the selected
-native policies, public routes, source revisions and current qualification status.
-Not every template component is enabled there. Keep reusable fixes in this template
-and merge reviewed updates into that installation; private runtime state stays out
-of both repositories. Follow its acceptance record to distinguish deployed and
-verified behavior from work still in progress.
-
-## User Computers
-
-[Computer image and native configuration](computer/README.md) extend the reviewed
-factory toolchain with native OpenCode and user-owned Lore credentials. Persistent
-HOME/XDG state belongs in the native owner workspace; factory sandboxes run no
-agent and hold no model credentials. These inputs require separate source,
-image and deployed qualification.
-
-## Scope and recovery
-
-Desktop acceptance was withdrawn. Its adapter, signing/manual-token helpers and
-Desktop-only ingress are retired; `grpcs://localhost:7443` is no longer an active
-endpoint. Private signing/session recovery state and durable Lore/identity data
-are preserved.
-
-Earlier local direct-issuer receipts remain historical. Hub-issued native Lore,
-interactive user login and the reference Linux/Entra Computer goal are active in
-the [plan](https://github.com/VeoveoAI/veoveo-docs/blob/main/PLAN.md).
-Source/configuration preparation is separate from deployed and model acceptance.
-GPU/CUDA and general environment composition remain separate qualifications.
+[Bioma's installation](https://github.com/BiomaAI/veoveo-installation) is this
+template's output with Bioma's values, laid out as the template produces it. It lists
+its selections and every difference from the template. Keep reusable fixes in this
+template and bring them into that installation; private runtime state stays out of
+both repositories. The
+[qualification checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/QUALIFICATION_CHECKLIST.md)
+records what is accepted.

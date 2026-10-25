@@ -1,5 +1,8 @@
 # Native OpenShell Setup
 
+**Mac development fixture.** This guide runs on the Mac's native OpenShell gateway
+with its Docker driver. The Linux path is K3s only: [K3s foundation](../kubernetes/README.md) and [native workload bootstrap](../kubernetes/WORKLOADS.md).
+
 Homebrew manages the native macOS OpenShell service. The Media slice adopts local
 CLI/gateway builds from reviewed revision `6589a918` in its existing binary paths;
 the service wrapper, LaunchAgent and configuration ownership remain unchanged.

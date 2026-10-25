@@ -1,5 +1,8 @@
 # Local native Hub and Time preparation
 
+**Mac development fixture.** This guide runs on the Mac's native OpenShell gateway
+with its Docker driver. The Linux path is K3s only: [K3s foundation](../kubernetes/README.md) and [native workload bootstrap](../kubernetes/WORKLOADS.md).
+
 These files prepare the existing native Hub → Time contract. They do not deploy
 services or establish application, renewal, database or restart acceptance. Use the
 [qualification checklist](https://github.com/VeoveoAI/veoveo-docs/blob/main/QUALIFICATION_CHECKLIST.md)

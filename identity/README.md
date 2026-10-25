@@ -1,5 +1,12 @@
 # Installation identity
 
+Local Keycloak, its Compose services and the helpers `configure-hub`,
+`configure-openshell` and `provision` are **Mac development fixtures**. Linux uses
+Entra and needs no Keycloak: its Hub seed is [entra.example.json](entra.example.json)
+merged with the [K3s Hub fragment](../kubernetes/hub.example.json), as the
+[workload bootstrap](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
+describes.
+
 Local development uses persistent Keycloak. The remote Linux reference uses
 Microsoft Entra ID. Installers may keep the bundled Keycloak service or configure
 another OIDC provider; Hub authorization, roles and resource tokens remain
