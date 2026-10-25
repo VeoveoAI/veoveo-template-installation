@@ -24,12 +24,18 @@ workspaces: `installation` holds the Computer template, `vv-control` holds Hub,
 `vv-services` holds the platform MCP servers (console among them), `vv-factory`
 holds factory instances, and Hub creates one workspace for each Computer owner.
 
+These runtime names are the installation's. Foundation services run in the
+`veoveo-system` namespace and the gateway in `openshell`; OpenShell creates a
+namespace for each workspace. A platform sandbox is named after what it runs: `hub`,
+`console`, `artifact`, `media`, `media-provider`, `embedding` and `embedding-runtime`.
+Hub names a factory instance's sandbox after its deployment ID and a Computer's after
+its Computer ID. The Computer template is `computer-v<n>`, and provider profiles are
+`vv-<role>`.
+
 Mac remains normal native source development and component/integration testing,
 including Docker fixtures. Local Keycloak and its database may remain external.
-No Mac Lima/K3s deployment is required. Existing Compose recipes are historical
-Linux inputs or local test/identity fixtures; replacement Linux placement must
-qualify before obsolete Linux launch paths are removed. The undeployed native
-Docker infrastructure candidate is superseded and must not be executed.
+No Mac Lima/K3s deployment is required. Compose recipes are local test and identity
+fixtures, not a Linux launch path.
 
 ## Configuration Ownership
 
@@ -196,6 +202,4 @@ TCP limits, which are separate from SSH's.
 The tunnel preserves public signed S3 bytes and uses verified TLS to native Services.
 Native controllers, readiness/restarts and application retry/reconnect handle
 recovery; there is no custom startup DAG or proxy. Lore reads Hub's OIDC discovery at
-startup and restarts until Hub serves its issuer; no init Job orders them. Dependency
-interruption and dynamic lifecycle behavior require deployed qualification, separate
-from component tests and final exact MiMo acceptance.
+startup and restarts until Hub serves its issuer; no init Job orders them.
