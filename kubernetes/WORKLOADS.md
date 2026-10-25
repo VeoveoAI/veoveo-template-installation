@@ -1,11 +1,15 @@
 # Native workload bootstrap and live operations
 
-These are ordinary trusted bootstrap commands, not a launcher or runtime inventory.
-Use the authenticated maintained-fork CLI pointed at the selected Kubernetes
-gateway. Select individually reviewed, compatible source and image pins for the
-gateway, supervisor and sandbox runtime; a shared tag alone does not prove that
-compatibility. Keep existing native roles/scopes and mediation: Kubernetes
-placement does not add a new authentication or Lore permission system.
+These are the platform workloads' inputs, not a launcher or runtime inventory.
+[veoveo-installer](../installer/README.md) applies them from
+[installation.toml](../installation.toml); the commands here are the trusted bootstrap
+it does not do: Secrets and ConfigMaps of private material, the providers'
+credentials, the seed Jobs of the service claims and the probes. Use the authenticated
+maintained-fork CLI pointed at the selected Kubernetes gateway for those. Select
+individually reviewed, compatible source and image pins for the gateway, supervisor
+and sandbox runtime; a shared tag alone does not prove that compatibility. Keep
+existing native roles/scopes and mediation: Kubernetes placement does not add a new
+authentication or Lore permission system.
 
 ## Private service names and trust
 
@@ -41,9 +45,10 @@ gateway's chart-generated workload trust remains native supervisor material.
 
 ## Lore and tunnel foundation workloads
 
-Render `lore.toml` privately with the actual Hub issuer/audience/client; Lore runs
-no hook. Create `lore-settings` from the native TOML,
-`lore-server-tls` as a TLS Secret, and `lore-storage` from a private env file with
+Render `lore.toml` with the actual Hub issuer/audience/client; Lore runs no hook.
+The installer's `lore` step makes `lore-settings` from that native TOML and applies
+[lore.yaml](lore.yaml). Before that step, create `lore-server-tls` as a TLS Secret and
+`lore-storage` from a private env file with
 exact keys `LORE_POSTGRES_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
 This `--from-env-file` input uses raw `KEY=value` lines without shell quotes;
 URL-encode the PostgreSQL password inside the single-line URI, using the
@@ -64,25 +69,23 @@ options without a Lore source change.
 No source grants are inferred from the storage credential or Hub administrator.
 
 ```sh
-kubectl -n veoveo-system create configmap lore-settings \
-  --from-file=local.toml="$PRIVATE/lore.toml"
 kubectl -n veoveo-system create secret tls lore-server-tls \
   --cert="$PRIVATE/lore.crt" --key="$PRIVATE/lore.key"
 kubectl -n veoveo-system create secret generic lore-storage \
   --from-env-file="$PRIVATE/lore-storage.env"
-kubectl apply -f "$PRIVATE/lore.yaml"
 ```
 
-The private manifest is `lore.yaml` with its image
-[filled](README.md#naming-each-image-once) from the lock, the same Lore image that Hub,
-Computers and factory sandboxes mount. A single Lore process owns its native local locks; the small
+`lore.yaml`'s image is [filled](README.md#naming-each-image-once) from the lock: the
+same Lore image that Hub, Computers and factory sandboxes mount. Lore reads its
+settings when it starts, so apply restarts it when `lore-settings` changes. A single
+Lore process owns its native local locks; the small
 PVC holds its HOME/temp/local lock paths. Repository storage stays in native
 S3/PostgreSQL. A TCP readiness probe proves only a listening socket.
 
 Lore reads Hub's OIDC discovery document at startup, so it cannot become Ready
 before Hub serves its public issuer: until then it exits with `OIDC discovery
-endpoint returned error` and its Deployment restarts it. Do not wait for Lore here;
-continue with the workspaces and Hub, and check Lore once Hub serves (below). The
+endpoint returned error` and its Deployment restarts it. So apply does not wait for
+Lore in its step; it checks Lore's readiness after its last step, once Hub serves. The
 ordinary Deployment restart picks Hub up, and deleting the crash-looping Pod skips
 the remaining back-off (measured 2026-10-22: Ready 1 s after the Pod's deletion once
 Hub served). Test real native operations and late or interrupted issuer/storage
@@ -98,22 +101,17 @@ Create the `public-tunnel` Secret with the tunnel token as its `token` key, whic
 ConfigMap with **public** `gateway.crt` and `storage.crt`, mounted at
 `/etc/cloudflared-ca`, the files the routes' CA pools name. The gateway public CA comes from the chart's
 retained native PKI output; only its public certificate is copied. `tunnel.yaml`
-pins the verified official cloudflared `2026.10.1` Linux amd64 digest; apply that
-selected manifest. Never use `noTLSVerify`. Hub routing intentionally sets its
+pins the verified official cloudflared `2026.10.1` Linux amd64 digest; the installer's
+`tunnel` step applies it. Never use `noTLSVerify`. Hub routing intentionally sets its
 native exposure Host; S3 routing must **not** set `httpHostHeader`, since SigV4
 binds the public Host.
 
 ## Workspace-local trusted service configuration
 
-```sh
-openshell workspace create --name vv-control
-openshell workspace create --name vv-services
-openshell workspace create --name installation
-openshell workspace create --name vv-factory
-```
-
-Native `CreateWorkspace` persists the workspace, but does not itself instantiate
-the Kubernetes namespace. Prepare the **required** provider profiles/custody using
+The installer's `workspaces` step creates `vv-control`, `vv-services`, `installation`
+and `vv-factory`, and its `profiles` step imports the provider profiles. Native
+`CreateWorkspace` persists the workspace, but does not itself instantiate the
+Kubernetes namespace. Prepare the **required** provider custody using
 [native control](../computer/NATIVE_CONTROL.md#trusted-preparation-and-attachment)
 and the existing registration-provider instructions. The initial native credential
 mint/store calls `ensure_workspace`, which creates the managed namespace. Verify
@@ -137,14 +135,15 @@ updating it, so it needs no `config:write`
 ([NATIVE_CONTROL.md](../computer/NATIVE_CONTROL.md#exact-network-boundary-and-qualification)).
 No broader native role, wildcard RPC, credential export or new token worker.
 
-Create `hub-config-bootstrap` in that actual namespace from only reviewed private
-`hub.json`, `hub.env` and the selected public `authorization-server.jwks.json`, using
-native Secret `--from-file` arguments; the seed Job copies every key of the Secret.
-The JWKS file preserves the file-backed JWKS path in `identity/entra.example.json`; it
-contains public verification keys, never signing keys. The Computer and factory base
-policies are named by their content, and veoveo-installer writes them with the same
-Job. Before
-running the seed Job, replace its copy-image marker with the verified immutable
+The installer's `hub-claim` step writes Hub's trusted files into the claim of
+[hub-config-pvc.yaml](hub-config-pvc.yaml): the Computer and factory base policies,
+named by their content, and the private `hub.json`, `hub.env` and public
+`authorization-server.jwks.json` that `veoveo-installer identity hub` prepares in the
+private directory. It creates the temporary `hub-config-bootstrap` Secret in that
+actual namespace, runs the claim's seed Job, which copies every key of the Secret,
+and deletes both once the Job succeeds. The JWKS file preserves the file-backed JWKS
+path in `identity/entra.example.json`; it contains public verification keys, never
+signing keys. Render the seed Job's copy-image marker with the verified immutable
 Linux utility image. Hub and MCP runtime images use UID `10001`; the config
 seed Job uses that UID so mode `0600` files remain readable to the component.
 The Job's group `10001` does not require the image's primary GID to match: Time
@@ -156,20 +155,12 @@ seeding runs as that identity and must be able to read the image's private
 The Job copies only those files without output, each to a hidden temporary name in
 the claim, and renames them into place once every copy succeeded. A rerun therefore
 replaces the files of the existing claim, which keeps the claim and the UID OpenShell
-pinned when it admitted the Hub sandbox. To change a file, recreate the bootstrap
-Secret, apply the manifest again (its claim stays unchanged), wait for and delete the
-Job as below, and restart Hub through its native lifecycle so it reads the files
-again. `hub.json` seeds only an empty installation; a live control plane changes
-through Hub's control-plane route. The PVC labels match native default resource
-admission for workspace `vv-control`.
-
-```sh
-kubectl apply -f "$PRIVATE/hub-config-pvc.yaml"
-kubectl -n openshell-openshell-vv-control wait job/seed-hub-config-v1 \
-  --for=condition=Complete --timeout=120s
-kubectl -n openshell-openshell-vv-control delete job seed-hub-config-v1
-kubectl -n openshell-openshell-vv-control delete secret hub-config-bootstrap
-```
+pinned when it admitted the Hub sandbox. A changed policy is a new file, which the
+control plane then names; the private files are written when the claim lacks them,
+and a changed seed too, while a changed key is refused
+([design](../DESIGN.md#applying-an-installation)). `hub.json` seeds only an empty
+installation; a live control plane changes through Hub's control-plane route. The
+PVC labels match native default resource admission for workspace `vv-control`.
 
 `hub-driver-config.json` mounts this exact admitted claim read-only at
 `/etc/veoveo/hub`; do not mount the foundation namespace's PVC. Use separate
@@ -180,7 +171,10 @@ may hold their own trusted storage secrets; user workloads receive mediated
 provider references instead.
 
 `service-storage.yaml` and `seed-service-configs.yaml` provide the same initial
-native `vv-services` bootstrap for console/Artifact/Media. Use only Artifact's
+native `vv-services` bootstrap for console/Artifact/Media. The installer's
+`workspace-storage` step applies the claims; it runs no seed Job but Hub's, and plan
+does not compare them, so the operator runs these once their temporary Secrets exist,
+with `kubectl apply -f kubernetes/seed-service-configs.yaml`. Use only Artifact's
 `storage.env` and Media's `provider.env` in their separate temporary Secrets;
 the config Jobs run as UID `10001` with seed group `10001`, copy exact files as
 mode `0600`, replace them in an existing claim as Hub's seed does, and never copy
@@ -221,10 +215,10 @@ never their keys. Use the public Seaweed CA certificate from the
 `seaweedfs-ca-cert` Secret's **`tls.crt`** key. That chart input key is distinct
 from the copied `storage-ca.crt` filename; a Secret containing only `ca.crt` does
 not satisfy the chart's native `[grpc].ca` path. Render the utility image in
-`postgres-client-ca.yaml`, apply its workspace-local PVCs and seed Jobs, which
-replace the CA files of an existing claim in place, wait for completion, then delete
-those Jobs and temporary source ConfigMaps. The native
-driver-config examples mount these approved CA-only claims read-only at
+`postgres-client-ca.yaml`. The installer applies its workspace-local PVCs; apply the
+file by hand for its seed Jobs, which replace the CA files of an existing claim in
+place, wait for completion, then delete those Jobs and temporary source ConfigMaps.
+The native driver-config examples mount these approved CA-only claims read-only at
 `/etc/veoveo/tls`. They contain no Hub signing/configuration secret and are reused
 only inside their named workspace.
 
@@ -244,9 +238,11 @@ which the supervisor injects as `SSL_CERT_FILE`. Core's sqlx client uses native 
 (`tls-rustls-ring-native-roots`), which read that file: an inference from source that a
 factory instance's first database connection must prove.
 
-Set `VEOVEO_DATABASE_URL` with the actual owner username but **no password**;
-supply the matching [no-whitespace managed-role password](README.md#postgresql-and-native-storage-identities)
-separately through shell-sourced `VEOVEO_DATABASE_PASSWORD`.
+`veoveo-installer identity hub` writes Hub's `hub.env` from `private.toml`'s
+`[identity]` ([example](../installer/private.example.toml)). Set `VEOVEO_DATABASE_URL`
+there with the actual owner username but **no password**; supply the matching
+[no-whitespace managed-role password](README.md#postgresql-and-native-storage-identities)
+separately as `VEOVEO_DATABASE_PASSWORD`, from its own file in `[identity.secrets]`.
 Set `VEOVEO_SERVER_DATABASE_URL` with **neither username nor password**. Hub supplies
 the narrowed application role and password through its existing registration grant
 contract. Keep secrets in private configuration, not argv. Both configured URLs
@@ -293,12 +289,14 @@ loopback redirect `http://127.0.0.1:3211/callback`. Hub matches a redirect URI
 exactly, port included, so the CLI listens on that port; 3211 stays clear of
 OpenCode's `http://127.0.0.1:3210/callback`. The client grants nothing by itself:
 the person's own memberships and grants decide what the CLI may do.
-Merge installation identity/settings/signing/services by their typed keys;
-never concatenate duplicate IDs or replace an existing active catalog with this
-bootstrap sample. Run the Hub binary's native validate/import commands against
-the **actual complete private input**, not a partial JSON subtree. Initial files
-seed only an empty installation; routine updates use the authenticated live
-`GET`/`PUT /admin/{profile}/control-plane` path and its current revision. That route
+The installer merges installation identity/settings/signing/services by their typed
+keys; it never concatenates duplicate IDs or replaces an existing active catalog with
+this bootstrap sample. `identity hub` prepares the complete private seed, and plan has
+Hub validate the **actual complete document**, not a partial JSON subtree. Initial
+files seed only an empty installation; the installer's `hub-control-plane` step
+publishes every later change through the authenticated live
+`GET`/`PUT /admin/{profile}/control-plane` path and its current revision, as the
+operator signed in with `veoveo-installer login`. That route
 needs an explicit rule in the complete input's `policies[].rules`, naming the route's
 `{profile}` and the Entra `administrator` app role, which Hub carries in the token's
 `roles` claim. The identity example's `reference-policy` holds it:
@@ -313,36 +311,32 @@ Making someone an administrator is assigning them that Entra app role; Hub's `ad
 installation role, with its risks, governs only server tool permissions.
 
 There are no named environments and no enrollment step: a service that registers
-serves. Start Hub from the trusted config claim, then start the services; each
-registration routes its slug. When a new deployment of a slug registers beside an
+serves. The installer starts Hub from the trusted config claim, then the services;
+each registration routes its slug. When a new deployment of a slug registers beside an
 older one, the newest registration serves and Hub logs one WARN naming the deployment
 it set aside, so moving a service to a new deployment needs no gap. A redeploy that
 keeps its `VEOVEO_DEPLOYMENT_ID` stays the one deployment.
 
-```sh
-openshell profile lint --global --from computer/providers
-openshell profile import --global --from computer/providers
-openshell sandbox template create computer-v1 --workspace installation \
-  --image "$COMPUTER_IMAGE_AT_DIGEST" --cpu 2 --memory 4Gi \
-  --driver-config-json "$(cat "$PRIVATE/computer-driver-config.json")" \
-  --env SSL_CERT_DIR=/etc/ssl/certs \
-  --env VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337 \
-  --env VEOVEO_CLI_HUB="$HUB_ORIGIN" --env VEOVEO_CLI_PROFILE=computer \
-  --env VEOVEO_CLI_BEARER_ENV=COMPUTER_HUB_REFERENCE \
-  --annotation "veoveo.ai/release-note=$COMPUTER_RELEASE_NOTE"
-```
+The installer's `profiles` step lints [computer/providers](../computer/providers) and
+imports them globally, and its `templates` step creates `computer-v1` in workspace
+`installation` as `installation.toml` declares it: the lock's `computer` image, 2 CPUs
+and 4 GiB, the Computer driver configuration and the environment
+`SSL_CERT_DIR=/etc/ssl/certs`,
+`VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337`,
+`VEOVEO_CLI_HUB`, `VEOVEO_CLI_PROFILE=computer` and
+`VEOVEO_CLI_BEARER_ENV=COMPUTER_HUB_REFERENCE`.
 
 The template's driver configuration, [filled](README.md#naming-each-image-once) from
 the lock, mounts the Lore and Hub SDK CLI images read-only at `/opt/veoveo/lore` and
 `/opt/veoveo/hub-sdk-cli`, whose binary directories the Computer image puts on `PATH`.
-`HUB_ORIGIN` is the Hub's public origin, such as `https://veoveo.example.com`. The
-three `VEOVEO_CLI_*` variables make `veoveo-hub-sdk-cli tools` and `call` act as the
-Computer's owner with no flags, exactly as OpenCode does: each request goes to
-`$HUB_ORIGIN/mcp/computer` with the `COMPUTER_HUB_REFERENCE` placeholder, which the
-proxy replaces with the owner's Hub token, and the
-[Computer policy](policies/computer-v1.yaml)'s `hub` rule admits that endpoint for the
-CLI's mounted binary. The CLI's `login`, `logout` and `ask` say that they do not apply
-in a Computer, and no rule admits the model endpoint for the CLI.
+`VEOVEO_CLI_HUB` is `HUB_ORIGIN`, the Hub's public origin, such as
+`https://veoveo.example.com`. The three `VEOVEO_CLI_*` variables make
+`veoveo-hub-sdk-cli tools` and `call` act as the Computer's owner with no flags,
+exactly as OpenCode does: each request goes to `$HUB_ORIGIN/mcp/computer` with the
+`COMPUTER_HUB_REFERENCE` placeholder, which the proxy replaces with the owner's Hub
+token, and the [Computer policy](policies/computer-v1.yaml)'s `hub` rule admits that
+endpoint for the CLI's mounted binary. The CLI's `login`, `logout` and `ask` say that
+they do not apply in a Computer, and no rule admits the model endpoint for the CLI.
 The profiles and the template may come before or after Hub starts: Hub reads the
 template when a Computer is entered, and until it and the profiles exist, `/computer`
 says that Computers are unavailable and why. The template, the
@@ -355,11 +349,12 @@ lets any program in a Computer call them with the owner's Hub token, and
 [console's policy](policies/console.yaml) lets console call status and restart for its
 caller and read the public `GET /computer/version`. The optional `veoveo.ai/release-note`
 annotation is the version's release note; its first line is the summary agents tell
-the person. To publish a new version, delete the template and create it again under
-the same name with the new image, environment, mounts or note (OpenShell has no
-template update), or publish a new policy file or template name through the live control
-plane. Running Computers keep their version until their owners restart them; a new
-sandbox, such as the first one, starts at the current version.
+the person. To publish a new version, change the template's image, environment or
+mounts in this repository and apply, which deletes the template and creates it again
+under the same name with its release note (OpenShell has no template update), or
+publish a new policy file or template name through the live control plane. Running
+Computers keep their version until their owners restart them; a new sandbox, such as
+the first one, starts at the current version.
 
 `computers.collectAfterSeconds` (the example: 7200, two hours) collects idle
 Computers: Hub deletes the sandbox of a Computer with no browser request through Hub
@@ -382,20 +377,16 @@ each clone with native ownership. Hub checks the actual selected driver through
 `GetGatewayInfo`; it rejects reusable static mounts at/below `/sandbox`. Versioned
 read-only config claims outside `/sandbox` remain supported.
 
-Start Hub using the reviewed Hub image/policy/provider and
-`--driver-config-json "$(cat "$PRIVATE/hub-driver-config.json")"`, the
-[filled](README.md#naming-each-image-once) configuration that also mounts the Lore image
-Hub reads pushed revisions with, retaining the
-existing trusted native command that loads `/etc/veoveo/hub/hub.env` and execs the
-Hub binary. Long-running Hub/MCP sandboxes explicitly select
-`--restart-policy always`; native default `Never` is unsuitable. Expose the same
-Hub `http` service on `8080` with native `bearer_passthrough`. No Helm inventory
-owns it. Once Hub serves at its public issuer, Lore becomes Ready:
-
-```sh
-kubectl -n veoveo-system wait deployment/lore --for=condition=Available --timeout=300s
-```
- Console/Artifact/Media retain their actual native commands/configs, using
+The installer's `hub` step starts Hub with the reviewed Hub image, policy and provider
+`vv-hub-native-control` and the [filled](README.md#naming-each-image-once)
+`hub-driver-config.json`, which also mounts the Lore image Hub reads pushed revisions
+with, retaining the existing trusted native command that loads
+`/etc/veoveo/hub/hub.env` and execs the Hub binary. Long-running Hub/MCP sandboxes
+explicitly select restart policy `always`; native default `Never` is unsuitable. It
+exposes Hub's `http` service on `8080` with native `bearer_passthrough` and waits
+until Hub serves its issuer and the Computer version. No Helm inventory owns it. Once
+Hub serves at its public issuer, Lore becomes Ready, which apply checks after its last
+step. Console/Artifact/Media retain their actual native commands/configs, using
 their own trusted claims, Kubernetes policies and distinct native registration
 providers; do not share Hub's control identity. Time and every other server built
 from a pushed Lore branch run as factory sandboxes that Hub creates; the
@@ -409,39 +400,28 @@ the log store, which the factory base policy withholds from branches. Its inputs
 `console-state-v1` claim in `service-storage.yaml` for its saved registration key
 and the [driver config](console-driver-config.json). It needs no CA claim: its
 database grant verifies against the platform roots like every server's. Choose a
-UUIDv7 `CONSOLE_DEPLOYMENT_ID` and keep it.
+UUIDv7 deployment ID for console, as for each registering server, and keep it in
+`private.toml` (`[sandbox."vv-services/console".environment] VEOVEO_DEPLOYMENT_ID`).
 
-For example, after native provider custody/config preparation, the Hub and console
-launch path uses these installation inputs:
+The installer imports console's registration profile in `vv-services` and creates
+its sandbox from `installation.toml`, but a provider holds a credential, so the
+operator creates each provider a platform sandbox attaches, after the `profiles` step
+and before that sandbox's step (Hub's in
+[native control](../computer/NATIVE_CONTROL.md#trusted-preparation-and-attachment));
+for console:
 
 ```sh
-openshell sandbox create --workspace vv-control --name hub --from "$HUB_IMAGE_AT_DIGEST" \
-  --policy kubernetes/policies/hub-computer-entra.example.yaml \
-  --provider vv-hub-native-control --no-auto-providers \
-  --driver-config-json "$(cat "$PRIVATE/hub-driver-config.json")" \
-  --restart-policy always --detach --env SSL_CERT_DIR=/etc/veoveo/tls -- \
-  /bin/sh -ec 'set -a; . /etc/veoveo/hub/hub.env; set +a; exec /usr/local/bin/veoveo-hub serve --allow-loopback-hosts'
-openshell service expose --workspace vv-control hub 8080 http \
-  --authorization-mode bearer-passthrough
-openshell profile import --workspace vv-services --file openshell/providers/console-registration.yaml
 openshell provider create --workspace vv-services --name vv-console-registration \
   --type vv-console-registration --credential VEOVEO_REGISTRATION_SECRET
-openshell sandbox create --workspace vv-services --name console --from "$CONSOLE_IMAGE_AT_DIGEST" \
-  --policy kubernetes/policies/console.yaml --provider vv-console-registration --no-auto-providers \
-  --driver-config-json "$(cat kubernetes/console-driver-config.json)" \
-  --restart-policy always --detach \
-  --env VEOVEO_DEPLOYMENT_ID="$CONSOLE_DEPLOYMENT_ID" --env VEOVEO_HUB_ISSUER="$HUB_ORIGIN" \
-  --env VEOVEO_PUBLIC_BASE_URL=http://console.internal:8805 --env VEOVEO_PORT=8805 -- \
-  /usr/local/bin/veoveo-mcp-console
 ```
 
 `provider create --credential VEOVEO_REGISTRATION_SECRET` reads the namespace
 registration secret from the operator's environment, never from argv. Console serves
-once it registers, like the other services.
+once it registers, like the other services, which apply checks in Hub's server health.
 
-Set `HUB_ORIGIN` to the Hub's actual public origin, such as
+`HUB_ORIGIN` is the Hub's actual public origin, such as
 `https://veoveo.example.com`. Console, Artifact and Media use that origin for
-`VEOVEO_HUB_ISSUER`: the native registered-server/forwarded-token issuer publishes
+`VEOVEO_HUB_ISSUER` in `installation.toml`: the native registered-server/forwarded-token issuer publishes
 `/.well-known/oauth-authorization-server`, `/jwks.json` and `/oauth/register`.
 The SDK verifies that discovery returns the same issuer before registration.
 The Kubernetes policies admit those exact public-origin routes.
@@ -465,43 +445,30 @@ assignment through Hub's existing typed live control plane; no automatic grants.
 A factory sandbox reads its repository as the branch's latest pusher through its own
 per-instance Lore provider.
 
-Change templates/defaults by native template replacement or versioned references and
-live Hub publication. Existing Computers keep their recorded version until their owner
-restarts them; adding/removing/registering services or changing grants does not
-restart Hub or unrelated workloads. Drain/reconnect active operations explicitly. Never replay a
+Change templates/defaults in this repository, which apply makes by native template
+replacement and live Hub publication, or by versioned references. Existing
+Computers keep their recorded version until their owner restarts them;
+adding/removing/registering services or changing grants does not restart Hub or
+unrelated workloads. Drain/reconnect active operations explicitly. Never replay a
 non-idempotent mutation automatically or promise zero downtime.
 
 ### Replacing one service image
 
 The current native API has no in-place sandbox image update. Stop/Start reuses
 the admitted image. To replace Media's image, first drain or explicitly qualify
-its active Tasks and retain its complete native creation inputs privately.
-
-Export the authored policy with `openshell --workspace vv-services policy get media
---base` for round-tripping. Effective `sandbox get --policy-only` output includes
-reserved provider overlays and is not the authored replacement input. Preserve
-the exact provider attachments separately; exporting a base policy does not
-transfer their custody or replace their attachment configuration.
-
-Then run:
-
-```sh
-openshell --workspace vv-services sandbox stop media
-openshell --workspace vv-services sandbox delete media
-```
-
-Repeat the reviewed `sandbox create --name media --from "$MEDIA_IMAGE_AT_DIGEST"`
-invocation with the replacement digest, preserving the workspace, logical name,
-provider attachments, environment, command, resources, restart policy and supplied
-PVC configuration. Apply only intentionally reviewed policy changes. Keep
-`media-state-v1`, `media-config-v1` and `postgres-client-ca-v1`; do not reseed or
-delete these claims, their providers or the workspace. The supplied state claim
-retains Media's registration key; this is not a promise that Delete preserves
-the automatically owned `/sandbox` PVC. Preserve/recreate only this service's
-exposures if it has any. Gate requests on fresh Hub registration and application
-listener/readiness, not merely native phase Ready. The same logical destination
-and registration key do not require a Hub or unrelated workload restart. Never
-automatically replay a non-idempotent request across replacement.
+its active Tasks, then put the replacement digest in the lock. `plan` shows the
+`media` sandbox differing, and `apply` stops and deletes it and creates it again from
+`installation.toml`, with the same workspace, logical name, provider attachments,
+environment, command, resources, restart policy, network policy and supplied PVC
+configuration, then exposes its services again if it has any and waits until Hub
+reports it healthy. Keep `media-state-v1`, `media-config-v1` and `postgres-client-ca-v1`; do
+not reseed or delete these claims, their providers or the workspace. The supplied
+state claim retains Media's registration key; this is not a promise that Delete
+preserves the automatically owned `/sandbox` PVC. Gate requests on fresh Hub
+registration and application listener/readiness, not merely native phase Ready. The
+same logical destination and registration key do not require a Hub or unrelated
+workload restart. Never automatically replay a non-idempotent request across
+replacement.
 
 ## Isolated synthetic Media provider
 
@@ -513,34 +480,31 @@ shell env file `$PRIVATE/media-provider.env` containing only the fake webhook
 HMAC value agreed with the synthetic Media service. Never copy real provider
 credentials or real webhook keys into this fixture.
 
-Create `media-provider-config-bootstrap` from that exact file in the actual
-`vv-services` namespace, then use the fixture's separate claim and seed Job in
-`media-provider-config-pvc.yaml`. The Job runs as UID 10001 and copies only
-`provider.env` as mode 0600, replacing an existing one in place. Replace only its copy-image marker with the
-reviewed utility digest. Remove the completed Job and bootstrap Secret after
-seeding. `media-provider-driver-config.json` mounts only that claim, read-only at
-`/etc/veoveo/media`; no service state, database/storage credentials, or service
-configuration are shared.
+The fixture's separate claim and seed Job are in `media-provider-config-pvc.yaml`; the
+installer applies the claim. Create `media-provider-config-bootstrap` from that exact
+file in the actual `vv-services` namespace, then run the seed Job by hand, before
+the `platform-servers` step starts the fixture. The Job runs as UID 10001 and copies
+only `provider.env` as mode 0600, replacing an existing one in place. Replace only
+its copy-image marker with the reviewed utility digest. Remove the completed Job and
+bootstrap Secret after seeding. `media-provider-driver-config.json` mounts only that
+claim, read-only at `/etc/veoveo/media`; no service state, database/storage
+credentials, or service configuration are shared.
 
 ```sh
 kubectl -n openshell-openshell-vv-services create secret generic media-provider-config-bootstrap \
   --from-file=provider.env="$PRIVATE/media-provider.env"
-kubectl apply -f "$PRIVATE/media-provider-config-pvc.yaml"
+kubectl apply -f kubernetes/media-provider-config-pvc.yaml
 kubectl -n openshell-openshell-vv-services wait job/seed-media-provider-config-v1 \
   --for=condition=Complete --timeout=120s
 kubectl -n openshell-openshell-vv-services delete job seed-media-provider-config-v1
 kubectl -n openshell-openshell-vv-services delete secret media-provider-config-bootstrap
-openshell sandbox create --workspace vv-services --name media-provider \
-  --from "$MEDIA_PROVIDER_IMAGE_AT_DIGEST" --policy kubernetes/policies/media-provider.yaml \
-  --driver-config-json "$(cat kubernetes/media-provider-driver-config.json)" \
-  --no-auto-providers --restart-policy always --detach \
-  --env MEDIA_FAKE_PROVIDER_LISTEN=127.0.0.1:8803 \
-  --env MEDIA_FAKE_PROVIDER_API_BEARER=fake-generation-key \
-  --env MEDIA_FAKE_PROVIDER_ADVERTISED_BASE=https://vv-services--media-provider--http.openshell.localhost:8080 -- \
-  /bin/sh -ec 'set -a; . /etc/veoveo/media/provider.env; set +a; exec /usr/local/bin/veoveo-mcp-media-fake-provider'
-openshell service expose --workspace vv-services media-provider 8803 http \
-  --authorization-mode bearer-passthrough
 ```
+
+The installer's `platform-servers` step creates the `media-provider` sandbox from
+`installation.toml`, with no provider, its policy and driver configuration, the
+`MEDIA_FAKE_PROVIDER_*` environment and the command that loads
+`/etc/veoveo/media/provider.env`, and exposes its `http` service on `8803` with
+native `bearer_passthrough`.
 
 Use the native workload alias with the configured gateway Service port (`8080`
 in this example) for both the fixture's advertised HTTPS origin and Media's
@@ -556,13 +520,16 @@ No fixture image rebuild is required for these configuration inputs.
 Media with a real provider may complete its runs by the provider's webhooks instead.
 Its trusted configuration then sets `VEOVEO_PUBLIC_ORIGIN` to Hub's public origin and
 `VEOVEO_ALLOW_LOOPBACK_HOSTS=true`, since native HTTP ingress reaches it as
-`127.0.0.1:8802`, beside the provider's webhook secret. Expose Media natively and add
+`127.0.0.1:8802`, beside the provider's webhook secret. Declare Media's native
+service under its sandbox in `installation.toml`, which apply then exposes, and add
 the Media callback route of [tunnel-routes.yaml](tunnel-routes.yaml), which publishes
 only `/media/operations/{operation_id}/{token}`:
 
-```sh
-openshell service expose --workspace vv-services media 8802 http \
-  --authorization-mode bearer-passthrough
+```toml
+[[step.sandbox.service]]
+name = "http"
+port = 8802
+authorization = "bearer-passthrough"
 ```
 
 With an existing native Hub bearer/reference, verify registration and actual MCP

@@ -8,7 +8,9 @@ component's revision and, once built, each image's digest.
 
 ## Linux: K3s
 
-Linux deploys only on K3s, with OpenShell's Kubernetes driver. Start with the
+Linux deploys only on K3s, with OpenShell's Kubernetes driver.
+[veoveo-installer](installer/README.md) applies [installation.toml](installation.toml)'s
+steps; the guides keep the reference and the manual steps around it. Start with the
 [K3s foundation](kubernetes/README.md), then the
 [native workload bootstrap](kubernetes/WORKLOADS.md) and, for Embedding, the
 [Kubernetes embedding guide](kubernetes/EMBEDDING.md). Kubernetes owns PostgreSQL,

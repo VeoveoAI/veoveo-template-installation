@@ -8,12 +8,24 @@ component/integration testing; do not create a Mac cluster. Single-node PVCs
 provide restart persistence, not multi-host HA or a backup. Development data may be
 reset and reseeded.
 
-Use an operator-owned directory with mode `0700` for private values, rendered
-files and secrets (`umask 077`). Never print resolved Helm values, connection URIs,
-Secret data or container environments. The committed replacement markers must be
-replaced in private inputs before admission. They are deliberately not runnable
-image tags or credentials. Linux builds every Veoveo image from source and publishes
-it to the installation's own [local registry](#logs-image-builder-and-registry);
+[veoveo-installer](../installer/README.md) applies these inputs: the steps of
+[installation.toml](../installation.toml), from the namespaces to Hub's control plane,
+change only through its `plan`, which shows what differs, and `apply`, which changes
+exactly that. This guide keeps the reference behind each step and, as manual steps,
+only what the installer does not do: K3s and the node's registry entry, image builds,
+the Secrets and ConfigMaps of private material, the storage bootstrap, the providers'
+credentials and the seed Jobs of the workspace claims other than Hub's. `apply` stops
+at the first step whose manual input is still missing, with its evidence; run it again
+once that input exists.
+
+The operator's private directory, mode `0700` (`umask 077`), holds `private.toml`
+([example](../installer/private.example.toml)), the private Helm values and the private
+files the manual steps create Secrets from; plan and apply only read it. Never print
+resolved Helm values, connection URIs, Secret data or container environments. Render
+the committed `REPLACE_WITH_` markers in the installation's own copy of each file;
+they are deliberately not runnable image tags or credentials, and plan does not
+compare a file while it holds one. Linux builds every Veoveo image from source and
+publishes it to the installation's own [local registry](#logs-image-builder-and-registry);
 workloads select immutable `repository@sha256:...` references there. The cluster
 pulls from no other private registry and holds no image-pull Secret. Third-party
 images stay pinned by digest at their upstream registries.
@@ -34,22 +46,19 @@ Traefik and ServiceLB. Cilium owns policy enforcement.
 ```sh
 sudo install -d -m 0755 /etc/rancher/k3s
 sudo install -m 0600 kubernetes/k3s.yaml /etc/rancher/k3s/config.yaml
-helm repo add cilium https://helm.cilium.io/
-helm upgrade --install cilium cilium/cilium --namespace kube-system \
-  --version 1.20.3 -f kubernetes/cilium.values.yaml -f "$PRIVATE/cilium-node.yaml"
-kubectl apply -f kubernetes/namespaces.yaml
 ```
 
-The private Cilium override supplies `k8sServiceHost`, the actual node API address.
-First prove real ingress and egress deny/allow behavior with disposable Pods.
-Install the official Agent Sandbox controller/CRDs using
-`kubectl apply -k kubernetes/agent-sandbox`. This selects the reviewed `v1.0.6`
-core `sandbox.yaml` release manifest (SHA-256
-`b995db5839f2bdca3a24b8bbefdec405df662d6dd223eec8f5dc74098c974231`),
+The installer's first steps apply [namespaces.yaml](namespaces.yaml); Cilium `1.20.3`
+from its chart, with [cilium.values.yaml](cilium.values.yaml) and the private node
+override (`[helm.cilium]` in `private.toml`), which supplies `k8sServiceHost`, the
+actual node API address; and the official Agent Sandbox controller and CRDs from
+[agent-sandbox](agent-sandbox), whose readiness it waits for. Once Cilium runs, prove
+real ingress and egress deny/allow behavior with disposable Pods. The kustomization
+selects the reviewed `v1.0.6` core `sandbox.yaml` release manifest
+(SHA-256 `b995db5839f2bdca3a24b8bbefdec405df662d6dd223eec8f5dc74098c974231`),
 not the separate extensions release. The Linux amd64 controller digest is
 `sha256:876f9621e0f0e168bcff13aa377880b75fd37e1c8712f2f249e8878c22d06ffd`;
-do not substitute the ARM64 manifest. Wait for controller readiness before native
-sandbox creation.
+do not substitute the ARM64 manifest.
 
 ## PostgreSQL and native storage identities
 
@@ -57,14 +66,18 @@ PostgreSQL runs as a plain StatefulSet ([postgres.yaml](postgres.yaml)): one
 instance, one volume, the `veoveo-postgres-rw` Service every client already names,
 and TLS from the installation's own PostgreSQL CA. No operator. Build
 [postgres/Dockerfile](../postgres/Dockerfile), publish it to the
-[local registry](#logs-image-builder-and-registry) (install that registry and the
-node's entry first), and render a private copy of `postgres.yaml` with that exact
-image by digest. Verify the image's
+[local registry](#logs-image-builder-and-registry) (the installer applies that registry
+in an earlier step; the node's entry comes first), and render `postgres.yaml`'s image
+marker with that exact image by digest. Verify the image's
 postgres UID/GID; the sample uses Debian's `999:999`. This image supplies PostgreSQL
 `18.6`, vector `0.8.7` and PostGIS `3.6.4`. Do not replace it with a plain image
 that omits the application extensions.
 
-Its first start runs three scripts from the `veoveo-postgres-initdb` ConfigMap:
+The installer's `postgres` step applies `postgres.yaml` with the
+`veoveo-postgres-initdb` ConfigMap, which it builds from the three scripts below, and
+waits for the StatefulSet's rollout. PostgreSQL reads `pg_hba.conf`, the
+`veoveo-postgres-hba` ConfigMap, when it starts, so apply restarts it when that
+ConfigMap changes. Its first start runs those scripts:
 [owner.sql](../postgres/initdb/owner.sql) creates `veoveo_owner`
 (`LOGIN CREATEROLE CREATEDB`, a member of `pg_signal_backend`) and `veoveo`;
 [postgres-platform.sql](postgres-platform.sql) creates the gateway's and Lore's
@@ -81,8 +94,8 @@ dedicated instance connection, listeners and singletons), the OpenShell gateway 
 10-connection data pool plus a 4-connection mutation-lock pool per replica), Lore,
 rollouts, operators and headroom.
 
-Create `kubernetes.io/basic-auth` Secrets in `veoveo-system`, each with native
-`username` and `password` keys, from private files:
+Before the `postgres` step, create `kubernetes.io/basic-auth` Secrets in
+`veoveo-system`, each with native `username` and `password` keys, from private files:
 
 | Secret | Username | Responsibility |
 | --- | --- | --- |
@@ -105,7 +118,8 @@ trailing newline becomes part of the password and every URI built without it fai
 to authenticate. Regenerate such a file rather than editing around it.
 
 Create the installation's PostgreSQL CA and the server certificate for the Service
-name. The CA key stays private; only its certificate is a trust input:
+name, and from them the server's TLS Secret and the CA's ConfigMap, before that step
+too. The CA key stays private; only its certificate is a trust input:
 
 ```sh
 host=veoveo-postgres-rw.veoveo-system.svc.cluster.local
@@ -121,12 +135,6 @@ kubectl -n veoveo-system create secret tls veoveo-postgres-tls \
   --cert "$PRIVATE/postgres-server.crt" --key "$PRIVATE/postgres-server.key"
 kubectl -n veoveo-system create configmap postgres-client-ca \
   --from-file=postgres-ca.crt="$PRIVATE/postgres-ca.crt"
-kubectl -n veoveo-system create configmap veoveo-postgres-initdb \
-  --from-file=owner.sql=postgres/initdb/owner.sql \
-  --from-file=platform.sql=kubernetes/postgres-platform.sql \
-  --from-file=zz-extensions.sql=postgres/initdb/zz-extensions.sql
-kubectl apply -f "$PRIVATE/postgres.yaml"
-kubectl -n veoveo-system wait pod/veoveo-postgres-0 --for=condition=Ready --timeout=300s
 ```
 
 Use `veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432` with
@@ -148,11 +156,8 @@ outlives its pod for 7 days. [builder.yaml](builder.yaml) runs BuildKit's
 user-namespace variant, which Hub reaches at
 `tcp://buildkitd.veoveo-system.svc.cluster.local:1234`, and a plain Distribution
 registry at `registry.veoveo-system.svc.cluster.local:5000` with the fixed ClusterIP
-`10.43.200.10`:
-
-```sh
-kubectl apply -f kubernetes/logs.yaml -f kubernetes/builder.yaml
-```
+`10.43.200.10`. The installer's `registry-builder-logs` step applies both, before any
+step that runs a Veoveo image.
 
 Build steps run in BuildKit's network, so both files carry network policies, which
 Cilium enforces: BuildKit answers only Hub's supervisor and reaches only cluster DNS,
@@ -161,14 +166,14 @@ supervisors of `vv-services`, where console reads it. Both name their workspace
 namespaces for the gateway ID `openshell`; render them as `openshell-<gateway>-<workspace>`
 for another ID. BuildKit's configuration admits only Docker's Dockerfile frontend for a
 `# syntax=` line, and Hub keeps each branch's cache mounts apart and prunes them around
-every build. BuildKit reads its configuration when it starts, so a changed
-`buildkitd.toml` takes effect after
-`kubectl -n veoveo-system rollout restart statefulset/buildkitd`. The registry has no
+every build. BuildKit and Vector read their configuration when they start, so apply
+restarts each when its ConfigMap changes. The registry has no
 authentication yet: a build step can push to it, which redirects no workload, since
 every workload names its image by digest.
 
-Point the node's container runtime at the registry once, then restart K3s. The
-restart takes the API away for a few seconds and restarts no container:
+Point the node's container runtime at the registry once, by hand, as K3s's own
+configuration, then restart K3s. The restart takes the API away for a few seconds and
+restarts no container:
 
 ```sh
 sudo tee /etc/rancher/k3s/registries.yaml >/dev/null <<'YAML'
@@ -188,8 +193,9 @@ OpenShell revision), Hub, Lore, the Hub SDK CLI (`veoveo/hub-sdk-cli`, the SDK
 Dockerfile's `cli` target), the PostgreSQL extension image, the factory base,
 Computer, Artifact, Media, the Media fixture provider, Embedding and its runtime.
 Hub pushes environment images under `factory/`; registry cleanup touches only those.
-Push from the build host through a port-forward; the `localhost:5000` push is the
-same content-addressed object that workloads and BuildKit name by the Service:
+The installer builds no image: build each by hand and push it from the build host
+through a port-forward, then put its digest in the lock. The `localhost:5000` push is
+the same content-addressed object that workloads and BuildKit name by the Service:
 
 ```sh
 kubectl -n veoveo-system port-forward svc/registry 5000:5000 &
@@ -199,8 +205,11 @@ docker push "localhost:5000/veoveo/$NAME:$REVISION"   # prints the digest
 ```
 
 Local-registry pulls need no credentials, so no image-pull Secret exists in any
-namespace. Apply this registry and the node entry before any Veoveo workload,
-PostgreSQL included. Hub's own policy admits BuildKit for `/usr/local/bin/buildctl`,
+namespace. The node entry and the images come before any step that runs a Veoveo
+workload, PostgreSQL included: on a first installation, apply the steps up to
+`registry-builder-logs`, each named with `--step`, publish the images, then apply
+the rest. Hub's
+own policy admits BuildKit for `/usr/local/bin/buildctl`,
 which builds each branch's environment image from its `openshell/image/` alone.
 
 ### Naming each image once
@@ -231,31 +240,21 @@ both images, its lock holds:
 The files that use an image carry its placeholder, `@image:lore@` or
 `@image:hub-sdk-cli@`: [lore.yaml](lore.yaml) and the [Hub](hub-driver-config.json),
 [Computer](computer-driver-config.json) and [factory](factory-driver-config.json) driver
-configurations. Fill them into private copies; this is the only way a digest enters
-them, it refuses an image that is not pinned by digest, and the last line fails while
-any placeholder is left:
-
-```sh
-jq -r '(.images // {}) | to_entries[] |
-  if (.value | test("^[^@]+@sha256:[0-9a-f]{64}$")) then "s|@image:\(.key)@|\(.value)|g"
-  else error("\(.key) is not pinned by digest in component-lock.json") end' \
-  component-lock.json > "$PRIVATE/images.sed"
-for file in lore.yaml hub-driver-config.json computer-driver-config.json factory-driver-config.json; do
-  sed -f "$PRIVATE/images.sed" "kubernetes/$file" > "$PRIVATE/$file"
-done
-! grep -n '@image:' "$PRIVATE/lore.yaml" "$PRIVATE"/*-driver-config.json
-```
+configurations. The installer fills each placeholder from the lock whenever it reads
+the file, and that is the only way a digest enters it. The lock admits only images
+pinned by digest, and a placeholder it does not name leaves the file unusable, which
+fails plan.
 
 OpenShell's resource admission stays on. It admits an image volume only when its
 reference is pinned by digest and its repository is listed, which
 [openshell.values.yaml](openshell.values.yaml) does for exactly these two repositories
 (`server.drivers.kubernetes.resourceAdmission.imageRepositories`); the gateway also
-runs with `allow_driver_config`. Upgrading Lore builds and publishes one image, puts
-its digest in the lock and fills the files again; the repository list does not change.
-Then apply `lore.yaml`, recreate Hub with the new Hub driver configuration, and publish
-the Computer and factory templates again: Hub uses the new Lore when it restarts, each
-Computer as a new Computer version when its owner restarts it, and each factory
-instance when its next push recreates its sandbox.
+runs with `allow_driver_config`. Upgrading Lore builds and publishes one image and puts
+its digest in the lock; the repository list does not change. `plan` then shows Lore's
+Deployment, Hub's sandbox and the Computer and factory templates differing, and `apply`
+changes them: Hub uses the new Lore when it restarts, each Computer as a new Computer
+version when its owner restarts it, and each factory instance when its next push
+recreates its sandbox.
 
 ## Factory sandbox policy and providers
 
@@ -272,56 +271,38 @@ branch's code cannot write to Lore with its pusher's rights. Each Computer's Lor
 provider uses [lore](../openshell/providers/lore.yaml) instead, with every method, as
 the Computer's owner. Replace `veoveo.example.com` with Hub's host in all four. Hub creates each
 instance's providers with no profile workspace, which OpenShell resolves only
-against global profiles, so import both globally:
-
-```sh
-openshell profile lint --global --file openshell/providers/factory-registration.yaml
-openshell profile lint --global --file openshell/providers/factory-lore.yaml
-openshell profile lint --global --file openshell/providers/lore.yaml
-openshell profile import --global --file openshell/providers/factory-registration.yaml
-openshell profile import --global --file openshell/providers/factory-lore.yaml
-openshell profile import --global --file openshell/providers/lore.yaml
-openshell workspace create --name vv-factory
-```
+against global profiles, so the installer's `profiles` step lints all three and
+imports them globally; its `workspaces` step creates `vv-factory`.
 
 Hub creates each instance's providers and sandbox from these. Its configuration
 names them in the `factory` section (`registrationProfile`, `loreProfile`,
-`workspace`); the rendered base policy goes into Hub's configuration claim
-([hub-config-pvc.yaml](hub-config-pvc.yaml)) named by its content, as
-`factory-base-<digest>.yaml`, which `factory.policyFile` names (the seed's
+`workspace`); the installer's `hub-claim` step writes the rendered base policy into
+Hub's configuration claim ([hub-config-pvc.yaml](hub-config-pvc.yaml)) named by its
+content, as `factory-base-<digest>.yaml`, which `factory.policyFile` names (the seed's
 `@claim:factory-base@`; see the [design](../DESIGN.md#applying-an-installation)). Hub
 reads it at startup and exits if it is invalid.
 
-Every factory sandbox's size and mounts come from the factory template, which
-`factory.template` names, created as the Computer template is, with the
-[filled](#naming-each-image-once) factory driver configuration and no image:
-
-```sh
-openshell sandbox template create factory-v1 --workspace installation \
-  --cpu 4 --memory 8Gi \
-  --driver-config-json "$(cat "$PRIVATE/factory-driver-config.json")"
-```
+Every factory sandbox's size and mounts come from the factory template, `factory-v1`
+in workspace `installation`, which `factory.template` names. The installer's
+`templates` step creates it as it does the Computer template, with 4 CPUs, 8 GiB, the
+[filled](#naming-each-image-once) factory driver configuration and no image.
 
 Hub reads it on every push and creates each instance inline with the branch's own
 image, the template's CPU and memory as limits and its driver configuration; a
 template that names an image, environment or a GPU is refused. OpenShell has no
-template update: to change it, delete it and create it again under the same name, and
-each instance takes it at its next push, which recreates its sandbox. The template may
-come before or after Hub starts; until it exists, every push fails at `create` and
-names it. The soft caps and base branch are Hub control-plane values (`factory.caps`,
-`execution.baseBranch`), seeded from [hub.example.json](hub.example.json) and changed
-live through Hub's control-plane route. No installation-wide factory client or secret
-exists: each instance's Lore access comes from its own Hub client.
+template update, so apply deletes a changed template and creates it again under the
+same name, and each instance takes it at its next push, which recreates its sandbox.
+The template may come before or after Hub starts; until it exists, every push fails
+at `create` and names it. The soft caps and base branch are Hub control-plane values
+(`factory.caps`, `execution.baseBranch`), seeded from [hub.example.json](hub.example.json)
+and changed live through Hub's control-plane route. No installation-wide factory
+client or secret exists: each instance's Lore access comes from its own Hub client.
 
 ## SeaweedFS
 
-```sh
-helm repo add seaweedfs https://seaweedfs.github.io/seaweedfs/helm
-helm upgrade --install seaweedfs seaweedfs/seaweedfs --namespace veoveo-system \
-  --version 4.48.0 -f kubernetes/seaweedfs.values.yaml
-```
-
-Before installation provide the chart's native external certificate Secrets in
+The installer's `seaweedfs` step installs the official chart `4.48.0` with
+[seaweedfs.values.yaml](seaweedfs.values.yaml). Before that step provide the chart's
+native external certificate Secrets in
 `veoveo-system`: `seaweedfs-ca-cert`, `seaweedfs-master-cert`,
 `seaweedfs-volume-cert`, `seaweedfs-filer-cert`, `seaweedfs-client-cert`, and
 `seaweedfs-s3-cert`. The CA Secret **must contain the public certificate under
@@ -470,8 +451,8 @@ No image-pull Secret is created: the gateway, every sandbox, PostgreSQL and Lore
 Veoveo images from the local registry, and third-party images from their public
 upstream registries.
 
-Create `openshell-gateway-db` in `openshell`, key `uri`, with the gateway-only
-PostgreSQL URI using `sslmode=verify-full` and
+Before the `openshell` step, create `openshell-gateway-db` in `openshell`, key `uri`,
+with the gateway-only PostgreSQL URI using `sslmode=verify-full` and
 `sslrootcert=/etc/openshell/database-ca/postgres-ca.crt`. Copy only the public
 PostgreSQL CA certificate into `postgres-client-ca` ConfigMap key `postgres-ca.crt`
 in `openshell`; native chart extraVolumes mount it read-only. Private
@@ -516,12 +497,9 @@ an affected runtime to select changed roots. When adding private Helm overrides,
 retain **both** database-CA and destination-CA mounts: Helm replaces volume lists
 rather than appending them. These inputs are not deployed TLS acceptance.
 
-```sh
-helm upgrade --install openshell "$OPENSHELL_SOURCE/deploy/helm/openshell" \
-  --namespace openshell -f kubernetes/openshell.values.yaml \
-  -f "$PRIVATE/openshell-identity.yaml"
-```
-
+The installer's `openshell` step installs the chart from OpenShell's source at that
+revision, the checkout `private.toml` names (`[helm.openshell] source`), with
+openshell.values.yaml and the private identity values (`[helm.openshell] values`).
 The service endpoint is `https://openshell.openshell.svc.cluster.local:8080`.
 The gateway uses its distinct PostgreSQL database, outside this Helm release.
 Its own authentication bootstrap may require the external issuer online. Local
@@ -532,20 +510,27 @@ do not infer complete healing from a Ready Pod.
 
 ## Runtime ownership and trusted configuration
 
-Create workspaces and versioned templates through the existing authenticated
-OpenShell CLI/API, then create Hub/MCP/Computer/factory workloads through those
-APIs. No per-workspace Helm release or static workload inventory belongs here.
-For each trusted service config PVC, **first create the native workspace**, then
-prepare its required provider custody. Native credential mint/store invokes
-`ensure_workspace`, creating its managed namespace; `CreateWorkspace` alone only
-persists the workspace object. Verify that actual namespace before creating the
-operator-approved PVC and bootstrap Job there. Do not create the namespace yourself
-or add a dummy provider. PVCs cannot be mounted across namespaces. The Job copies
-only approved private config from a temporary native Secret, sets the approved
-component file owner, and exits. Mount that admitted PVC read-only outside
-`/sandbox`; remove the temporary Secret/Job after successful copy. Do not mount
-caller-selected Secrets, ConfigMaps, host paths or protected `/run` paths through
-driver configuration, and do not introduce a copy controller.
+The installer creates the workspaces, provider profiles, versioned templates and
+Hub/MCP sandboxes through OpenShell's API as the operator's OpenShell identity; Hub
+creates Computer and factory workloads through the same APIs. No per-workspace Helm
+release or static workload inventory belongs here. A trusted service config PVC
+lives in its workspace's managed namespace, which exists only once the workspace's
+first provider custody is prepared: native credential mint/store invokes
+`ensure_workspace`, creating it; `CreateWorkspace` alone only persists the workspace
+object. The installer's `workspace-storage` step therefore needs each workspace's
+providers, which the operator creates with their credentials once the `profiles` step
+imported their profiles: on a first installation, apply `workspaces` and `profiles`
+with `--step`, create the providers, verify the actual namespaces, then apply the
+rest. Do not create the namespace yourself or add a dummy provider. PVCs cannot be
+mounted across namespaces. A claim's seed Job copies only approved private config from
+a temporary native Secret, sets the approved component file owner, and exits. The
+installer runs the seed Job of Hub's claim, with a Secret it creates and removes; the
+operator runs the others
+([WORKLOADS.md](WORKLOADS.md#workspace-local-trusted-service-configuration)).
+Mount that admitted PVC read-only outside `/sandbox`; remove the temporary Secret/Job
+after successful copy. Do not mount caller-selected Secrets, ConfigMaps, host paths
+or protected `/run` paths through driver configuration, and do not introduce a copy
+controller.
 
 Computers use the driver's automatic per-sandbox workspace PVC at `/sandbox`.
 No explicit shared `/sandbox` claim, interpolation, second copy-up or Helm-owned
@@ -560,8 +545,9 @@ workspace-local config/public-CA PVCs and Kubernetes Computer defaults.
 
 ## Validation boundary
 
-Render/lint the exact upstream charts and server-side admit ordinary resources
-before deployment. For an offline OpenShell render only, disable its live
+`plan` compares each existing object as a server-side dry-run apply would leave it;
+render and lint the exact upstream charts and admit new resources before deployment.
+For an offline OpenShell render only, disable its live
 `agentSandbox.preflight.enabled` check; never disable the deployed preflight.
 Builder owns chart rendering, schema checks, immutable image verification and
 deployed probes. These source inputs alone do not prove PostgreSQL extension-image
