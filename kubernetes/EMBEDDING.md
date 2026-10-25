@@ -4,6 +4,12 @@ These are Linux/amd64 installation inputs for the full multimodal embedding
 replacement, not a sandbox inventory. Kubernetes owns the GPU device plugin and
 trusted bootstrap PVCs/Job. OpenShell's existing Kubernetes driver owns the
 runtime and MCP sandboxes, their workspace PVCs, supervisors and service exposure.
+[veoveo-installer](../installer/README.md) applies these inputs from
+[installation.toml](../installation.toml): the device plugin (its
+`nvidia-device-plugin` step), the claims (`workspace-storage`), the profiles
+(`profiles`) and both sandboxes (`platform-servers`). The commands here are the
+manual steps it does not do: node and RuntimeClass labels, provider custody, the
+seed Jobs and the builder's offline checks.
 Mac development/MPS and the disposable Docker CUDA probe remain separate evidence.
 Follow [WORKLOADS.md](WORKLOADS.md) for current foundation, native custody and live
 Hub publication; the older Docker embedding guide is not this deployment path.
@@ -31,8 +37,9 @@ existing immutable bootstrap material is not rewritten in place.
 
 ## GPU prerequisite
 
-Use the official NVIDIA device-plugin chart **0.20.1**. Its archive SHA256 is
-`b705142f03ac17906bfcface9319e2f7b9a570d2af7f04f23252723ce2c0bb8e`.
+The installer's `nvidia-device-plugin` step installs the official NVIDIA
+device-plugin chart **0.20.1** with `nvidia-device-plugin.values.yaml`. Its archive
+SHA256 is `b705142f03ac17906bfcface9319e2f7b9a570d2af7f04f23252723ce2c0bb8e`.
 [Official release](https://github.com/NVIDIA/k8s-device-plugin/releases/tag/v0.20.1),
 [chart values](https://github.com/NVIDIA/k8s-device-plugin/blob/v0.20.1/deployments/helm/nvidia-device-plugin/values.yaml)
 and [K3s native NVIDIA runtime](https://docs.k3s.io/advanced#nvidia-container-runtime)
@@ -50,7 +57,7 @@ the trusted operator may label **that node only** `nvidia.com/gpu.present=true`.
 This is the chart's manual-label branch; NFD/GFD are disabled. RuntimeClass
 `nvidia`, the node driver/toolkit and nonzero `nvidia.com/gpu` capacity/allocatable
 must be measured before sandbox admission. A RuntimeClass alone proves no device.
-The application requests one GPU through native `--gpu 1`; its driver config
+The application requests one GPU (`gpu = 1` in `installation.toml`); its driver config
 selects `pod.runtime_class_name: nvidia`. MCP requests no GPU. No gateway-wide
 default RuntimeClass change is required.
 
@@ -87,13 +94,16 @@ acceptance. Do not add an ignored `mps.enabled` field or filter upstream manifes
 
 ## Workspace and trusted bootstrap
 
-Prepare the existing `vv-services` native workspace and its required registration
-and inference provider custody first. Verify its OpenShell-created namespace;
+The installer creates the `vv-services` native workspace and imports the
+registration and inference profiles; prepare the custody of the
+`vv-embedding-registration` and `vv-embedding-inference` providers first. Verify
+its OpenShell-created namespace;
 these templates use `openshell-openshell-vv-services`, matching gateway ID
 `openshell`. Render namespaces to the actual admitted gateway ID. Do not create a
 competing namespace, copy the old Docker gateway selector or add a dummy provider.
 
-`embedding-storage.yaml` adds only three operator-approved, workspace-local claims:
+`embedding-storage.yaml` adds only three operator-approved, workspace-local claims,
+which the installer's `workspace-storage` step applies:
 
 | Claim | Runtime attachment | Purpose |
 | --- | --- | --- |
@@ -127,13 +137,14 @@ shared `/sandbox` mount.
 
 The runtime token file and existing `vv-embedding-inference` provider must contain
 the same already prepared private credential. Use native provider custody; real
-values never enter sandbox argv or reports. Initial token copy uses only:
+values never enter sandbox argv or reports. The installer runs no seed Job but Hub's
+claim's, and plan does not compare these, so the initial token copy is this manual
+step, once the claims exist and before the `platform-servers` step starts the runtime:
 
 ```sh
-kubectl apply -f "$PRIVATE/embedding-storage.yaml"
 kubectl -n "$SERVICES_NAMESPACE" create secret generic embedding-runtime-config-bootstrap \
   --from-file=runtime.token="$PRIVATE/runtime.token"
-kubectl apply -f "$PRIVATE/seed-embedding-config.yaml"
+kubectl apply -f kubernetes/seed-embedding-config.yaml
 kubectl -n "$SERVICES_NAMESPACE" wait job/seed-embedding-runtime-config-v1 \
   --for=condition=Complete --timeout=120s
 kubectl -n "$SERVICES_NAMESPACE" delete job seed-embedding-runtime-config-v1
@@ -186,7 +197,7 @@ native tar member list relative to the canonical HF_HOME:
 ```sh
 tar --create --file="$CACHE_ARCHIVE" --directory="$HF_CACHE_SOURCE" \
   --no-recursion --null --verbatim-files-from --files-from="$REVIEWED_CACHE_MEMBERS_NUL"
-kubectl apply -f "$PRIVATE/seed-embedding-cache.yaml"
+kubectl apply -f kubernetes/seed-embedding-cache.yaml
 kubectl -n "$SERVICES_NAMESPACE" get pods \
   -l batch.kubernetes.io/job-name=seed-embedding-model-cache-v1 -o wide
 ```
@@ -223,7 +234,8 @@ process may populate or repair the cache.
 
 ## Exact policy, identity and routing
 
-Render only installation authorities/profile selectors in private policy copies:
+Render only installation authorities/profile selectors in the installation's own
+policies, which the installer reads:
 
 | Connection | Required native boundary |
 | --- | --- |
@@ -234,8 +246,9 @@ Render only installation authorities/profile selectors in private policy copies:
 
 Verify the actual Kubernetes gateway Service port and native alias reachability
 from the MCP workload before selecting its runtime URL. The current foundation
-uses `https://vv-services--embedding-runtime--http.openshell.localhost:8080`;
-render the URL and exact policy port together if the Service differs. The native
+uses `https://vv-services--embedding-runtime--http.openshell.localhost:8080`, the
+`VEOVEO_EMBEDDING_RUNTIME_URL` of `installation.toml`; render the URL and exact
+policy port together if the Service differs. The native
 CLI formats displayed exposure URLs using its operator connection port, so an
 operator port-forward at `18443` can produce a displayed `:18443` URL. That is
 not the in-sandbox origin; neither operator-forward `18443` nor retired Docker
@@ -247,10 +260,10 @@ authentication. No helper or proxy is required. Runtime holds no Hub identity,
 provider API key or storage credential. Native CPU decoding is preprocessing;
 inference remains full-model CUDA FP32 without CPU fallback.
 
-Set `VEOVEO_EMBEDDING_STORAGE_ORIGIN` to the exact signed URL origin **with an
-explicit port**, the public host `https://veoveo.example.com:443`, whose `/artifacts/`
-paths hold the signed objects. This is not the private S3 Service endpoint.
-Preserve signed URL host/path/query; never rewrite it.
+`installation.toml` sets `VEOVEO_EMBEDDING_STORAGE_ORIGIN` to the exact signed URL
+origin **with an explicit port**, the public host `https://veoveo.example.com:443`,
+whose `/artifacts/` paths hold the signed objects. This is not the private S3
+Service endpoint. Preserve signed URL host/path/query; never rewrite it.
 `policies/embedding-runtime.yaml` passes TLS through to that exact host and the
 verified Python ELF path; passthrough cannot narrow it to `/artifacts/`, and the
 runtime fetches only URLs of that origin. Runtime 2a3 uses HTTPX `trust_env=False`, so
@@ -271,65 +284,45 @@ credential bindings. Do not attach a member/admin provider to the MCP delegation
 group, broaden declared uses, or deploy the older Hub over current live-binding
 work. The current qualified Hub and Artifact must retain the nested SDK chain.
 
-After foundation readiness and review, use immutable runtime/MCP image digests,
-the two new native driver configs and privately rendered policies:
+After foundation readiness and review, the installer's `platform-servers` step creates
+both sandboxes from `installation.toml`, with the lock's immutable image digests, the
+two native driver configs and the installation's policies. `embedding-runtime` takes
+the lock's `runtime-embedding` image, one GPU, the declared CPU and memory, no
+provider, restart policy `always`, `VEOVEO_EMBEDDING_DEVICE=cuda`,
+`VEOVEO_EMBEDDING_TOKEN_FILE=/etc/veoveo/embedding/runtime.token` and the signed
+object origin, and runs `/opt/embedding/.venv/bin/python -m veoveo_runtime_embedding`;
+its `http` service is exposed on `8804` with native `bearer_passthrough`. `embedding`
+takes the lock's `embedding` image, the providers `vv-embedding-registration` and
+`vv-embedding-inference`, restart policy `always`, `VEOVEO_HUB_ISSUER`,
+`VEOVEO_PUBLIC_BASE_URL=http://embedding.internal:8803`, `VEOVEO_PORT=8803`, the
+runtime URL, `VEOVEO_EMBEDDING_DEVICE=cuda` and its deployment ID from
+`private.toml`, and runs `/usr/local/bin/veoveo-mcp-embedding`.
 
-Select the maintained native CLI, its existing authenticated configuration home
-and the verified current gateway from trusted installation inputs. Do not use the
-stock CLI or retired default gateway. These required selectors contain no token;
-reuse existing native credential custody without exporting credentials or
-creating a new login/provider. Refuse inherited endpoint or insecure-TLS overrides
-that could redirect the selected context. Set all three inputs before launch:
+The installer acts as the operator's OpenShell sign-in that `private.toml` names: the
+maintained native CLI's existing authenticated configuration home and the verified
+current gateway (`[openshell]`), never the stock CLI's or a retired default gateway.
+It reuses existing native credential custody, exports no credential and creates no
+login or provider.
 
-```sh
-: "${NATIVE_OPENSHELL_CLI:?set the maintained native CLI path}"
-: "${NATIVE_CLI_CONFIG_HOME:?set the existing native CLI configuration home}"
-: "${NATIVE_GATEWAY:?set the verified current native gateway name}"
-test -x "$NATIVE_OPENSHELL_CLI" || exit 1
-test -d "$NATIVE_CLI_CONFIG_HOME" || exit 1
-test -z "${OPENSHELL_GATEWAY_ENDPOINT:-}" || exit 1
-test -z "${OPENSHELL_GATEWAY_INSECURE:-}" || exit 1
-export XDG_CONFIG_HOME="$NATIVE_CLI_CONFIG_HOME"
-
-"$NATIVE_OPENSHELL_CLI" --gateway "$NATIVE_GATEWAY" sandbox create --workspace vv-services --name embedding-runtime \
-  --from "$RUNTIME_IMAGE_AT_DIGEST" --gpu 1 --cpu "$RUNTIME_CPU" --memory "$RUNTIME_MEMORY" \
-  --policy "$PRIVATE/embedding-runtime.yaml" --no-auto-providers \
-  --driver-config-json "$(cat kubernetes/embedding-runtime-driver-config.json)" \
-  --restart-policy always --detach \
-  --env VEOVEO_EMBEDDING_DEVICE=cuda \
-  --env VEOVEO_EMBEDDING_TOKEN_FILE=/etc/veoveo/embedding/runtime.token \
-  --env VEOVEO_EMBEDDING_STORAGE_ORIGIN="$SIGNED_OBJECT_ORIGIN_WITH_PORT" -- \
-  /opt/embedding/.venv/bin/python -m veoveo_runtime_embedding
-"$NATIVE_OPENSHELL_CLI" --gateway "$NATIVE_GATEWAY" service expose --workspace vv-services embedding-runtime 8804 http \
-  --authorization-mode bearer-passthrough
-"$NATIVE_OPENSHELL_CLI" --gateway "$NATIVE_GATEWAY" sandbox create --workspace vv-services --name embedding \
-  --from "$MCP_IMAGE_AT_DIGEST" --policy "$PRIVATE/embedding.yaml" \
-  --provider vv-embedding-registration --provider vv-embedding-inference --no-auto-providers \
-  --driver-config-json "$(cat kubernetes/embedding-driver-config.json)" \
-  --restart-policy always --detach \
-  --env VEOVEO_HUB_ISSUER="$HUB_ORIGIN" \
-  --env VEOVEO_PUBLIC_BASE_URL=http://embedding.internal:8803 --env VEOVEO_PORT=8803 \
-  --env VEOVEO_EMBEDDING_RUNTIME_URL="$NATIVE_RUNTIME_URL" \
-  --env VEOVEO_EMBEDDING_DEVICE=cuda -- \
-  /usr/local/bin/veoveo-mcp-embedding
-```
-
-`HUB_ORIGIN` is the actual public Hub origin, for example
+`VEOVEO_HUB_ISSUER` is the actual public Hub origin, for example
 `https://veoveo.example.com`, whose registered-server discovery advertises
 `/oauth/register` and `/jwks.json`. Do not append `/oauth` to this service setting.
 The separate browser/native Lore authorization-server issuer retains its `/oauth`
 suffix. Match the current foundation's exact issuer, registration policy and
 native provider custody; verify discovery issuer equality before MCP registration.
 
-Select explicit CPU/RAM allocations after the measured full-model CUDA probe;
-defaults do not establish sufficient capacity. The runtime image embeds its exact
-source revision; the existing canonical command keeps that identity. Native MCP
+`installation.toml` selects explicit CPU/RAM allocations after the measured
+full-model CUDA probe (the reference: 4 CPUs and 8 GiB for the runtime, 1 CPU and
+1 GiB for the MCP server); defaults do not establish sufficient capacity. The
+runtime image embeds its exact source revision; the existing canonical command keeps
+that identity. Native MCP
 registration uses its own persistent key directory and narrowed Core DB grant.
-Publish only the logical endpoint `http://embedding.internal:8803/embedding/mcp`
-to `vv-services/embedding:8803` in the **fresh complete** current Hub control plane
-through its qualified live API and revision comparison. Preserve other fields and
-workload identities. No Hub restart, old seed regeneration, public MCP ingress or
-Helm sandbox record is required for that live binding.
+[hub.example.json](hub.example.json) binds only the logical endpoint
+`http://embedding.internal:8803/embedding/mcp` to `vv-services/embedding:8803`; the
+installer's `hub-control-plane` step publishes it over the **fresh complete** current
+Hub control plane through its qualified live API and revision comparison, preserving
+other fields and workload identities. No Hub restart, old seed regeneration, public
+MCP ingress or Helm sandbox record is required for that live binding.
 
 ## Builder checks and remaining gates
 
@@ -345,10 +338,13 @@ helm template nvidia-device-plugin "$EVIDENCE/nvidia-device-plugin-0.20.1.tgz" \
   --namespace kube-system -f kubernetes/nvidia-device-plugin.values.yaml \
   > "$EVIDENCE/nvidia-device-plugin.rendered.yaml"
 kubectl apply --dry-run=server -f "$EVIDENCE/nvidia-device-plugin.rendered.yaml"
-kubectl apply --dry-run=server -f "$PRIVATE/embedding-storage.yaml"
-kubectl apply --dry-run=server -f "$PRIVATE/seed-embedding-config.yaml"
-kubectl apply --dry-run=server -f "$PRIVATE/seed-embedding-cache.yaml"
+kubectl apply --dry-run=server -f kubernetes/embedding-storage.yaml
+kubectl apply --dry-run=server -f kubernetes/seed-embedding-config.yaml
+kubectl apply --dry-run=server -f kubernetes/seed-embedding-cache.yaml
 ```
+
+These dry runs change nothing; `plan` likewise compares the existing claims as a
+server-side dry-run apply would leave them.
 
 Require exact amd64 image references, official GPU affinity, no NFD/GFD, and a
 dormant MPS-control DaemonSet without eligible nodes. Validate both driver JSON

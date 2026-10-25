@@ -65,19 +65,25 @@ reference at startup; calling the SDK again does not renew a copied access JWT.
 Run these native commands only with the separately authenticated trusted operator
 CLI. The existing `vv-control` workspace must exist. Check for pre-existing profile,
 provider and Hub sandbox names first; stop on conflicts rather than replacing
-foreign state. Select exactly one profile file above, then supply the new client's
-ID and secret privately in the operator environment. The ID is nonsecret. Never
-write the secret into Hub configuration, a command argument, a user workspace or
-an image.
+foreign state. On Linux the installer's `workspaces` step creates `vv-control` and its
+`profiles` step lints and imports the Entra profile above there; the Mac fixture
+imports its local profile by hand first:
+
+```sh
+openshell profile lint --workspace vv-control --file openshell/providers/hub-native-control.yaml
+openshell profile import --workspace vv-control --file openshell/providers/hub-native-control.yaml
+```
+
+The provider holds a credential, so the operator creates it in both. Supply the new
+client's ID and secret privately in the operator environment. The ID is nonsecret.
+Never write the secret into Hub configuration, a command argument, a user workspace
+or an image.
 
 ```sh
 (
-  : "${HUB_CONTROL_PROFILE:?select one reviewed profile file}"
   : "${VV_HUB_NATIVE_CONTROL_CLIENT_ID:?new dedicated service client ID}"
   : "${VV_HUB_NATIVE_CONTROL_CLIENT_SECRET:?new dedicated service client secret}"
   export VV_HUB_NATIVE_CONTROL_CLIENT_SECRET
-  openshell profile lint --workspace vv-control --file "$HUB_CONTROL_PROFILE"
-  openshell profile import --workspace vv-control --file "$HUB_CONTROL_PROFILE"
   openshell provider create --workspace vv-control --name vv-hub-native-control \
     --type vv-hub-native-control --runtime-credentials
   openshell provider refresh configure --workspace vv-control vv-hub-native-control \
@@ -93,11 +99,15 @@ an image.
 
 The initial rotation/status is preparation, not evidence of later renewal. Verify
 native admission with that separate identity. No GetProviderCredentials export is
-part of this workflow. Import the two global user data-plane profiles and create
-the trusted Computer template using [the Computer instructions](README.md#state-and-native-governance)
-before starting the Computer-enabled Hub.
+part of this workflow. The two global user data-plane profiles and the trusted
+Computer template come before the Computer-enabled Hub: on Linux the installer's
+`profiles` and `templates` steps precede its `hub` step, and the Mac fixture makes
+them by hand, as [the Computer instructions](README.md#state-and-native-governance)
+say, before starting Hub.
 
-Merge [hub.example.json](hub.example.json) into the installation's native Hub
+On Linux the [Kubernetes seed](../kubernetes/hub.example.json) holds these settings,
+and the installer merges and publishes it. For the Mac fixture, merge
+[hub.example.json](hub.example.json) into the installation's native Hub
 configuration. Keep both gateway blocks on the same actual endpoint, workload CA
 and `HUB_NATIVE_CONTROL_REFERENCE`. The fragment shows the reference service
 bindings; retain the installation's reviewed `nativeUpstreams.bindings` rather than
@@ -106,8 +116,10 @@ IdP references. Configure the public PKCE client/callback, profile, Work Context
 and memberships through the existing native Hub contracts. The public token URL
 must agree with the browser origin, user Hub refresh profile and exact policy.
 
-Install the reviewed JSON, policy at `/etc/veoveo/hub/computer-policy.yaml`, and
-existing runtime settings into the read-only Hub configuration volume. The
+On Linux the installer's `hub-claim` step writes the Computer policy, named by its
+content, and Hub's private files into the read-only Hub configuration claim. The Mac
+fixture installs the reviewed JSON, policy at `/etc/veoveo/hub/computer-policy.yaml`,
+and existing runtime settings into the read-only Hub configuration volume. The
 trusted model-seed Env reference must be supplied separately as reviewed
 installation input; it is not the native management identity. Do not put
 `HUB_NATIVE_CONTROL_REFERENCE` or an access JWT into `hub.env`: native attachment
@@ -116,9 +128,12 @@ state and other services. The separately authorized unreleased Hub resource-bind
 migration discards disposable OAuth continuity, not native service custody or
 Computer working storage; see the [first import](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers).
 
-For a fresh Hub sandbox, select the matching Computer-enabled policy and reviewed
-immutable Hub image. The existing native mount configuration supplies the
-read-only configuration volume:
+On Linux the installer's `hub` step creates Hub's sandbox from `installation.toml`,
+with the Entra Computer-enabled policy, the lock's Hub image and only the new control
+provider, and replaces it when its declaration changes, keeping its workspace and
+claims. For the Mac fixture's fresh Hub sandbox, select the matching Computer-enabled
+policy and reviewed immutable Hub image. The existing native mount configuration
+supplies the read-only configuration volume:
 
 ```sh
 openshell sandbox create --workspace vv-control --name hub --from "$HUB_RUNTIME_IMAGE_ID" \
@@ -157,8 +172,8 @@ the fifteen without the factory row and template replacement in the Mac fixtures
 cannot keep a Computer's home and so cannot replace it. The service-root selector
 chooses the HTTP route; it does not grant additional RPCs. There is no wildcard
 allow rule, arbitrary browser-facing Exec, UpdateConfig, UpdateProvider, profile
-import or operator-only credential export. Profiles are installed separately by the
-trusted operator.
+import or operator-only credential export. Profiles are installed separately, on
+Linux by the installer as the trusted operator.
 
 Factory sandboxes need no permission beyond the seven above. Hub creates, starts,
 stops and deletes them and their per-instance providers with the existing sandbox

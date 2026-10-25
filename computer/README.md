@@ -65,8 +65,9 @@ docker image inspect --format '{{.Id}}' veoveo/computer:reviewed
 The Dockerfile has no fallback base image, package download or runtime self-update.
 Publish the image to the installation's
 [local registry](../kubernetes/README.md#logs-image-builder-and-registry) as
-`veoveo/computer` and promote its digest there, never the example tag, into the
-trusted native workload template. The inherited factory trust must cover both the
+`veoveo/computer` and put its digest there, never the example tag, in the lock as
+`computer`, from which the installer's `templates` step fills the trusted native
+workload template. The inherited factory trust must cover both the
 private Lore service and the selected public/native endpoints. The Factory and
 Lore `ca` named contexts contain only reviewed public `*.crt` files, exactly one
 certificate per file. For the Linux private Lore endpoint, include its new
@@ -92,13 +93,14 @@ a shared explicit `/sandbox` claim or a copy-up Job. Everything outside `/sandbo
 and `/tmp` comes with the Computer version and is read-only; `/etc/computer` holds
 the immutable connection configuration. No secret is copied into the image.
 
-The operator imports the global, nonsecret native provider profiles and creates the
-trusted workload template using the existing authenticated native CLI. The example
-below selects the **Mac Docker development fixture**; Linux Kubernetes uses the
-[automatic-PVC template command](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
+On Linux Kubernetes the installer's `profiles` step imports the global, nonsecret
+native provider profiles and its `templates` step creates the trusted workload
+template, the [automatic-PVC template](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
 with its [Kubernetes driver configuration](../kubernetes/computer-driver-config.json),
 which mounts Lore at `/opt/veoveo/lore` and the Hub SDK CLI at
-`/opt/veoveo/hub-sdk-cli`. OpenShell's Docker driver has no image volumes, so the
+`/opt/veoveo/hub-sdk-cli`. The **Mac Docker development fixture** has no installer:
+the operator imports the profiles and creates its template with the existing
+authenticated native CLI. OpenShell's Docker driver has no image volumes, so the
 Mac fixture's Computer has neither CLI:
 
 ```sh
@@ -114,10 +116,14 @@ openshell sandbox template create computer --workspace installation \
 `computers.forwardingConnectionLimit` is the Hub's finite global forwarding bound
 (default and reference: 512). The native gateway examples explicitly configure
 independent TCP limits of 128 active/pending connections per sandbox and 1024
-active/512 pending per replica. Set these in trusted gateway TOML and restart the
-gateway when changing them; SSH limits remain unchanged. Warm HTTP requests open
-their native tunnel immediately and fail at an actual configured limit, with no
-fixed retry delay. Current browser-owner/session admission remains mandatory.
+active/512 pending per replica. On Linux they are `openshell.gateway.tcp_forwarding`
+in [openshell.values.yaml](../kubernetes/openshell.values.yaml), which the
+installer's `openshell` step applies, and the chart restarts the gateway when its
+configuration changes; the Mac fixture sets them in trusted gateway TOML and
+restarts the gateway when changing them. SSH limits remain unchanged. Warm HTTP
+requests open their native tunnel immediately and fail at an actual configured
+limit, with no fixed retry delay. Current browser-owner/session admission remains
+mandatory.
 
 `computers.collectAfterSeconds` (reference: 7200) is how long a Computer may stay idle,
 with no browser request through Hub and no network traffic from the Computer, before
@@ -265,8 +271,13 @@ An omitted or empty `handbook` serves no handbook. This is not a template langua
 Guidance references the Computer's current native inputs; it does not copy
 credentials, grants or project environment selections into a global prompt.
 
-For the initial trusted import, set the field in the complete seed before
-`veoveo-hub validate` / `import-control-plane`:
+On Linux the installer fills the field from this file: the Hub step of
+`installation.toml` names it as the seed's handbook, `veoveo-installer identity hub`
+writes it into the complete seed, and the `hub-control-plane` step publishes a changed
+handbook through the live admin control-plane API, preserving unrelated settings.
+
+For the Mac fixture's initial trusted import, set the field in the complete seed
+before `veoveo-hub validate` / `import-control-plane`:
 
 ```sh
 umask 077
@@ -274,8 +285,9 @@ jq --rawfile handbook computer/instructions.md '.computers.handbook = $handbook'
   "$PRIVATE/hub.json" > "$PRIVATE/hub.candidate.json"
 ```
 
-To update guidance later, read the fresh full control response using the existing
-admin API, then prepare the ordinary publication candidate from the same file:
+To update the fixture's guidance later, read the fresh full control response using
+the existing admin API, then prepare the ordinary publication candidate from the same
+file:
 
 ```sh
 umask 077
