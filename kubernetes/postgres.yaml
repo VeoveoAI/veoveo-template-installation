@@ -1,8 +1,9 @@
 # PostgreSQL as a plain StatefulSet: the extension image from postgres/Dockerfile, one
 # volume and TLS from the installation's PostgreSQL CA. Its first start runs the
 # scripts in the veoveo-postgres-initdb ConfigMap; after that, Hub creates server
-# roles and data-environment databases with plain SQL. Replace the image with its
-# Linux image@sha256 in the local registry and confirm its postgres UID/GID (Debian: 999).
+# roles and data-environment databases with plain SQL. The installer fills the image from
+# the lock's postgres, the Linux image in the local registry; confirm its postgres
+# UID/GID (Debian: 999).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -51,7 +52,7 @@ spec:
         fsGroup: 999
       containers:
         - name: postgres
-          image: REPLACE_WITH_EXTENSION_IMAGE_AT_SHA256
+          image: "@image:postgres@"
           args:
             - -c
             - ssl=on

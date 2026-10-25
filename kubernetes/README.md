@@ -67,8 +67,8 @@ instance, one volume, the `veoveo-postgres-rw` Service every client already name
 and TLS from the installation's own PostgreSQL CA. No operator. Build
 [postgres/Dockerfile](../postgres/Dockerfile), publish it to the
 [local registry](#logs-image-builder-and-registry) (the installer applies that registry
-in an earlier step; the node's entry comes first), and render `postgres.yaml`'s image
-marker with that exact image by digest. Verify the image's
+in an earlier step; the node's entry comes first), and put its digest in the lock as
+`postgres`, from which the installer fills `postgres.yaml`'s image. Verify the image's
 postgres UID/GID; the sample uses Debian's `999:999`. This image supplies PostgreSQL
 `18.6`, vector `0.8.7` and PostGIS `3.6.4`. Do not replace it with a plain image
 that omits the application extensions.

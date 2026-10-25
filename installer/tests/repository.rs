@@ -107,6 +107,7 @@ fn inputs() -> veoveo_installer::inputs::Inputs {
     for image in [
         "lore",
         "hub-sdk-cli",
+        "postgres",
         "openshell-gateway",
         "openshell-supervisor",
         "openshell-sandbox",
@@ -281,4 +282,32 @@ fn a_single_step_connects_every_owner_its_apply_needs() {
             gateway: true
         }
     );
+}
+
+#[test]
+fn every_manifest_fills_from_the_lock_or_holds_only_a_marker() {
+    use veoveo_installer::{
+        declaration::StepKind,
+        inputs::is_unrendered,
+        kubernetes::{self, Declared},
+    };
+    let inputs = inputs();
+    let mut objects = 0;
+    for step in &inputs.declaration.steps {
+        let StepKind::Kubernetes(declared) = &step.kind else {
+            continue;
+        };
+        // kubectl renders a kustomization; the check has no kubectl.
+        let mut declared = declared.clone();
+        declared.kustomize = None;
+        for item in kubernetes::declared(&inputs, &declared) {
+            match item {
+                Declared::Object(_) => objects += 1,
+                Declared::Unusable { subject, error } => {
+                    assert!(is_unrendered(&error), "{}: {subject}: {error:#}", step.name)
+                }
+            }
+        }
+    }
+    assert!(objects > 0);
 }
