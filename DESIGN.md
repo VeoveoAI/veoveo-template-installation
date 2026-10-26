@@ -119,12 +119,26 @@ Context `reference-work`, policy revision `reference-policy`, profiles `local` a
 provider for its management API, with its role names in the `roles` claim.
 
 Lore's server settings ([lore.toml](kubernetes/lore.toml)) trust only Hub's
-`{origin}/oauth` issuer, with audience `{origin}/resources/lore`, `at+jwt` tokens,
-resource IDs `urc-{id}` and `baseline_access = "denied"`; Lore's public client is
-`lore-computer`, with the `lore:login` scope and the scope template `lore-repo-{id}`.
-QUIC is off, so every Lore operation is gRPC that OpenShell mediates. The repository
-catalog is `baseline`: Lore lists no repositories per person. Lore runs no hook: what a
-workload may do in Lore is its token's grants and its provider profile's endpoint rules.
+`{origin}/oauth` issuer, with audience `{origin}/resources/lore`, `at+jwt` tokens and
+resource IDs `urc-{id}`; Lore's public client is `lore-computer`, with the `lore:login`
+scope and the scope template `lore-repo-{id}`. QUIC is off, so every Lore operation is
+gRPC that OpenShell mediates. Lore runs no hook: what a workload may do in Lore is its
+token's grants and its provider profile's endpoint rules.
+
+Lore lists each person's repositories with its `auth_service` catalog, which asks Hub's
+[`UrcAuthApi.LookupUserPermissions`](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#repository-listing)
+with the caller's token, and only when something lists; `auth_url` stays unset, so
+Lore still authorizes every request from the token alone. Its `repository_catalog_url`
+is Hub's existing `http` service route, `https://vv-control--hub--http.openshell.localhost:8080`,
+through the gateway, which carries gRPC on a service route to Hub over HTTP/2 and,
+under the route's `bearer-passthrough`, passes the caller's token. Lore is no sandbox,
+so [lore.yaml](kubernetes/lore.yaml) gives it the three things a sandbox's supervisor
+would: a host alias that resolves the route's name to the gateway Service's cluster IP,
+which Kubernetes assigned when the chart created the Service and an installation
+renders; the gateway CA beside the image's own roots (`SSL_CERT_FILE` names the
+image's bundle and `SSL_CERT_DIR` the `gateway.crt` of `public-tunnel-ca`, the public
+copy the tunnel already verifies the gateway with); and an egress rule to the gateway's
+port 8080 in its network policy.
 
 ## Storage
 
