@@ -20,7 +20,9 @@ spec:
       containers:
         - name: victorialogs
           image: victoriametrics/victoria-logs:v1.53.0@sha256:251121fa882af99b95ba0c230a4a2f412ea602d2698c64a96c58dc9842bb755d
-          args: [-storageDataPath=/vlogs, -retentionPeriod=7d, -httpListenAddr=:9428]
+          # A blank line of output is a record with an empty message, which VictoriaLogs
+          # would otherwise store as its "missing _msg field" text.
+          args: [-storageDataPath=/vlogs, -retentionPeriod=7d, -httpListenAddr=:9428, -defaultMsgValue=]
           ports:
             - name: http
               containerPort: 9428
