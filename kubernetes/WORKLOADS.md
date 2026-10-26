@@ -111,7 +111,7 @@ Create the `public-tunnel` Secret with the tunnel token as its `token` key, whic
 ConfigMap with **public** `gateway.crt` and `storage.crt`, mounted at
 `/etc/cloudflared-ca`, the files the routes' CA pools name. The gateway public CA comes from the chart's
 retained native PKI output; only its public certificate is copied. `tunnel.yaml`
-pins the verified official cloudflared `2026.10.1` Linux amd64 digest; the installer's
+pins the official cloudflared `2026.10.3` multi-arch index digest; the installer's
 `tunnel` step applies it. Never use `noTLSVerify`. Hub routing intentionally sets its
 native exposure Host; S3 routing must **not** set `httpHostHeader`, since SigV4
 binds the public Host.

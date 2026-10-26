@@ -1,4 +1,6 @@
-# Official cloudflared 2026.10.1, verified linux/amd64 manifest.
+# Official cloudflared 2026.10.3, pinned by its multi-arch index digest. Releases before
+# 2026.10.2 trust the weak eMudhra intermediates. The rollout surges: the new pod must
+# be Ready (/ready answers 200 only while connected) before the old one is removed.
 # A remotely managed tunnel: its routes live in Cloudflare (tunnel-routes.yaml),
 # and its token remains a trusted native Secret, read from a file, not argv/env data.
 apiVersion: apps/v1
@@ -8,6 +10,11 @@ metadata:
   namespace: veoveo-system
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: public-tunnel
@@ -19,7 +26,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:2026.10.1@sha256:3c0502d2da137286136b44f5b1d0d0be7030cc4833db9f53cff86beadad6cefa
+          image: cloudflare/cloudflared:2026.10.3@sha256:faa8e0a1475f137c910be6025f43c8e4092fdd35461b31e19fd1390657a1ff39
           args: [tunnel, --no-autoupdate, --metrics, '0.0.0.0:2000', run, --token-file, /etc/cloudflared-credentials/token]
           ports:
             - name: metrics
