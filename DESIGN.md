@@ -134,8 +134,9 @@ through the gateway, which carries gRPC on a service route to Hub over HTTP/2 an
 under the route's `bearer-passthrough`, passes the caller's token. Lore is no sandbox,
 so [lore.yaml](kubernetes/lore.yaml) gives it the three things a sandbox's supervisor
 would: a host alias that resolves the route's name to the gateway Service's cluster IP,
-which Kubernetes assigned when the chart created the Service and an installation
-renders; the gateway CA beside the image's own roots (`SSL_CERT_FILE` names the
+which the installation declares in the chart's `service.clusterIP`
+([openshell.values.yaml](kubernetes/openshell.values.yaml)) and the alias repeats; the
+gateway CA beside the image's own roots (`SSL_CERT_FILE` names the
 image's bundle and `SSL_CERT_DIR` the `gateway.crt` of `public-tunnel-ca`, the public
 copy the tunnel already verifies the gateway with); and an egress rule to the gateway's
 port 8080 in its network policy.
