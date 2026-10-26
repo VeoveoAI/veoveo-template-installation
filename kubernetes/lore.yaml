@@ -28,6 +28,13 @@ spec:
         app.kubernetes.io/name: lore
     spec:
       automountServiceAccountToken: false
+      # Lore asks Hub for repository listings at this name of Hub's http service route
+      # (lore.toml), which a sandbox's supervisor would resolve to the gateway. Render the
+      # gateway Service's cluster IP, which Kubernetes assigned when the chart created it:
+      # kubectl -n openshell get service openshell -o jsonpath='{.spec.clusterIP}'
+      hostAliases:
+        - ip: REPLACE_WITH_GATEWAY_SERVICE_CLUSTER_IP
+          hostnames: [vv-control--hub--http.openshell.localhost]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -48,6 +55,12 @@ spec:
               value: /data
             - name: TMPDIR
               value: /data/tmp
+            # The gateway CA beside the image's own roots, for the listing route; setting
+            # either variable replaces the system store, so the file names that store.
+            - name: SSL_CERT_FILE
+              value: /etc/ssl/certs/ca-certificates.crt
+            - name: SSL_CERT_DIR
+              value: /etc/lore/gateway-ca
           envFrom:
             - secretRef:
                 name: lore-storage
@@ -74,6 +87,9 @@ spec:
             - name: postgres-ca
               mountPath: /etc/lore/postgres-ca
               readOnly: true
+            - name: gateway-ca
+              mountPath: /etc/lore/gateway-ca
+              readOnly: true
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -88,6 +104,13 @@ spec:
         - name: postgres-ca
           configMap:
             name: postgres-client-ca
+        # The public gateway CA the tunnel verifies the gateway with.
+        - name: gateway-ca
+          configMap:
+            name: public-tunnel-ca
+            items:
+              - key: gateway.crt
+                path: gateway.crt
 ---
 apiVersion: v1
 kind: Service
@@ -149,6 +172,17 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+    # Repository listings ask Hub through the gateway's service route.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: openshell
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openshell
+      ports:
+        - protocol: TCP
+          port: 8080
     # Lore's native OIDC discovery/JWKS uses the unchanged public Hub issuer.
     # No inbound public Lore endpoint or additional token service is introduced.
     - ports:

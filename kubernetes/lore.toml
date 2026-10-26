@@ -9,8 +9,10 @@ resource_claim = "resources"
 resource_id_claim = "resource_id"
 permission_claim = "permission"
 resource_id_template = "urc-{id}"
-baseline_access = "denied"
-repository_catalog = "baseline"
+# Listing asks Hub for the caller's repositories at Hub's http service route through the
+# gateway (lore.yaml resolves its name); authorization stays with the token's resources.
+repository_catalog = "auth_service"
+repository_catalog_url = "https://vv-control--hub--http.openshell.localhost:8080"
 
 [server.auth.oidc]
 client_id = "lore-computer"
