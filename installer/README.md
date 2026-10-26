@@ -38,6 +38,11 @@ everything was read and matches, `1` when it cannot plan at all, such as with an
 unreadable `private.toml`, and `2` otherwise. What it deliberately does not compare,
 such as a seed Job, counts as matching.
 
+A template's release note is its `release_note` in `installation.toml`, compared like
+any other member. A template that differs from what runs but declares the note that runs
+is refused, since a new version needs its own note: write what it brings in
+`release_note`. A template that declares no note needs none.
+
 ## apply
 
 ```sh

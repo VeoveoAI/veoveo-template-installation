@@ -23,7 +23,8 @@ use crate::{
     private::OpenShellAccess,
 };
 
-/// A template annotation each publish writes for itself.
+/// The template annotation that holds its version's release note, which
+/// `installation.toml` declares beside the template.
 pub const RELEASE_NOTE: &str = "veoveo.ai/release-note";
 
 /// How long a sandbox may take to stop or to be deleted.
@@ -247,7 +248,7 @@ impl Gateway {
 
     async fn plan_template(&self, inputs: &Inputs, template: &Template) -> Item {
         let subject = format!("template {}/{}", template.workspace, template.name);
-        let declared = match template_proto(inputs, template, None) {
+        let declared = match template_proto(inputs, template) {
             Ok(declared) => declared,
             Err(error) => return Item::unusable(subject, &error),
         };
@@ -271,18 +272,7 @@ impl Gateway {
             }
             Err(status) => return Item::unread(subject, status.message()),
         };
-        let differences = compare(&active_template(&declared), &active_template(&live));
-        // Whoever publishes a template writes its release note; a replacement keeps it.
-        let note = live
-            .metadata
-            .as_ref()
-            .and_then(|metadata| metadata.annotations.get(RELEASE_NOTE).cloned());
-        let declared = with_release_note(declared, note);
-        Item::compared(subject, differences, None).with_action(Action::ReplaceTemplate {
-            workspace: template.workspace.clone(),
-            template: Box::new(declared),
-            exists: true,
-        })
+        compare_template(subject, &template.workspace, declared, &live)
     }
 
     pub async fn plan_sandboxes(&self, inputs: &Inputs, sandboxes: &[Sandbox]) -> Vec<Item> {
@@ -892,12 +882,11 @@ fn profile_scope(profile: &Profile, live: &Value) -> Vec<Difference> {
     }
 }
 
-/// The template as `sandbox template create` makes it, from the lock and the filled
-/// driver configuration.
+/// The template as `sandbox template create` makes it, from the lock, the filled driver
+/// configuration and its declared release note.
 pub fn template_proto(
     inputs: &Inputs,
     template: &Template,
-    release_note: Option<String>,
 ) -> Result<proto::SandboxWorkloadTemplate> {
     let image = template
         .image
@@ -915,10 +904,15 @@ pub fn template_proto(
             memory: template.memory.clone().unwrap_or_default(),
             gpu: None,
         });
-    let template = proto::SandboxWorkloadTemplate {
+    Ok(proto::SandboxWorkloadTemplate {
         metadata: Some(proto::ObjectMeta {
             name: template.name.clone(),
             workspace: template.workspace.clone(),
+            annotations: template
+                .release_note
+                .iter()
+                .map(|note| (RELEASE_NOTE.to_owned(), note.clone()))
+                .collect(),
             ..Default::default()
         }),
         spec: Some(proto::SandboxWorkloadTemplateSpec {
@@ -930,18 +924,43 @@ pub fn template_proto(
             driver_config,
             desired_service_level: None,
         }),
-    };
-    Ok(with_release_note(template, release_note))
+    })
 }
 
-fn with_release_note(
-    mut template: proto::SandboxWorkloadTemplate,
-    note: Option<String>,
-) -> proto::SandboxWorkloadTemplate {
-    if let (Some(note), Some(metadata)) = (note, template.metadata.as_mut()) {
-        metadata.annotations.insert(RELEASE_NOTE.to_owned(), note);
+/// The declared template against the one that runs, its release note compared as any
+/// other member. The note describes a version, so a template that differs but declares
+/// the note that runs is refused: a new version needs its own note. A template that
+/// declares no note needs none.
+fn compare_template(
+    subject: String,
+    workspace: &str,
+    declared: proto::SandboxWorkloadTemplate,
+    live: &proto::SandboxWorkloadTemplate,
+) -> Item {
+    let differences = compare(&active_template(&declared), &active_template(live));
+    let note = release_note(&declared);
+    if !differences.is_empty() && note.is_some() && note == release_note(live) {
+        let members: Vec<String> = differences
+            .iter()
+            .map(|difference| difference.path.to_string())
+            .collect();
+        return Item::new(
+            subject,
+            State::Refused(format!(
+                "it differs from what runs ({}) but declares the release note that runs: a new version needs its own note",
+                members.join(", ")
+            )),
+        );
     }
-    template
+    Item::compared(subject, differences, None).with_action(Action::ReplaceTemplate {
+        workspace: workspace.to_owned(),
+        template: Box::new(declared),
+        exists: true,
+    })
+}
+
+fn release_note(template: &proto::SandboxWorkloadTemplate) -> Option<&String> {
+    template.metadata.as_ref()?.annotations.get(RELEASE_NOTE)
 }
 
 fn driver_config(inputs: &Inputs, file: &std::path::Path) -> Result<prost_types::Struct> {
@@ -958,15 +977,13 @@ pub fn active_template(template: &proto::SandboxWorkloadTemplate) -> Value {
     let spec = template.spec.clone().unwrap_or_default();
     let workload = spec.workload.unwrap_or_default();
     let resources = workload.resources.unwrap_or_default();
-    let mut annotations: BTreeMap<String, String> = metadata.annotations.into_iter().collect();
-    annotations.remove(RELEASE_NOTE);
     let mut value = json!({
         "image": workload.image,
         "environment": workload.environment.into_iter().collect::<BTreeMap<_, _>>(),
         "resources": {"cpu": resources.cpu, "memory": resources.memory},
         "driver_config": spec.driver_config.as_ref().map_or(Value::Null, struct_to_json),
         "labels": metadata.labels.into_iter().collect::<BTreeMap<_, _>>(),
-        "annotations": annotations,
+        "annotations": metadata.annotations.into_iter().collect::<BTreeMap<_, _>>(),
     });
     if let Some(gpu) = resources.gpu.and_then(|gpu| gpu.count) {
         value["resources"]["gpu"] = json!(gpu);
@@ -1387,19 +1404,37 @@ scope: platform
         assert_eq!(paths, ["resources", "restart_policy"]);
     }
 
-    #[test]
-    fn a_template_keeps_its_release_note_out_of_the_comparison() {
-        let template = proto::SandboxWorkloadTemplate {
+    /// computer-v1's release note as the reference installation's gateway answers it.
+    const NOTE: &str = "The Hub CLI now works inside your Computer, as you.\nRun veoveo-hub-sdk-cli tools or call: it uses your Hub sign-in, like OpenCode. login, logout and ask are not needed here.";
+
+    /// A template as `template_proto` declares it: computer-v1's size and environment,
+    /// with `image`, a Lore mount of `lore` and `note`.
+    fn declared_template(
+        name: &str,
+        image: &str,
+        lore: &str,
+        note: Option<&str>,
+    ) -> proto::SandboxWorkloadTemplate {
+        let Some(prost_types::value::Kind::StructValue(driver_config)) = json_to_protobuf(
+            &json!({"kubernetes": {"volumes": [{"name": "lore", "image": {"reference": lore}}]}}),
+        )
+        .kind
+        else {
+            panic!("an object is a Struct");
+        };
+        proto::SandboxWorkloadTemplate {
             metadata: Some(proto::ObjectMeta {
-                name: "computer-v1".into(),
-                annotations: [(RELEASE_NOTE.to_owned(), "What is new".to_owned())]
+                name: name.into(),
+                workspace: "installation".into(),
+                annotations: note
+                    .map(|note| (RELEASE_NOTE.to_owned(), note.to_owned()))
                     .into_iter()
                     .collect(),
                 ..Default::default()
             }),
             spec: Some(proto::SandboxWorkloadTemplateSpec {
                 workload: Some(proto::SandboxWorkloadConfig {
-                    image: "computer@sha256:1".into(),
+                    image: image.into(),
                     environment: [("SSL_CERT_DIR".to_owned(), "/etc/ssl/certs".to_owned())]
                         .into_iter()
                         .collect(),
@@ -1409,18 +1444,149 @@ scope: platform
                         gpu: None,
                     }),
                 }),
-                driver_config: None,
+                driver_config: Some(driver_config),
                 desired_service_level: None,
             }),
-        };
-        let declared = json!({
-            "image": "computer@sha256:1",
-            "environment": {"SSL_CERT_DIR": "/etc/ssl/certs"},
-            "resources": {"cpu": "2", "memory": "4Gi"},
-            "driver_config": null,
-            "labels": {},
-            "annotations": {},
+        }
+    }
+
+    /// The template as GetSandboxTemplate answers it once created: with the gateway's
+    /// object ID, resource version and creation time.
+    fn running_template(
+        name: &str,
+        image: &str,
+        lore: &str,
+        note: Option<&str>,
+    ) -> proto::SandboxWorkloadTemplate {
+        let mut template = declared_template(name, image, lore, note);
+        let metadata = template.metadata.as_mut().unwrap();
+        metadata.id = "3f1c2a9e-5d47-4f0b-9a61-2c8e7b4d1f05".into();
+        metadata.resource_version = 1;
+        metadata.created_time = Some(prost_types::Timestamp {
+            seconds: 1_792_886_400,
+            nanos: 0,
         });
-        assert_eq!(compare(&declared, &active_template(&template)), vec![]);
+        template
+    }
+
+    const COMPUTER: &str = "registry/computer@sha256:1";
+    const LORE: &str = "registry/lore@sha256:1";
+
+    /// computer-v1 as it runs: the lock's images and Bioma's note.
+    fn running_computer() -> proto::SandboxWorkloadTemplate {
+        running_template("computer-v1", COMPUTER, LORE, Some(NOTE))
+    }
+
+    fn compare_templates(
+        declared: proto::SandboxWorkloadTemplate,
+        live: &proto::SandboxWorkloadTemplate,
+    ) -> Item {
+        compare_template("template".into(), "installation", declared, live)
+    }
+
+    fn difference_paths(item: &Item) -> Vec<String> {
+        match &item.state {
+            State::Differs { differences, .. } => differences
+                .iter()
+                .map(|difference| difference.path.to_string())
+                .collect(),
+            other => panic!("expected a difference, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_template_reads_back_as_declared_with_its_release_note() {
+        let item = compare_templates(
+            declared_template("computer-v1", COMPUTER, LORE, Some(NOTE)),
+            &running_computer(),
+        );
+        assert!(matches!(item.state, State::Same), "{:?}", item.state);
+        assert!(item.action.is_none());
+    }
+
+    #[test]
+    fn a_new_version_that_keeps_the_running_release_note_is_refused() {
+        // A Lore-only upgrade: the lock's Lore digest changes and nothing else.
+        let declared = declared_template(
+            "computer-v1",
+            COMPUTER,
+            "registry/lore@sha256:2",
+            Some(NOTE),
+        );
+        let item = compare_templates(declared, &running_computer());
+        let State::Refused(reason) = &item.state else {
+            panic!("expected a refusal, got {:?}", item.state);
+        };
+        assert_eq!(
+            reason,
+            "it differs from what runs (driver_config.kubernetes.volumes[name=lore].image.reference) but declares the release note that runs: a new version needs its own note"
+        );
+        assert!(item.action.is_none());
+        assert!(item.blocker().is_some());
+    }
+
+    #[test]
+    fn a_new_version_publishes_its_declared_release_note() {
+        let declared = declared_template(
+            "computer-v1",
+            COMPUTER,
+            "registry/lore@sha256:2",
+            Some("Lore 1.5 in your Computer."),
+        );
+        let item = compare_templates(declared, &running_computer());
+        assert_eq!(
+            difference_paths(&item),
+            [
+                r#"annotations["veoveo.ai/release-note"]"#,
+                "driver_config.kubernetes.volumes[name=lore].image.reference"
+            ]
+        );
+        let Some(Action::ReplaceTemplate {
+            template,
+            exists: true,
+            ..
+        }) = &item.action
+        else {
+            panic!("expected a replacement, got {:?}", item.action);
+        };
+        assert_eq!(
+            release_note(template).map(String::as_str),
+            Some("Lore 1.5 in your Computer.")
+        );
+    }
+
+    #[test]
+    fn a_changed_release_note_alone_is_a_difference() {
+        let declared = declared_template("computer-v1", COMPUTER, LORE, Some("Clearer words."));
+        let item = compare_templates(declared, &running_computer());
+        assert_eq!(
+            difference_paths(&item),
+            [r#"annotations["veoveo.ai/release-note"]"#]
+        );
+        assert!(item.action.is_some());
+    }
+
+    #[test]
+    fn a_template_that_declares_no_release_note_needs_none() {
+        // factory-v1 carries no note, and Hub reads none from it.
+        let live = running_template("factory-v1", "", LORE, None);
+        let declared = declared_template("factory-v1", "", "registry/lore@sha256:2", None);
+        let item = compare_templates(declared, &live);
+        assert_eq!(
+            difference_paths(&item),
+            ["driver_config.kubernetes.volumes[name=lore].image.reference"]
+        );
+        assert!(item.action.is_some());
+        // Nor does a template that stops declaring one.
+        let declared = declared_template("computer-v1", COMPUTER, "registry/lore@sha256:2", None);
+        let item = compare_templates(declared, &running_computer());
+        assert_eq!(
+            difference_paths(&item),
+            [
+                r#"annotations["veoveo.ai/release-note"]"#,
+                "driver_config.kubernetes.volumes[name=lore].image.reference"
+            ]
+        );
+        assert!(item.action.is_some());
     }
 }

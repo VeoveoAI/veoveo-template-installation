@@ -141,6 +141,9 @@ workspace = "vv-services"
 
 [[step]]
 name = "templates"
+# A template's release_note is what its version brings, which Hub shows people as the
+# Computer's "What's new"; its first line is the summary. Change it with the template:
+# plan refuses a template that differs from what runs but keeps the note that runs.
 [[step.template]]
 workspace = "installation"
 name = "computer-v1"
@@ -149,6 +152,7 @@ cpu = "2"
 memory = "4Gi"
 driver_config = "kubernetes/computer-driver-config.json"
 environment = { SSL_CERT_DIR = "/etc/ssl/certs", VEOVEO_LORE_REMOTE = "grpcs://lore.veoveo-system.svc.cluster.local:41337", VEOVEO_CLI_HUB = "https://veoveo.example.com", VEOVEO_CLI_PROFILE = "computer", VEOVEO_CLI_BEARER_ENV = "COMPUTER_HUB_REFERENCE" }
+release_note = "The first version of this installation's Computer."
 [[step.template]]
 workspace = "installation"
 name = "factory-v1"

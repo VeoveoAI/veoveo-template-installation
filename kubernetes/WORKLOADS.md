@@ -347,12 +347,13 @@ and each sandbox's `COMPUTER_VERSION` name. `GET /computer/status`, `POST
 a bearer of Hub's Computers profile: the [Computer policy](policies/computer-v1.yaml)
 lets any program in a Computer call them with the owner's Hub token, and
 [console's policy](policies/console.yaml) lets console call status and restart for its
-caller and read the public `GET /computer/version`. The optional `veoveo.ai/release-note`
-annotation is the version's release note; its first line is the summary agents tell
-the person. To publish a new version, change the template's image, environment or
-mounts in this repository and apply, which deletes the template and creates it again
-under the same name with its release note (OpenShell has no template update), or
-publish a new policy file or template name through the live control plane. Running
+caller and read the public `GET /computer/version`. The template's `release_note` in
+`installation.toml`, its `veoveo.ai/release-note` annotation, is the version's release
+note; its first line is the summary agents tell the person. To publish a new version,
+change the template's image, environment or mounts in this repository with a new
+`release_note` and apply, which deletes the template and creates it again under the same
+name (OpenShell has no template update), or publish a new policy file or template name
+through the live control plane. Running
 Computers keep their version until their owners restart them; a new sandbox, such as
 the first one, starts at the current version.
 

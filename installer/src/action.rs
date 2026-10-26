@@ -122,7 +122,7 @@ impl Action {
                 resource_version, ..
             } => format!("lint and update the profile at version {resource_version}"),
             Self::ReplaceTemplate { exists: true, .. } => {
-                "delete the template and create it again, keeping its release note".to_owned()
+                "delete the template and create it again as declared".to_owned()
             }
             Self::ReplaceTemplate { exists: false, .. } => "create the template".to_owned(),
             Self::ReplaceSandbox { exists: true, .. } => {

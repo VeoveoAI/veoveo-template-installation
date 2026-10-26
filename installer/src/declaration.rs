@@ -150,6 +150,9 @@ pub struct Template {
     pub driver_config: Option<PathBuf>,
     #[serde(default)]
     pub environment: BTreeMap<String, String>,
+    /// What this version of the template brings, its `veoveo.ai/release-note`
+    /// annotation. A template that declares none has none.
+    pub release_note: Option<String>,
 }
 
 /// A long-running platform sandbox.

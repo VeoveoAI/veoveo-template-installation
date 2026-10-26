@@ -256,9 +256,10 @@ OpenShell refuses every other Lore method before the token is attached. Computer
 
 The Computer template `computer-v1`, in workspace `installation`, its
 [policy](kubernetes/policies/computer-v1.yaml) and Hub's `computers` settings make the
-Computer version. Whoever publishes a template writes its `veoveo.ai/release-note`
-annotation. The template may appear before or after Hub starts; Hub reads it when a
-Computer is entered.
+Computer version. Its release note, the template's `veoveo.ai/release-note` annotation,
+describes the version this repository declares, so `installation.toml` declares it
+beside the template; a template that declares none has none. The template may appear
+before or after Hub starts; Hub reads it when a Computer is entered.
 
 `/sandbox` is the person's home: the image sets `HOME=/sandbox`, ships only the empty
 mount point and sets no XDG or Lore paths, and the platform never writes there.
@@ -333,22 +334,25 @@ as it is, with the fields an earlier `kubectl apply` set that the declaration no
 has; a release's chart, status and supplied values; profiles and policies in
 OpenShell's canonical form, parsed by OpenShell's own crates, without the rules
 providers add to a sandbox's policy; a template's or sandbox's image, environment,
-resources, driver configuration, providers, command and restart policy; Hub's control
-plane through `GET /admin/{profile}/control-plane`, against the seed merged by typed
-keys and the handbook, leaving out the members people change (grants, Work Context
-memberships, output owners and initial grants, repositories and assignments), which a
-publication carries from the active revision, so the seed's example people, such as
-its example output owner, are never published; and Hub's trusted files, read in Hub's
-sandbox through native exec. It lists, in step order, what differs, what it could not
-read and what apply still has to do, and succeeds only when everything was read and
-matches. What plan deliberately does not compare counts as matching and is not listed:
-a seed Job, which runs once and is deleted, so plan does not read the claim it fills;
-a file still holding a `REPLACE_WITH_` marker; and the control plane of a first
-installation, whose Hub does not run yet. The control plane while the claim step has
-still to write a file it names is not compared either, but apply still has its
-publication to make, so it is listed and its step does not match. An error never
-counts as matching: a declaration that cannot be read or filled, or a piece whose
-running state cannot be read, fails plan and keeps apply from changing anything.
+resources, driver configuration, providers, command and restart policy, and a template's
+release note; Hub's control plane through `GET /admin/{profile}/control-plane`, against
+the seed merged by typed keys and the handbook, leaving out the members people change
+(grants, Work Context memberships, output owners and initial grants, repositories and
+assignments), which a publication carries from the active revision, so the seed's
+example people, such as its example output owner, are never published; and Hub's
+trusted files, read in Hub's sandbox through native exec. It lists, in step order, what
+differs, what it could not read and what apply still has to do, and succeeds only when
+everything was read and matches. What plan deliberately does not compare counts as
+matching and is not listed: a seed Job, which runs once and is deleted, so plan does
+not read the claim it fills; a file still holding a `REPLACE_WITH_` marker; and the
+control plane of a first installation, whose Hub does not run yet. The control plane
+while the claim step has still to write a file it names is not compared either, but
+apply still has its publication to make, so it is listed and its step does not match.
+An error never counts as matching: a declaration that cannot be read or filled, or a
+piece whose running state cannot be read, fails plan and keeps apply from changing
+anything. A template that differs from what runs but declares the release note that
+runs is refused, with that reason: a new version needs its own note. A template that
+declares no note, such as the factory template, needs none.
 
 `veoveo-installer apply` makes only those changes, in dependency order, checks each one
 (readiness, registration with Hub, the standard probes) and stops at the first failure
@@ -360,12 +364,12 @@ removes the members it no longer declares, and a workload that reads a changed o
 only when it starts is restarted; a release is upgraded with exactly its declared
 values; a profile is linted, then imported or updated at the version read. OpenShell
 has no template or sandbox update, so a template or a platform sandbox whose declared
-state differs is deleted and created again: a template keeps its release note, and a
-sandbox is stopped first and keeps its workspace, claims and providers. Each change is
-checked (a rollout complete, a sandbox ready, Hub serving its issuer and the Computer
-version, a server's deployment healthy in Hub's server health), and its step is then
-planned again and must match; workloads that become ready only once Hub serves, such
-as Lore, are checked after the last step.
+state differs is deleted and created again: a template with its declared release note,
+and a sandbox is stopped first and keeps its workspace, claims and providers. Each
+change is checked (a rollout complete, a sandbox ready, Hub serving its issuer and the
+Computer version, a server's deployment healthy in Hub's server health), and its step
+is then planned again and must match; workloads that become ready only once Hub
+serves, such as Lore, are checked after the last step.
 
 Hub's trusted files that come from this repository, the Computer and factory base
 policies, are named by their content: `<name>-<the first 12 hexadecimal digits of

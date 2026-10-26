@@ -167,16 +167,14 @@ fn every_declared_sandbox_and_template_reads_back_as_declared_once_created() {
     for step in &inputs.declaration.steps {
         if let veoveo_installer::declaration::StepKind::Templates(templates) = &step.kind {
             for template in templates {
-                let created =
-                    openshell::template_proto(&inputs, template, Some("What is new".into()))
-                        .unwrap();
-                let without_note = openshell::template_proto(&inputs, template, None).unwrap();
+                // A template is created with the release note declared beside it, or none.
+                let created = openshell::template_proto(&inputs, template).unwrap();
                 assert_eq!(
-                    compare(
-                        &openshell::active_template(&created),
-                        &openshell::active_template(&without_note)
-                    ),
-                    vec![],
+                    created
+                        .metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.annotations.get(openshell::RELEASE_NOTE)),
+                    template.release_note.as_ref(),
                     "template {}",
                     template.name
                 );
