@@ -246,8 +246,10 @@ assignments and signs native claims, and unchanged Lore enforces its own contrac
 Each custody handoff gives the Computer's own Hub client a new secret in the
 gateway's `oauth2_client_credentials` refresh custody of the workspace-local
 `computer-lore` provider, created from global `vv-lore`, and rotates it; a running
-sandbox's proxy uses the new token. Each token is the owner's, with one native resource entry for every
-repository the owner is assigned. The sandbox receives only the provider's
+sandbox's proxy uses the new token. For each Lore request that names a repository, the
+sandbox's supervisor asks the gateway for the owner's token of that repository, which
+the gateway mints with the same client, and holds it until shortly before it expires;
+requests that name none carry the owner's token without a repository. The sandbox receives only the provider's
 placeholder in `LORE_ACCESS_TOKEN` and the owner's principal in `LORE_IDENTITY`,
 which the native Lore CLI reads; the proxy substitutes the token on the profile's
 inspected endpoint. No human token is copied to a factory or another Computer.

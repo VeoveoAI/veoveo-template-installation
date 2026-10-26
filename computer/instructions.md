@@ -25,8 +25,10 @@ output upload.
 `VEOVEO_LORE_REMOTE` is the installation's private Lore URI, not a native setting.
 Lore is already signed in as this Computer's owner: the owner's Hub sign-in is the
 only login, so do not run `lore auth login`. Every `lore` command acts as the owner
-on each repository the owner is assigned, including one assigned while the
-Computer runs: Hub renews the owner's Lore access as soon as an assignment changes.
+on each repository the owner can reach: their own, and those shared with them or with a
+group they belong to. A share or a membership change while the Computer runs reaches
+it within five minutes. To share a repository, use `console__share_repository`; to
+manage groups, `console__create_group` and `console__set_group_member`.
 `LORE_ACCESS_TOKEN` holds only a placeholder that the sandbox's proxy replaces in
 Lore's requests; never copy it elsewhere.
 To start a new repository, call the Hub tool `console__create_repository` with its

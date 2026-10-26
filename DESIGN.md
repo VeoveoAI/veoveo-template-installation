@@ -191,7 +191,7 @@ Real credentials stay in the gateway's encrypted custody; a workload sees only t
 placeholder its provider's environment names, which OpenShell replaces on the request.
 A credential that must sign stays with its signer, such as Artifact's bucket key. The
 provider profiles are global: `vv-lore` (a Computer's Lore access as its owner, every
-method), `vv-factory-lore` (a factory instance's Lore access as its latest pusher,
+method, with one token per repository, for the repository each request names), `vv-factory-lore` (a factory instance's Lore access as its latest pusher,
 reads only), both refreshed by the gateway with each one's own Hub client,
 `vv-factory-registration` (an instance's registration token), the Computer's
 `vv-computer-hub` and `vv-computer-model`, each platform server's
