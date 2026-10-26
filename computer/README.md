@@ -41,7 +41,7 @@ deployment acceptance.
   platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
 - Native OpenShell gateway/driver, supervisor and sandbox runtime:
-  `491b3503d39f3ba83a25a309f52e52e20e304b03` for all three, as the
+  `ab37a698cfd03cdfb2559af7fd4263075233a48a` for all three, as the
   [K3s gateway](../kubernetes/README.md#native-openshell-gateway) describes. It mounts
   the Lore and Hub SDK CLI images that the Computer template names, records the
   network activity Computer collection reads and keeps a Computer's workspace across

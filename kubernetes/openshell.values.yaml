@@ -1,7 +1,7 @@
 # The chart comes from the maintained OpenShell revision
-# 534250aa03abf3067edf6be935a426c3804c4da1, which adds service.clusterIP to the chart of
-# 491b3503d39f3ba83a25a309f52e52e20e304b03 and changes no code; the gateway, supervisor
-# and sandbox runtime are built from 491b3503d. The three images are
+# ab37a698cfd03cdfb2559af7fd4263075233a48a, which merges upstream main into the
+# fork and adds request-scoped provider credential refresh; the gateway, supervisor
+# and sandbox runtime are built from ab37a698c. The three images are
 # published to the installation's local registry as
 # veoveo/openshell/{gateway,supervisor,sandbox}. The node pulls them through its
 # registries.yaml entry; no image-pull Secret is used.
