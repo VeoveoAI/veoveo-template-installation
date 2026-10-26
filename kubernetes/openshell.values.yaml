@@ -1,7 +1,9 @@
 # The chart comes from the maintained OpenShell revision
-# ab37a698cfd03cdfb2559af7fd4263075233a48a, which merges upstream main into the
-# fork and adds request-scoped provider credential refresh; the gateway, supervisor
-# and sandbox runtime are built from ab37a698c. The three images are
+# ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65, one commit on ab37a698cfd03cdfb2559af7fd4263075233a48a, which merges
+# upstream main into the fork and adds request-scoped provider credential refresh.
+# The gateway is built from ebd6a1c, which refreshes a credential on the last sweep
+# before its refresh time; the supervisor and sandbox runtime are built from
+# ab37a698c. The chart is identical at both. The three images are
 # published to the installation's local registry as
 # veoveo/openshell/{gateway,supervisor,sandbox}. The node pulls them through its
 # registries.yaml entry; no image-pull Secret is used.

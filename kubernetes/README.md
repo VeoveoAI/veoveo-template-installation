@@ -391,15 +391,16 @@ tunnel, and never rewrite the public host to Service DNS.
 
 ## Native OpenShell gateway
 
-Build the chart's gateway, supervisor and sandbox runtime from maintained OpenShell
-source `ab37a698cfd03cdfb2559af7fd4263075233a48a` with OpenShell's own image workflow
+Build the chart's gateway from maintained OpenShell source `ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65` and its
+supervisor and sandbox runtime from `ab37a698cfd03cdfb2559af7fd4263075233a48a` (the gateway's commit adds only the
+refresh-timing change below; the chart is identical at both), with OpenShell's own image workflow
 and publish all three to the [local registry](#logs-image-builder-and-registry) as
 `veoveo/openshell/gateway`, `veoveo/openshell/supervisor` and
 `veoveo/openshell/sandbox`. That revision mounts digest-pinned images from listed
 repositories as read-only image volumes, which the Lore and Hub SDK CLI mounts need;
 records each sandbox's last network activity, which Computer collection reads; keeps
 a deleted sandbox's workspace for the next sandbox of its name and gives its root to
-the sandbox user; installs a credential refresh in place; and keeps the earlier
+the sandbox user; installs a credential refresh in place, which the gateway starts on the last sweep before the credential's refresh time; and keeps the earlier
 Kubernetes destination-CA, admitted GPU propagation, terminal-runtime recovery and
 supervisor fixes and gRPC on sandbox service routes.
 [openshell.values.yaml](openshell.values.yaml) selects the registry and takes the three
@@ -498,7 +499,7 @@ retain **both** database-CA and destination-CA mounts: Helm replaces volume list
 rather than appending them. These inputs are not deployed TLS acceptance.
 
 The installer's `openshell` step installs the chart from OpenShell's source at
-`ab37a698cfd03cdfb2559af7fd4263075233a48a`, the revision the three images are built from, from the checkout `private.toml` names
+`ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65`, the revision the gateway image is built from (the supervisor and sandbox are from `ab37a698c`; the chart is identical at both), from the checkout `private.toml` names
 (`[helm.openshell] source`), with
 openshell.values.yaml and the private identity values (`[helm.openshell] values`).
 The service endpoint is `https://openshell.openshell.svc.cluster.local:8080`.
