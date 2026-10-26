@@ -115,6 +115,21 @@ network_policies:
       - allow:
           method: POST
           path: /lore/*/repositories
+      - allow:
+          method: GET
+          path: /lore/*/repositories/*/access
+      - allow:
+          method: PUT
+          path: /lore/*/repositories/*/access
+      - allow:
+          method: GET
+          path: /lore/*/groups
+      - allow:
+          method: POST
+          path: /lore/*/groups
+      - allow:
+          method: PUT
+          path: /lore/*/groups/*/members
     # The caller's Computer, and the current Computer version, which the Hub serves to
     # anyone and console names in the computer tool's description.
     - host: veoveo.example.com
