@@ -46,13 +46,14 @@ pub const SIGN_IN_REDIRECT: &str = "http://127.0.0.1:3211/callback";
 pub const SIGN_IN_SCOPE: &str = "mcp";
 
 /// Members of the control plane that people change, never the installation.
-pub const PEOPLE: [&str; 6] = [
+pub const PEOPLE: [&str; 7] = [
     "authorization.grants",
     "workContexts.*.memberships",
     "workContexts.*.outputPolicy.owner",
     "workContexts.*.outputPolicy.initialGrants",
     "lore.repositories",
     "lore.assignments",
+    "lore.groups",
 ];
 
 /// Sections of the control plane Hub reads only when it starts: a change to one takes
@@ -365,7 +366,7 @@ pub fn publication(declared: &Value, active: &Value) -> Value {
     ) {
         authorization.insert("grants".to_owned(), grants.clone());
     }
-    for member in ["repositories", "assignments"] {
+    for member in ["repositories", "assignments", "groups"] {
         if let (Some(value), Some(lore)) = (
             active.pointer(&format!("/lore/{member}")),
             document.get_mut("lore").and_then(Value::as_object_mut),
@@ -1465,8 +1466,12 @@ mod tests {
             json!([{"id": "reference-work", "memberships": [{"principals": ["e8c1", "77aa"]}]}]);
         active["lore"]["repositories"] =
             json!([{"id": "01a1586c89057ea3adcfc848da54077b", "title": "time"}]);
-        active["lore"]["assignments"] =
-            json!([{"repository": "01a1586c89057ea3adcfc848da54077b", "principal": "e8c1"}]);
+        active["lore"]["assignments"] = json!([
+            {"repository": "01a1586c89057ea3adcfc848da54077b", "principal": "e8c1"},
+            {"repository": "01a1586c89057ea3adcfc848da54077b", "group": "5f0c1d2e3a4b5c6d7e8f90a1b2c3d4e5"}
+        ]);
+        active["lore"]["groups"] = json!([{"id": "5f0c1d2e3a4b5c6d7e8f90a1b2c3d4e5", "name": "flight",
+            "members": [{"principal": "e8c1", "role": "owner"}]}]);
         active["computers"]["handbook"] = json!("# Handbook\nUse Lore.\n");
         active["computers"]["policyFile"] = json!("/etc/veoveo/hub/computer-policy-v3.yaml");
         active["factory"]["policyFile"] = json!("/etc/veoveo/hub/factory-base-v2.yaml");
@@ -1595,6 +1600,7 @@ mod tests {
             document["lore"]["assignments"],
             active()["lore"]["assignments"]
         );
+        assert_eq!(document["lore"]["groups"], active()["lore"]["groups"]);
         assert_eq!(
             document["workContexts"][0]["memberships"],
             active()["workContexts"][0]["memberships"]
