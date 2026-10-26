@@ -478,7 +478,9 @@ impl Gateway {
         Ok(())
     }
 
-    /// Lints the profile, then imports it or updates it at `resource_version`.
+    /// Imports the profile once it lints, or updates it at `resource_version`. Lint judges
+    /// an import, so it refuses an existing ID; the gateway validates an update itself and
+    /// answers its diagnostics.
     pub async fn put_profile(
         &self,
         workspace: Option<&str>,
@@ -491,21 +493,23 @@ impl Gateway {
             profile: Some(profile.clone()),
             source: source.to_owned(),
         };
-        let lint = self
-            .client
-            .raw_grpc()
-            .lint_provider_profiles(proto::LintProviderProfilesRequest {
-                workspace_scope: scope.clone(),
-                profiles: vec![item.clone()],
-            })
-            .await
-            .map_err(|status| anyhow!("LintProviderProfiles {source}: {}", status.message()))?
-            .into_inner();
-        if !lint.valid {
-            bail!("{source} does not lint: {:?}", lint.diagnostics);
-        }
         match resource_version {
             None => {
+                let lint = self
+                    .client
+                    .raw_grpc()
+                    .lint_provider_profiles(proto::LintProviderProfilesRequest {
+                        workspace_scope: scope.clone(),
+                        profiles: vec![item.clone()],
+                    })
+                    .await
+                    .map_err(|status| {
+                        anyhow!("LintProviderProfiles {source}: {}", status.message())
+                    })?
+                    .into_inner();
+                if !lint.valid {
+                    bail!("{source} does not lint: {:?}", lint.diagnostics);
+                }
                 let response = self
                     .client
                     .raw_grpc()

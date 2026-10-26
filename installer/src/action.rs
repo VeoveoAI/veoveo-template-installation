@@ -30,7 +30,7 @@ pub enum Action {
         profile: Box<proto::ProviderProfile>,
         source: String,
     },
-    /// Lint, then update a profile at the version it was read.
+    /// Update a profile at the version it was read; the gateway validates it.
     UpdateProfile {
         workspace: Option<String>,
         profile: Box<proto::ProviderProfile>,
@@ -120,7 +120,7 @@ impl Action {
             Self::ImportProfile { .. } => "lint and import the profile".to_owned(),
             Self::UpdateProfile {
                 resource_version, ..
-            } => format!("lint and update the profile at version {resource_version}"),
+            } => format!("update the profile at version {resource_version}"),
             Self::ReplaceTemplate { exists: true, .. } => {
                 "delete the template and create it again as declared".to_owned()
             }
