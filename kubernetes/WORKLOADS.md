@@ -92,10 +92,11 @@ Hub served). Test real native operations and late or interrupted issuer/storage
 dependencies separately. No service-order init Job.
 
 Lore's repository listing asks Hub at Hub's `http` service route through the gateway
-([design](../DESIGN.md#identity)). Render `lore.yaml`'s host alias with the gateway
-Service's cluster IP once the `openshell` step created it
-(`kubectl -n openshell get service openshell -o jsonpath='{.spec.clusterIP}'`); a new
-Service, as after the chart is uninstalled, gets a new one. Lore mounts the
+([design](../DESIGN.md#identity)). Render one address in `openshell.values.yaml`'s
+`service.clusterIP` and in `lore.yaml`'s host alias: an unused address of the Service
+CIDR for a new gateway, or the address an existing gateway Service has
+(`kubectl -n openshell get service openshell -o jsonpath='{.spec.clusterIP}'`), which
+Kubernetes keeps. Lore mounts the
 `gateway.crt` of the `public-tunnel-ca` ConfigMap described below, so create that
 ConfigMap before the `lore` step. Listing alone depends on these: Lore authorizes from
 the token and serves every other request without Hub.

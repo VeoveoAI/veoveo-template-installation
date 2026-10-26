@@ -29,9 +29,8 @@ spec:
     spec:
       automountServiceAccountToken: false
       # Lore asks Hub for repository listings at this name of Hub's http service route
-      # (lore.toml), which a sandbox's supervisor would resolve to the gateway. Render the
-      # gateway Service's cluster IP, which Kubernetes assigned when the chart created it:
-      # kubectl -n openshell get service openshell -o jsonpath='{.spec.clusterIP}'
+      # (lore.toml), which a sandbox's supervisor would resolve to the gateway: the
+      # gateway Service's service.clusterIP in openshell.values.yaml.
       hostAliases:
         - ip: REPLACE_WITH_GATEWAY_SERVICE_CLUSTER_IP
           hostnames: [vv-control--hub--http.openshell.localhost]

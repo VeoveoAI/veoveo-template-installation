@@ -497,8 +497,10 @@ an affected runtime to select changed roots. When adding private Helm overrides,
 retain **both** database-CA and destination-CA mounts: Helm replaces volume lists
 rather than appending them. These inputs are not deployed TLS acceptance.
 
-The installer's `openshell` step installs the chart from OpenShell's source at that
-revision, the checkout `private.toml` names (`[helm.openshell] source`), with
+The installer's `openshell` step installs the chart from OpenShell's source at
+`534250aa03abf3067edf6be935a426c3804c4da1`, which adds `service.clusterIP` to that
+revision's chart and changes no code, from the checkout `private.toml` names
+(`[helm.openshell] source`), with
 openshell.values.yaml and the private identity values (`[helm.openshell] values`).
 The service endpoint is `https://openshell.openshell.svc.cluster.local:8080`.
 The gateway uses its distinct PostgreSQL database, outside this Helm release.

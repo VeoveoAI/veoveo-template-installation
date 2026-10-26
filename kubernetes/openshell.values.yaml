@@ -1,5 +1,7 @@
-# The chart, gateway, supervisor and sandbox runtime all come from the maintained
-# OpenShell revision 491b3503d39f3ba83a25a309f52e52e20e304b03; the three images are
+# The chart comes from the maintained OpenShell revision
+# 534250aa03abf3067edf6be935a426c3804c4da1, which adds service.clusterIP to the chart of
+# 491b3503d39f3ba83a25a309f52e52e20e304b03 and changes no code; the gateway, supervisor
+# and sandbox runtime are built from 491b3503d. The three images are
 # published to the installation's local registry as
 # veoveo/openshell/{gateway,supervisor,sandbox}. The node pulls them through its
 # registries.yaml entry; no image-pull Secret is used.
@@ -13,6 +15,12 @@
 # name if changed.
 fullnameOverride: openshell
 replicaCount: 1
+# The gateway Service's cluster IP, which lore.yaml's host alias names too, so that Lore
+# reaches Hub's service route for repository listings: render the same address in both.
+# Kubernetes keeps a Service's address, so take an unused one of K3s's Service CIDR
+# (k3s.yaml) for a new gateway, or the address an existing gateway Service has.
+service:
+  clusterIP: REPLACE_WITH_GATEWAY_SERVICE_CLUSTER_IP
 workload:
   kind: deployment
 global:
