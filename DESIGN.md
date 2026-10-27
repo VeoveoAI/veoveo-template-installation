@@ -127,8 +127,12 @@ token's grants and its provider profile's endpoint rules.
 
 Lore lists each person's repositories with its `auth_service` catalog, which asks Hub's
 [`UrcAuthApi.LookupUserPermissions`](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#repository-listing)
-with the caller's token, and only when something lists; `auth_url` stays unset, so
-Lore still authorizes every request from the token alone. Its `repository_catalog_url`
+with the caller's token, and only when something lists. It tells the same endpoint of each
+repository it creates and deletes, through Hub's
+[`RebacApi`](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#repositories-lore-creates-and-deletes),
+so `lore repository create` makes its creator the owner and an owner deletes with
+`lore repository delete`. `auth_url` stays unset, so Lore still authorizes every request
+from the token alone. Its `repository_catalog_url`
 is Hub's existing `http` service route, `https://vv-control--hub--http.openshell.localhost:8080`,
 through the gateway, which carries gRPC on a service route to Hub over HTTP/2 and,
 under the route's `bearer-passthrough`, passes the caller's token. Lore is no sandbox,

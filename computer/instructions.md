@@ -31,9 +31,10 @@ it within five minutes. To share a repository, use `console__share_repository`; 
 manage groups, `console__create_group` and `console__set_group_member`.
 `LORE_ACCESS_TOKEN` holds only a placeholder that the sandbox's proxy replaces in
 Lore's requests; never copy it elsewhere.
-To start a new repository, call the Hub tool `console__create_repository` with its
-name: it creates the repository as the owner and assigns it to them, so the next
-`lore` command can clone or push it. Do not run `lore repository create` directly.
+To start a new repository, run `lore repository create "$VEOVEO_LORE_REMOTE/<name>"` in
+the directory that becomes its workspace, or call the Hub tool
+`console__create_repository` with its name and clone it: either way the owner owns it at
+once, so the next `lore` command can push or clone it.
 The owner or agent chooses the repository, branch and destination. An empty Lore
 repository list does not determine whether a known assigned repository can be
 cloned. Clone with the chosen repository URI and destination, then use that

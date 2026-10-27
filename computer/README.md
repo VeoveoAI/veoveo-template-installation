@@ -17,10 +17,12 @@ deployment acceptance.
 
 - Factory toolchain: this revision's [factory Dockerfile](../factory/Dockerfile),
   UID/GID 10001. Select its inspected immutable image digest.
-- Native Lore: source commit `4b7b7e236419414b4a0c67ecd66ca2409f19d35c`, retaining
+- Native Lore: source commit `4ee9f3382ec5b3b214713ce21ee0d48263501d84`, retaining
   native OIDC refresh and S3/PostgreSQL storage, ending a lagging subscriber's
   notification stream and reading `LORE_ACCESS_TOKEN` and `LORE_IDENTITY` when their
-  flags are absent, which Computers and factory sandboxes need. Build with the existing
+  flags are absent, which Computers and factory sandboxes need, and telling the
+  `auth_service` catalog's endpoint of each repository it creates and deletes, which
+  makes the creator of a repository its owner in Hub. Build with the existing
   [Lore Dockerfile](../factory/Lore.Dockerfile)
   and the selected source/CA named contexts. It is no build context of the Computer
   image: the Computer template mounts the Lore image read-only, as Hub and every
