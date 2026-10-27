@@ -10,7 +10,8 @@
     "-opencode.vcs.hg",
     "-opencode.provider.ollama",
     "-opencode.provider.lmstudio",
-    "-opencode.provider.vllm"
+    "-opencode.provider.vllm",
+    "-opencode.provider.opencode"
   ],
   "providers": {
     "deepinfra": {

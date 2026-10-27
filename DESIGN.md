@@ -295,8 +295,10 @@ one source is [computer/instructions.md](computer/instructions.md), published in
 `computers.handbook` through the live control plane.
 
 OpenCode's configuration ([opencode.json](computer/opencode.json)) selects
-`deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default, turns off its Git and Mercurial
-plugins and its snapshots, since Lore owns source history and undo, and connects one
+`deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default and offers only DeepInfra's models, the
+one model endpoint the policy admits: it turns off OpenCode's own provider, whose free
+models it would otherwise offer. It turns off its Git and Mercurial plugins and its
+snapshots, since Lore owns source history and undo, and connects one
 MCP server, `hub`, with the Computer's own Hub credential. The mounted Hub SDK CLI acts
 as the owner the same way: the template sets `VEOVEO_CLI_HUB` to the Hub's public
 origin, `VEOVEO_CLI_PROFILE=computer` and `VEOVEO_CLI_BEARER_ENV=COMPUTER_HUB_REFERENCE`,

@@ -219,7 +219,10 @@ disabled. Computer configuration sets `snapshots: false` and disables the built-
 `opencode.vcs.git` and `opencode.vcs.hg` plugins. Native Lore supplies source history
 and undo. It also disables the `opencode.provider.ollama`, `opencode.provider.lmstudio`
 and `opencode.provider.vllm` plugins, which otherwise probe loopback model servers
-(`127.0.0.1:11434`, `:1234` and `:8000`) every 30 s; a Computer runs none. The native policy admits its exact chat-completion endpoint and the
+(`127.0.0.1:11434`, `:1234` and `:8000`) every 30 s; a Computer runs none. It disables
+`opencode.provider.opencode` too: without a key, that plugin turns on OpenCode's own
+provider and offers its free models at `opencode.ai`, which the policy refuses, so a
+person who picked one saw only `ECONNREFUSED` retries. The native policy admits its exact chat-completion endpoint and the
 configured Hub MCP path; unsupported egress fails closed. MCP methods still face
 Hub's current route authorization. Installing configuration is not a model call
 or evidence of real inference. Run paid acceptance only after deterministic,
