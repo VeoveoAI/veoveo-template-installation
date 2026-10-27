@@ -59,6 +59,13 @@ installation values too, but they live in Hub's control plane (`factory.caps`,
 `execution.baseBranch`), seeded from [hub.example.json](kubernetes/hub.example.json)
 and changed through Hub's live control-plane route; no other file carries them.
 
+Sandboxes share the node; none reserves any of it. A sandbox's size is a ceiling: its
+Kubernetes driver configuration sets the agent container's limits to that size and its
+requests to zero, so the scheduler sets nothing aside for an idle Computer or instance,
+and each uses what it needs, up to its size, as the node has free. The installation
+declares no portable CPU or memory, because OpenShell makes those a request as well as
+a limit.
+
 ## Images
 
 Veoveo's own images are built from source and served only by the installation's
@@ -224,9 +231,9 @@ two-label names in use on ports 80 and 443, so it can be tightened later. Inspec
 rules for exact hosts still apply and private addresses stay closed. A repository's
 `openshell/policy.yaml` adds rules only for something else. The base policy withholds
 the log store, so no branch reads another instance's output. Each sandbox also gets the
-factory template's size and its
-[driver configuration](kubernetes/factory-driver-config.json), which mounts the Lore
-image read-only, with the branch's own image.
+factory template's
+[driver configuration](kubernetes/factory-driver-config.json), which holds its size and
+mounts the Lore image read-only, with the branch's own image.
 
 Three installation services serve every repository and branch: Vector on every node
 ships all container output to single-node VictoriaLogs, where it outlives its pod; one

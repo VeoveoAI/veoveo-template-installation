@@ -329,8 +329,9 @@ keeps its `VEOVEO_DEPLOYMENT_ID` stays the one deployment.
 
 The installer's `profiles` step lints [computer/providers](../computer/providers) and
 imports them globally, and its `templates` step creates `computer-v1` in workspace
-`installation` as `installation.toml` declares it: the lock's `computer` image, 2 CPUs
-and 4 GiB, the Computer driver configuration and the environment
+`installation` as `installation.toml` declares it: the lock's `computer` image, the
+Computer driver configuration, whose limits of 2 CPUs and 4 GiB with zero requests size
+it without reserving anything, and the environment
 `SSL_CERT_DIR=/etc/ssl/certs`,
 `VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337`,
 `VEOVEO_CLI_HUB`, `VEOVEO_CLI_PROFILE=computer` and

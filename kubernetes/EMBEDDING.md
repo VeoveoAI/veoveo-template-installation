@@ -287,7 +287,7 @@ work. The current qualified Hub and Artifact must retain the nested SDK chain.
 After foundation readiness and review, the installer's `platform-servers` step creates
 both sandboxes from `installation.toml`, with the lock's immutable image digests, the
 two native driver configs and the installation's policies. `embedding-runtime` takes
-the lock's `runtime-embedding` image, one GPU, the declared CPU and memory, no
+the lock's `runtime-embedding` image, one GPU, its driver configuration's CPU and memory, no
 provider, restart policy `always`, `VEOVEO_EMBEDDING_DEVICE=cuda`,
 `VEOVEO_EMBEDDING_TOKEN_FILE=/etc/veoveo/embedding/runtime.token` and the signed
 object origin, and runs `/opt/embedding/.venv/bin/python -m veoveo_runtime_embedding`;
@@ -311,9 +311,9 @@ The separate browser/native Lore authorization-server issuer retains its `/oauth
 suffix. Match the current foundation's exact issuer, registration policy and
 native provider custody; verify discovery issuer equality before MCP registration.
 
-`installation.toml` selects explicit CPU/RAM allocations after the measured
-full-model CUDA probe (the reference: 4 CPUs and 8 GiB for the runtime, 1 CPU and
-1 GiB for the MCP server); defaults do not establish sufficient capacity. The
+The two driver configurations size both sandboxes after the measured full-model CUDA
+probe (the reference: 4 CPUs and 8 GiB for the runtime, 1 CPU and 1 GiB for the MCP
+server), as limits with zero requests, so neither reserves any of the node. The
 runtime image embeds its exact source revision; the existing canonical command keeps
 that identity. Native MCP
 registration uses its own persistent key directory and narrowed Core DB grant.

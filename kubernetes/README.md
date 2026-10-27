@@ -284,11 +284,13 @@ reads it at startup and exits if it is invalid.
 
 Every factory sandbox's size and mounts come from the factory template, `factory-v1`
 in workspace `installation`, which `factory.template` names. The installer's
-`templates` step creates it as it does the Computer template, with 4 CPUs, 8 GiB, the
-[filled](#naming-each-image-once) factory driver configuration and no image.
+`templates` step creates it as it does the Computer template, with the
+[filled](#naming-each-image-once) factory driver configuration and no image. That
+configuration sizes each instance at 4 CPUs and 8 GiB, as limits with zero requests, so
+an instance reserves nothing ([design](../DESIGN.md#configuration-ownership)).
 
 Hub reads it on every push and creates each instance inline with the branch's own
-image, the template's CPU and memory as limits and its driver configuration; a
+image and the template's driver configuration; a
 template that names an image, environment or a GPU is refused. OpenShell has no
 template update, so apply deletes a changed template and creates it again under the
 same name, and each instance takes it at its next push, which recreates its sandbox.
