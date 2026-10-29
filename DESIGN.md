@@ -288,7 +288,9 @@ beside the template; a template that declares none has none. The template may ap
 before or after Hub starts; Hub reads it when a Computer is entered.
 
 `/sandbox` is the person's home: the image sets `HOME=/sandbox`, ships only the empty
-mount point and sets no XDG or Lore paths, and the platform never writes there.
+mount point and sets no XDG or Lore paths, and the platform never writes there. It sets
+`CARGO_HOME=/sandbox/.cargo`, cargo's default under a home, because the toolchain's own
+is read-only.
 Everything outside `/sandbox` and `/tmp` comes with the Computer version and is
 read-only; `/etc/computer` holds the immutable connection configuration. The handbook's
 one source is [computer/instructions.md](computer/instructions.md), published into

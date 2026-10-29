@@ -8,9 +8,11 @@ COPY --from=opencode --chmod=0755 /bin/opencode /usr/local/bin/opencode
 COPY --chmod=0644 computer/opencode.json /etc/computer/
 # /sandbox is the person's home and the platform writes nothing into it: the
 # factory base leaves only the mount point, owned by the sandbox user, and
-# OpenCode and Lore create their own directories under HOME. Connection
+# OpenCode and Lore create their own directories under HOME. So does cargo, as by
+# default: the toolchain's own CARGO_HOME is read-only. Connection
 # configuration stays read-only in /etc/computer.
 ENV HOME=/sandbox \
+    CARGO_HOME=/sandbox/.cargo \
     PATH=/opt/veoveo/lore/usr/local/bin:/opt/veoveo/hub-sdk-cli/usr/local/bin:${PATH} \
     SSL_CERT_DIR=/etc/ssl/certs \
     OPENCODE_CONFIG=/etc/computer/opencode.json \

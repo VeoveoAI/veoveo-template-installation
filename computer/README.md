@@ -87,7 +87,8 @@ private key. Supervisor's separate build recipe is unchanged by this input seam.
 native persistent-workspace target. The platform never writes into it. The image
 has only the empty mount point, owned by UID/GID 10001 like the selected native
 runtime, and sets no XDG or Lore path variables: OpenCode and native Lore create
-their own configuration, data, state and cache directories under `HOME`. Docker
+their own configuration, data, state and cache directories under `HOME`. Cargo does
+too, in `CARGO_HOME=/sandbox/.cargo`, because the toolchain's own is read-only. Docker
 keeps `/sandbox` in its configured persistent workspace volume. Kubernetes uses
 OpenShell's automatic per-sandbox workspace PVC with sandbox UID/fsGroup ownership;
 its native seeding finds nothing to copy and writes only its own marker. Do not add
