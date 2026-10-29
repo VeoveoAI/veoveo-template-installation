@@ -296,7 +296,7 @@ one source is [computer/instructions.md](computer/instructions.md), published in
 
 OpenCode's configuration ([opencode.json](computer/opencode.json)) selects
 `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default and offers only DeepInfra's models, the
-one model endpoint the policy admits: it turns off OpenCode's own provider, whose free
+one model endpoint the policy binds a credential to: it turns off OpenCode's own provider, whose free
 models it would otherwise offer. It turns off its Git and Mercurial plugins and its
 snapshots, since Lore owns source history and undo, and connects one
 MCP server, `hub`, with the Computer's own Hub credential. The mounted Hub SDK CLI acts
@@ -309,6 +309,14 @@ and `ask` say that they do not apply in a Computer. `computers.collectAfterSecon
 sets idle collection (7200 in the reference); the forwarding capacity is Hub's
 `computers.forwardingConnectionLimit`, beside the gateway's per-sandbox and per-replica
 TCP limits, which are separate from SSH's.
+
+A Computer has the factory's open internet access, stated as the same one rule, so its
+toolchain fetches packages and clones and OpenCode fetches pages. The rules for exact
+hosts still apply to those hosts, so Hub, the model and Artifact's objects keep their
+rules and credential bindings. Credentials stay with the proxy, which puts one in place
+of its placeholder only at the endpoint bound to it; sent anywhere else, a placeholder
+is only a reference. OpenCode's file search and its `grep` and `glob` tools run
+ripgrep, which the factory base installs; without it OpenCode would download its own.
 
 ## Recovery
 

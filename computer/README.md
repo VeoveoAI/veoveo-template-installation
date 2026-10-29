@@ -222,8 +222,12 @@ and `opencode.provider.vllm` plugins, which otherwise probe loopback model serve
 (`127.0.0.1:11434`, `:1234` and `:8000`) every 30 s; a Computer runs none. It disables
 `opencode.provider.opencode` too: without a key, that plugin turns on OpenCode's own
 provider and offers its free models at `opencode.ai`, which the policy refuses, so a
-person who picked one saw only `ECONNREFUSED` retries. The native policy admits its exact chat-completion endpoint and the
-configured Hub MCP path; unsupported egress fails closed. MCP methods still face
+person who picked one saw only `ECONNREFUSED` retries. The native policy binds the model
+credential at its exact chat-completion endpoint and the Hub credential at the
+configured Hub MCP path. The
+[Kubernetes Computer policy](../kubernetes/policies/computer-v1.yaml) also has the
+factory's open internet rule
+([design](../DESIGN.md#computers)); the Mac fixture's keeps other egress closed. MCP methods still face
 Hub's current route authorization. Installing configuration is not a model call
 or evidence of real inference. Run paid acceptance only after deterministic,
 component and deployed probes pass, with this exact model selected.
