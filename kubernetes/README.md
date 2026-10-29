@@ -394,15 +394,15 @@ tunnel, and never rewrite the public host to Service DNS.
 ## Native OpenShell gateway
 
 Build the chart's gateway from maintained OpenShell source `ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65` and its
-supervisor and sandbox runtime from `ab37a698cfd03cdfb2559af7fd4263075233a48a` (the gateway's commit adds only the
-refresh-timing change below; the chart is identical at both), with OpenShell's own image workflow
+supervisor and sandbox runtime from `1ab0e2386cbd943ec84a8701cd5d54dfa68e55a7` (the gateway's commit lacks only the
+two runtime changes below; the chart is identical at both), with OpenShell's own image workflow
 and publish all three to the [local registry](#logs-image-builder-and-registry) as
 `veoveo/openshell/gateway`, `veoveo/openshell/supervisor` and
 `veoveo/openshell/sandbox`. That revision mounts digest-pinned images from listed
 repositories as read-only image volumes, which the Lore and Hub SDK CLI mounts need;
 records each sandbox's last network activity, which Computer collection reads; keeps
 a deleted sandbox's workspace for the next sandbox of its name and gives its root to
-the sandbox user; installs a credential refresh in place, which the gateway starts on the last sweep before the credential's refresh time; and keeps the earlier
+the sandbox user; installs a credential refresh in place, which the gateway starts on the last sweep before the credential's refresh time, and in place too when it lands between a settings poll and its fetch; gives connections into a sandbox, such as the requests a service it exposes serves, 896 boundary streams of their own; and keeps the earlier
 Kubernetes destination-CA, admitted GPU propagation, terminal-runtime recovery and
 supervisor fixes and gRPC on sandbox service routes.
 [openshell.values.yaml](openshell.values.yaml) selects the registry and takes the three
