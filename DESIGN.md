@@ -313,12 +313,13 @@ sets idle collection (7200 in the reference); the forwarding capacity is Hub's
 TCP limits, which are separate from SSH's.
 
 A Computer has the factory's open internet access, stated as the same one rule, so its
-toolchain fetches packages and clones and OpenCode fetches pages. The rules for exact
-hosts still apply to those hosts, so Hub, the model and Artifact's objects keep their
-rules and credential bindings. Credentials stay with the proxy, which puts one in place
-of its placeholder only at the endpoint bound to it; sent anywhere else, a placeholder
-is only a reference. OpenCode's file search and its `grep` and `glob` tools run
-ripgrep, which the factory base installs; without it OpenCode would download its own.
+toolchain fetches packages and clones and OpenCode fetches pages. A program that a rule
+for an exact host names keeps to that rule there, and `hub_computer` names every program
+on Hub's host. Credentials stay with the proxy: it puts one in place of its placeholder
+only at the endpoint bound to it, for the programs that rule names, and refuses a
+request that carries a placeholder anywhere else (`credential_endpoint_mismatch`).
+OpenCode's file search and its `grep` and `glob` tools run ripgrep, which the factory
+base installs; without it OpenCode would download its own.
 
 ## Recovery
 

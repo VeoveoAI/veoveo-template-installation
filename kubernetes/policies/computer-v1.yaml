@@ -6,8 +6,9 @@
 # CLI, whose bearer is the same COMPUTER_HUB_REFERENCE placeholder; the model rule stays
 # OpenCode's alone. The internet rule is the factory's open internet access, for any
 # program: every name of three or more labels plus the two-label names in use, on ports
-# 80 and 443. The rules for exact hosts still apply to those hosts, and OpenShell keeps
-# private addresses closed to wildcard rules.
+# 80 and 443. A program that a rule for an exact host names keeps to that rule there, and
+# hub_computer names every program on Hub's host. OpenShell keeps private addresses closed
+# to wildcard rules.
 version: 1
 filesystem_policy:
   include_workdir: true
