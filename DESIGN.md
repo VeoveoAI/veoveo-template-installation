@@ -321,6 +321,11 @@ request that carries a placeholder anywhere else (`credential_endpoint_mismatch`
 OpenCode's file search and its `grep` and `glob` tools run ripgrep, which the factory
 base installs; without it OpenCode would download its own.
 
+The factory base is the components' toolchain as their own factory images have it: clang
+for bindgen, cmake and pkg-config, and rustup's `clippy` and `rustfmt`, which a
+component's `rust-toolchain.toml` names. A Computer's toolchain is read-only, so rustup
+cannot add a missing component there, and `cargo` in such a repository would fail.
+
 ## Recovery
 
 The tunnel preserves public signed S3 bytes and uses verified TLS to native Services.
