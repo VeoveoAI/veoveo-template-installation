@@ -394,7 +394,7 @@ tunnel, and never rewrite the public host to Service DNS.
 ## Native OpenShell gateway
 
 Build the chart's gateway from maintained OpenShell source `ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65` and its
-supervisor from `0e795fc401f8a338f2bbf14f287c68d809e2e08f` and sandbox runtime from its parent `1ab0e2386cbd943ec84a8701cd5d54dfa68e55a7`
+supervisor from `b7635c28335cdc3d6406f615e354d968eabdeebc` and sandbox runtime from `1ab0e2386cbd943ec84a8701cd5d54dfa68e55a7`, two commits before it
 (the gateway's commit lacks only the two runtime changes below; the chart is identical at all three), with OpenShell's own image workflow
 and publish all three to the [local registry](#logs-image-builder-and-registry) as
 `veoveo/openshell/gateway`, `veoveo/openshell/supervisor` and
