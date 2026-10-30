@@ -306,7 +306,11 @@ as the owner the same way: the template sets `VEOVEO_CLI_HUB` to the Hub's publi
 origin, `VEOVEO_CLI_PROFILE=computer` and `VEOVEO_CLI_BEARER_ENV=COMPUTER_HUB_REFERENCE`,
 and the policy's `hub` rule admits `/mcp/computer`, with the `computer-hub` credential
 binding, for both OpenCode and the CLI's binary, so `veoveo-hub-sdk-cli tools` and `call`
-need no flags. The model endpoint stays OpenCode's alone; the CLI's `login`, `logout`
+need no flags. The model endpoint allows uninspected request bodies: a chat sends its whole
+history each time, and a credential placeholder quoted in it, as from printing the
+environment, would otherwise get every later request of that chat refused. Its key stays
+bound to the endpoint's header, and a placeholder in a body reaches the provider as text
+that resolves to nothing. need no flags. The model endpoint stays OpenCode's alone; the CLI's `login`, `logout`
 and `ask` say that they do not apply in a Computer. `computers.collectAfterSeconds`
 sets idle collection (7200 in the reference); the forwarding capacity is Hub's
 `computers.forwardingConnectionLimit`, beside the gateway's per-sandbox and per-replica

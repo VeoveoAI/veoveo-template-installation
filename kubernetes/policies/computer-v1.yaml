@@ -79,6 +79,10 @@ network_policies:
       enforcement: enforce
       credential_binding:
         provider: computer-model
+      # A chat's history is text the person and the agent wrote, and it may quote a
+      # credential placeholder, as from printing the environment. Inspection would
+      # refuse every later request of that chat; the key stays bound to the header.
+      allow_uninspected_credentials: true
       rules:
       - allow:
           method: POST
