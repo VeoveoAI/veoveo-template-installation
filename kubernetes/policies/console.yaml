@@ -130,6 +130,9 @@ network_policies:
       - allow:
           method: PUT
           path: /lore/*/groups/*/members
+      - allow:
+          method: DELETE
+          path: /lore/*/groups/*
     # The caller's Computer, and the current Computer version, which the Hub serves to
     # anyone and console names in the computer tool's description.
     - host: veoveo.example.com
