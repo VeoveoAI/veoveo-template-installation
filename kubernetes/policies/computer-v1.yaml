@@ -47,9 +47,9 @@ network_policies:
     - path: /usr/local/bin/opencode
     - path: /opt/veoveo/hub-sdk-cli/usr/local/bin/veoveo-hub-sdk-cli
   hub_computer:
-    # The Computer's own status, restart and previous version, for any program in it:
-    # the proxy puts the owner's Hub token in place of the COMPUTER_HUB_REFERENCE
-    # placeholder, which Hub admits for its Computers profile.
+    # The Computer's own status, restart, previous version, keep-on and stop, for any
+    # program in it: the proxy puts the owner's Hub token in place of the
+    # COMPUTER_HUB_REFERENCE placeholder, which Hub admits for its Computers profile.
     endpoints:
     - host: veoveo.example.com
       port: 443
@@ -68,6 +68,12 @@ network_policies:
       - allow:
           method: POST
           path: /computer/previous
+      - allow:
+          method: POST
+          path: /computer/keep-on
+      - allow:
+          method: POST
+          path: /computer/stop
     binaries:
     - path: /**
   model:

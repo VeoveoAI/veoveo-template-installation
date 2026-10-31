@@ -152,7 +152,9 @@ name = "computer-v1"
 image = "computer"
 driver_config = "kubernetes/computer-driver-config.json"
 environment = { SSL_CERT_DIR = "/etc/ssl/certs", VEOVEO_LORE_REMOTE = "grpcs://lore.veoveo-system.svc.cluster.local:41337", VEOVEO_CLI_HUB = "https://veoveo.example.com", VEOVEO_CLI_PROFILE = "computer", VEOVEO_CLI_BEARER_ENV = "COMPUTER_HUB_REFERENCE" }
-release_note = "The first version of this installation's Computer."
+release_note = """
+Your Computer can stay on while you're away, and you can stop it yourself.
+Its status page keeps it on or lets it sleep, and stops it now; programs in your Computer and the Hub CLI can do the same with your credential, POST /computer/keep-on and POST /computer/stop, as they already read its status and restart it. Your files, OpenCode, its models and the Hub CLI are unchanged."""
 [[step.template]]
 workspace = "installation"
 name = "factory-v1"
