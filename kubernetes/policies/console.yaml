@@ -133,6 +133,13 @@ network_policies:
       - allow:
           method: DELETE
           path: /lore/*/groups/*
+    # An administrator ends a person's sessions; the Hub's admin rules decide the call.
+    - host: veoveo.example.com
+      port: 443
+      path: /admin/*/people/*/sessions
+      protocol: rest
+      enforcement: enforce
+      rules:
       - allow:
           method: DELETE
           path: /admin/*/people/*/sessions
