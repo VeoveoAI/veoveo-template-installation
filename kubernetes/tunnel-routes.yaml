@@ -36,4 +36,15 @@ config:
         httpHostHeader: vv-control--hub--http.openshell.localhost
         originServerName: openshell.openshell.svc.cluster.local
         caPool: /etc/cloudflared-ca/gateway.crt
+    # Every host under apps.<public host> is Hub's service apps, through the same
+    # exposure, which selects it from Host; Hub tells the app origins from the public
+    # host by this listener. The gateway's certificate covers *.openshell.localhost.
+    # Cloudflare's dashboard refuses a wildcard hostname, so set this route and its
+    # proxied CNAME *.apps.<public host> -> <tunnel id>.cfargotunnel.com through the API.
+    - hostname: "*.apps.veoveo.example.com"
+      service: https://openshell.openshell.svc.cluster.local:8080
+      originRequest:
+        httpHostHeader: vv-control--hub--apps.openshell.localhost
+        originServerName: vv-control--hub--apps.openshell.localhost
+        caPool: /etc/cloudflared-ca/gateway.crt
     - service: http_status:404
