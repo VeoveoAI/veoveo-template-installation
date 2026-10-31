@@ -196,6 +196,11 @@ command = ["/bin/sh", "-ec", "set -a; . /etc/veoveo/hub/hub.env; set +a; exec /u
 name = "http"
 port = 8080
 authorization = "bearer-passthrough"
+# The app origins: the sandbox proxy, then servers' own origins, on their own listener.
+[[step.sandbox.service]]
+name = "apps"
+port = 8081
+authorization = "bearer-passthrough"
 
 [[step]]
 name = "platform-servers"
