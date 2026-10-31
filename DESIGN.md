@@ -211,7 +211,9 @@ placeholder its provider's environment names, which OpenShell replaces on the re
 A credential that must sign stays with its signer, such as Artifact's bucket key. The
 provider profiles are global: `vv-lore` (a Computer's Lore access as its owner, every
 method, with one token per repository, for the repository each request names), `vv-factory-lore` (a factory instance's Lore access as its latest pusher,
-reads only), both refreshed by the gateway with each one's own Hub client,
+reads only, with one token per repository each request names: the instance's own, and
+for a runner its linked repository's, as its tracked branch's latest pusher), both
+refreshed by the gateway with each one's own Hub client,
 `vv-factory-registration` (an instance's registration token), the Computer's
 `vv-computer-hub` and `vv-computer-model`, each platform server's
 `vv-<server>-registration`, and Hub's own `vv-hub-native-control` and
@@ -310,7 +312,14 @@ access, code an earlier push planted would act with a later pusher's rights. So 
 `factory.loreProfile` names `vv-factory-lore`, whose endpoint admits only the read
 methods the instance's start command uses, `lore clone` and `lore sync --reset`:
 OpenShell refuses every other Lore method before the token is attached. Computers keep
-`vv-lore`, with every method, since their owner pushes from them.
+`vv-lore`, with every method, since their owner pushes from them. A runner, the instance
+that serves one link of a linked branch, reads two repositories: its parent's branch
+and its linked repository's tracked branch. `vv-factory-lore` therefore scopes each
+request's token to the repository it names in `lore-partition-bin`, as `vv-lore` does,
+and Hub's instance client answers that scope with the parent branch's latest pusher's
+token for the parent and the tracked branch's latest pusher's for the linked repository,
+and refuses any other. The setting requires a Hub that answers the scope, so it deploys
+after that Hub.
 
 ## Computers
 
