@@ -139,7 +139,15 @@ repository it creates and deletes, through Hub's
 [`RebacApi`](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#repositories-lore-creates-and-deletes),
 so `lore repository create` makes its creator the owner and an owner deletes with
 `lore repository delete`. `auth_url` stays unset, so Lore still authorizes every request
-from the token alone. Its `repository_catalog_url`
+from the token alone. With `resource_claim` set, that is Lore's per-repository authorizer:
+a token holds exactly the actions its repository entry's `permission` names, plus read,
+which any entry for the repository implies. Hub puts a
+[level's actions](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md#groups-and-sharing)
+there: none for a reader, `write` for a member and `write` and `owner` for an owner, so a
+reader clones and pulls and pushes nothing. `[server.auth] implicit_actions`, the actions
+Lore gives every token holder, belongs to its global authorizer, which applies only
+without `resource_claim`, so the settings leave it unset; Lore refuses to start with it
+beside `resource_claim`. Its `repository_catalog_url`
 is Hub's existing `http` service route, `https://vv-control--hub--http.openshell.localhost:8080`,
 through the gateway, which carries gRPC on a service route to Hub over HTTP/2 and,
 under the route's `bearer-passthrough`, passes the caller's token. Lore is no sandbox,
