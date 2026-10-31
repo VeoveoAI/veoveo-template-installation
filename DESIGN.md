@@ -209,17 +209,36 @@ reads only), both refreshed by the gateway with each one's own Hub client,
 `vv-<server>-registration`, and Hub's own `vv-hub-native-control` and
 `vv-hub-forwarder`, which never attach to a Computer.
 
+A factory instance may also get grantable providers: `vv-factory-model`, the model
+endpoint for a server that calls a model, and one profile for each integration the
+installation enables. A branch requests profiles by name; Hub attaches to the instance
+only those the control plane grants to its repository, and the instance's status names
+each requested profile that was not granted. A request never adds a policy rule beyond
+the profile's own endpoints, so a branch still cannot raise its own authority. An
+integration that refreshes its own tokens keeps its refresh material in the gateway's
+custody, set up once by an operator or by a person connecting the service through Hub.
+
 ## Public Ingress
 
-One public host serves the installation. The remotely managed Cloudflare tunnel's
-routes are, in order: `/artifacts/` goes to SeaweedFS's S3 Service with the public Host,
-path, query and headers unchanged, because SigV4 binds them; when Media completes its
-runs by provider webhooks, `/media/operations/{operation_id}/{token}` goes to Media
-through OpenShell's native service exposure, and no other Media path is public;
-everything else goes to Hub through OpenShell's native service exposure. An
-installation whose Media checks run status instead publishes no Media route. The
-tunnel verifies TLS to every Service against its public CA. Public origins stay
-installation data.
+One public host and one wildcard below it serve the installation, such as
+`veoveo.example.com` and `*.apps.veoveo.example.com`. The wildcard holds the Hub's app
+origins: `sandbox.apps.{host}` for the sandbox proxy of every self-contained app, and
+`{slug}.apps.{host}` for a server's own app origin, so a server that ships a full web
+application needs no DNS or certificate change. An installation asks its domain owner
+for both names once. A two-level wildcard needs a certificate that names it: on
+Cloudflare, Advanced Certificate Manager issues one, because Universal SSL covers only
+one level below the zone.
+
+The remotely managed Cloudflare tunnel's routes are, in order: `/artifacts/` on the
+public host goes to SeaweedFS's S3 Service with the public Host, path, query and headers
+unchanged, because SigV4 binds them; when Media completes its runs by provider webhooks,
+`/media/operations/{operation_id}/{token}` goes to Media through OpenShell's native
+service exposure, and no other Media path is public; everything else on the public host,
+and every name under the wildcard, goes to Hub through OpenShell's native service
+exposure, with its Host unchanged so that Hub can tell the origins apart. An
+installation whose Media checks run status instead publishes no Media route. The tunnel
+verifies TLS to every Service against its public CA. Public origins stay installation
+data.
 
 ## Factory
 
