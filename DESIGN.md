@@ -233,9 +233,12 @@ The remotely managed Cloudflare tunnel's routes are, in order: `/artifacts/` on 
 public host goes to SeaweedFS's S3 Service with the public Host, path, query and headers
 unchanged, because SigV4 binds them; when Media completes its runs by provider webhooks,
 `/media/operations/{operation_id}/{token}` goes to Media through OpenShell's native
-service exposure, and no other Media path is public; everything else on the public host,
-and every name under the wildcard, goes to Hub through OpenShell's native service
-exposure, with its Host unchanged so that Hub can tell the origins apart. An
+service exposure, and no other Media path is public; everything else on the public host
+goes to Hub's `http` service through OpenShell's native service exposure, and every
+name under the wildcard goes to Hub's `apps` service the same way. Native ingress selects
+a service by its own hostname and rewrites the Host Hub sees, so the tunnel route names
+the service, and Hub tells the public host from the app origins by the listener a request
+arrives on, never by a Host header. An
 installation whose Media checks run status instead publishes no Media route. The tunnel
 verifies TLS to every Service against its public CA. Public origins stay installation
 data.
