@@ -190,7 +190,7 @@ policy = "kubernetes/policies/hub-computer-entra.example.yaml"
 providers = ["vv-hub-native-control"]
 driver_config = "kubernetes/hub-driver-config.json"
 restart_policy = "always"
-environment = { SSL_CERT_DIR = "/etc/veoveo/tls" }
+environment = { SSL_CERT_DIR = "/etc/veoveo/tls", VEOVEO_APPS_SANDBOX_ORIGIN = "https://sandbox.apps.veoveo.example.com" }
 command = ["/bin/sh", "-ec", "set -a; . /etc/veoveo/hub/hub.env; set +a; exec /usr/local/bin/veoveo-hub serve --allow-loopback-hosts"]
 [[step.sandbox.service]]
 name = "http"
