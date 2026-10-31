@@ -267,7 +267,11 @@ instance's registration token for Hub, and
 [factory-lore](../openshell/providers/factory-lore.yaml), Lore read access as the
 branch's latest pusher, refreshed by the gateway with the instance's Hub client. Its
 endpoint admits only the read methods of `lore clone` and `lore sync --reset`, so the
-branch's code cannot write to Lore with its pusher's rights. Each Computer's Lore
+branch's code cannot write to Lore with its pusher's rights. A runner, the instance that
+serves one top-level link of a linked branch, also reads its linked repository into
+`/sandbox/link` through the same provider, whose token for that repository Hub issues
+as the tracked branch's latest pusher; the parent's program under `/sandbox/src` is
+still the only one that reaches Hub's endpoints and PostgreSQL. Each Computer's Lore
 provider uses [lore](../openshell/providers/lore.yaml) instead, with every method, as
 the Computer's owner. Replace `veoveo.example.com` with Hub's host in all four. Hub creates each
 instance's providers with no profile workspace, which OpenShell resolves only

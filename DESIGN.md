@@ -319,7 +319,12 @@ request's token to the repository it names in `lore-partition-bin`, as `vv-lore`
 and Hub's instance client answers that scope with the parent branch's latest pusher's
 token for the parent and the tracked branch's latest pusher's for the linked repository,
 and refuses any other. The setting requires a Hub that answers the scope, so it deploys
-after that Hub.
+after that Hub. The runner's program is still the parent's, built and run under
+`/sandbox/src`: the linked repository, checked out at `/sandbox/link`, is content the
+program reads, never code that reaches Hub or the database. Only the parent's program
+under `/sandbox/src` reaches Hub's metadata and token endpoints and the database, whose
+rules in the factory base policy admit `/sandbox/src` alone; nothing under
+`/sandbox/link` does.
 
 ## Computers
 
