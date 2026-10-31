@@ -238,7 +238,11 @@ goes to Hub's `http` service through OpenShell's native service exposure, and ev
 name under the wildcard goes to Hub's `apps` service the same way. Native ingress selects
 a service by its own hostname and rewrites the Host Hub sees, so the tunnel route names
 the service, and Hub tells the public host from the app origins by the listener a request
-arrives on, never by a Host header. An
+arrives on, never by a Host header. On the wildcard route, which overrides the Host,
+`cloudflared` sets `X-Forwarded-Host` to the name the browser asked for, replacing any
+value a client sent, and native ingress passes it on; Hub reads it on its `apps` listener
+alone, to tell the sandbox origin and each server's app origin apart. An ingress other
+than Cloudflare's must set that header the same way. An
 installation whose Media checks run status instead publishes no Media route. The tunnel
 verifies TLS to every Service against its public CA. Public origins stay installation
 data.
