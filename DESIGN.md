@@ -321,10 +321,15 @@ token for the parent and the tracked branch's latest pusher's for the linked rep
 and refuses any other. The setting requires a Hub that answers the scope, so it deploys
 after that Hub. The runner's program is still the parent's, built and run under
 `/sandbox/src`: the linked repository, checked out at `/sandbox/link`, is content the
-program reads, never code that reaches Hub or the database. Only the parent's program
-under `/sandbox/src` reaches Hub's metadata and token endpoints and the database, whose
-rules in the factory base policy admit `/sandbox/src` alone; nothing under
-`/sandbox/link` does.
+program reads, never code of its own. No rule of a runner's policy names a program
+under `/sandbox/link`: the factory base policy admits programs under `/sandbox/src` alone
+to Hub's metadata and token endpoints and to the database, and Hub refuses a linked
+repository's `openshell/policy.yaml` rule whose binary path or glob can match a path
+under `/sandbox/link`. So nothing under `/sandbox/link` reaches Hub, the database or a
+linked repository's endpoints as a program of its own. OpenShell matches a rule against
+a program and the programs that started it, so a program the parent's program starts
+from `/sandbox/link` runs with the parent's rules; and the base policy's `internet` rule
+names every program.
 
 ## Computers
 

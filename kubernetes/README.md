@@ -271,7 +271,8 @@ branch's code cannot write to Lore with its pusher's rights. A runner, the insta
 serves one top-level link of a linked branch, also reads its linked repository into
 `/sandbox/link` through the same provider, whose token for that repository Hub issues
 as the tracked branch's latest pusher; the parent's program under `/sandbox/src` is
-still the only one that reaches Hub's endpoints and PostgreSQL. Each Computer's Lore
+still the only one that reaches Hub's endpoints and PostgreSQL, and Hub refuses a linked
+repository's rule that names a program under `/sandbox/link`. Each Computer's Lore
 provider uses [lore](../openshell/providers/lore.yaml) instead, with every method, as
 the Computer's owner. Replace `veoveo.example.com` with Hub's host in all four. Hub creates each
 instance's providers with no profile workspace, which OpenShell resolves only
