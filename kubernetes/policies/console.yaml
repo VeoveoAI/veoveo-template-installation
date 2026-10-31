@@ -133,6 +133,9 @@ network_policies:
       - allow:
           method: DELETE
           path: /lore/*/groups/*
+      - allow:
+          method: DELETE
+          path: /admin/*/people/*/sessions
     # The caller's Computer, and the current Computer version, which the Hub serves to
     # anyone and console names in the computer tool's description.
     - host: veoveo.example.com
