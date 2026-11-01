@@ -37,8 +37,9 @@ RUN test "$(id -u sandbox)" = 10001 \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 USER sandbox
 # The Computer's user, uid 10001, reads every tree of n8n, lists the Veoveo nodes and runs
-# Node.js, npm, n8n and veoveo-n8n-computer, with a scratch HOME so /sandbox stays empty.
-RUN set -e; scratch="$(mktemp -d)"; export HOME="$scratch"; \
+# Node.js, npm, n8n and veoveo-n8n-computer, with a scratch HOME so /sandbox stays empty,
+# from /, which that user can enter whatever the base image's working directory.
+RUN set -e; cd /; scratch="$(mktemp -d)"; export HOME="$scratch"; \
     unreadable="$(find /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/n8n /opt/veoveo/n8n \
         \( -type d \( ! -readable -o ! -executable \) \) -o \( -type f ! -readable \) 2>&1 | head -5)"; \
     if [ -n "$unreadable" ]; then echo "uid 10001 cannot read: $unreadable" >&2; exit 1; fi; \
