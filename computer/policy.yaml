@@ -36,10 +36,16 @@ network_policies:
       - path: /usr/local/bin/veoveo-n8n-computer
   npm_registry:
     # n8n's Assistant installs its workspace packages with npm, which Node.js runs, in
-    # the sandboxes veoveo-n8n-computer keeps in the person's home.
+    # the sandboxes veoveo-n8n-computer keeps in the person's home. Read-only, with the
+    # encoded slash of a scoped package's name (@scope%2Fname), which OpenShell otherwise
+    # refuses; npm's audit is a POST it refuses, so installs pass --no-audit.
     endpoints:
       - host: registry.npmjs.org
         port: 443
+        protocol: rest
+        enforcement: enforce
+        access: read-only
+        allow_encoded_slash: true
     binaries:
       - path: /usr/local/bin/node
   artifact_bytes:

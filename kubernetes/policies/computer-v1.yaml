@@ -9,7 +9,10 @@
 # program: every name of three or more labels plus the two-label names in use, on ports
 # 80 and 443. A program that a rule for an exact host names keeps to that rule there, and
 # hub_computer names every program on Hub's host. OpenShell keeps private addresses closed
-# to wildcard rules.
+# to wildcard rules. npm_registry is such an exact-host rule for Node.js, which runs npm:
+# read-only on the npm registry, with the encoded slash of a scoped package's name
+# (@scope%2Fname), which OpenShell otherwise refuses; npm's audit is a POST it refuses, so
+# installs pass --no-audit, as n8n's Assistant's do.
 version: 1
 filesystem_policy:
   include_workdir: true
@@ -118,6 +121,16 @@ network_policies:
           path: /artifacts/**
     binaries:
     - path: /usr/bin/curl
+  npm_registry:
+    endpoints:
+    - host: registry.npmjs.org
+      port: 443
+      protocol: rest
+      enforcement: enforce
+      access: read-only
+      allow_encoded_slash: true
+    binaries:
+    - path: /usr/local/bin/node
   internet:
     endpoints:
     - host: '**.*.*'

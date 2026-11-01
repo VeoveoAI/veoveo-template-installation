@@ -378,6 +378,11 @@ on Hub's host: the Computer's own status, restart, previous version, keep-on and
 which its programs and the Hub CLI call with the owner's credential. Credentials stay with the proxy: it puts one in place of its placeholder
 only at the endpoint bound to it, for the programs that rule names, and refuses a
 request that carries a placeholder anywhere else (`credential_endpoint_mismatch`).
+`npm_registry` is one such exact-host rule: Node.js, which runs npm, reads the npm
+registry through an inspected, read-only endpoint that admits the encoded slash of a
+scoped package's name (`@scope%2Fname`), which OpenShell refuses by default, so npm
+installs scoped packages for n8n's Assistant and for the person. npm's audit is a `POST`
+the read-only endpoint refuses, so installs pass `--no-audit`, as the Assistant's do.
 OpenCode's file search and its `grep` and `glob` tools run ripgrep, which the factory
 base installs; without it OpenCode would download its own.
 
