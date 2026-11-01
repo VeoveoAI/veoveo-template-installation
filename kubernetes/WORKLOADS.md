@@ -350,7 +350,9 @@ endpoint for the CLI's mounted binary. Hub's `computers.apps` names `n8n` on por
 the Computer's fixed command starts `veoveo-n8n-computer` there in the background and
 OpenCode in the foreground, and the `hub` and `model` rules admit
 `/usr/local/bin/veoveo-n8n-computer`, the one program that calls the Hub and the model
-for n8n. The CLI's `login`, `logout` and `ask` say that
+for n8n. n8n's Assistant reaches the model through it, and its sandbox commands run as
+the person under `$HOME/n8n/.sandboxes`, where npm installs packages through
+the `npm_registry` rule, which admits Node.js to `registry.npmjs.org`. The CLI's `login`, `logout` and `ask` say that
 they do not apply in a Computer, and no rule admits the model endpoint for the CLI.
 The profiles and the template may come before or after Hub starts: Hub reads the
 template when a Computer is entered, and until it and the profiles exist, `/computer`

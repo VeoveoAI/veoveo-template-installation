@@ -153,8 +153,8 @@ image = "computer"
 driver_config = "kubernetes/computer-driver-config.json"
 environment = { SSL_CERT_DIR = "/etc/ssl/certs", VEOVEO_LORE_REMOTE = "grpcs://lore.veoveo-system.svc.cluster.local:41337", VEOVEO_CLI_HUB = "https://veoveo.example.com", VEOVEO_CLI_PROFILE = "computer", VEOVEO_CLI_BEARER_ENV = "COMPUTER_HUB_REFERENCE" }
 release_note = """
-n8n runs in your Computer, where you edit your teams' workflows.
-Edit in my Computer, from a team's n8n overview, or /computer/apps/n8n/teams clones the team's repository at the branch its runner serves and opens its workflows in n8n's editor as drafts, which never trigger; what you save is written back to the workflow's file in your checkout, for you or OpenCode to commit and push with Lore. Your Computer now has 6 GiB of memory, up from 4. Your files, OpenCode, its models, Lore and the Hub CLI are unchanged."""
+n8n's Assistant works in your Computer's n8n.
+Ask it in n8n to build or change a workflow: it uses your Computer's model, the one OpenCode uses, and works in its own folders under ~/n8n/.sandboxes, where it runs commands as you and installs its packages with npm. Its web search and browser use are off. Your files, OpenCode, its models, Lore and the Hub CLI are unchanged."""
 [[step.template]]
 workspace = "installation"
 name = "factory-v1"

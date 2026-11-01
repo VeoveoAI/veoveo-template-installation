@@ -392,7 +392,12 @@ stops OpenCode, and both write to the Computer's output. `veoveo-n8n-computer` r
 with SQLite under `$HOME/.veoveo/n8n` and is the one program that calls the Hub and the
 model for n8n: the policy names its binary in the `hub` and `model` rules, beside
 OpenCode's, and n8n's own `node` in none, and adds `/opt/veoveo/n8n`, the Veoveo nodes,
-to what the Computer reads. The [n8n server's design](https://github.com/VeoveoAI/veoveo-mcp-n8n/blob/main/crates/veoveo-mcp-n8n/DESIGN.md#n8n-in-a-persons-computer)
+to what the Computer reads. n8n's Assistant uses OpenCode's model, which the image names
+in `VEOVEO_N8N_MODEL`, through `veoveo-n8n-computer`'s loopback endpoint, and runs its
+commands as the person in sandboxes that `veoveo-n8n-computer` keeps as directories of
+the person's home, `$HOME/n8n/.sandboxes/{id}`; its web search and browser use are off.
+The image copies npm from the fork's image too, which installs the Assistant's workspace
+packages from the npm registry through the `npm_registry` rule, which admits Node.js to `registry.npmjs.org`. The [n8n server's design](https://github.com/VeoveoAI/veoveo-mcp-n8n/blob/main/crates/veoveo-mcp-n8n/DESIGN.md#n8n-in-a-persons-computer)
 holds the rest. The Computer template's memory limit is 6 GiB, up from 4: n8n's node
 holds several hundred MiB and more while it runs workflows, beside OpenCode and the
 builds a Computer runs; with zero requests, no Computer reserves any of it.

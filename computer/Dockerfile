@@ -6,10 +6,12 @@
 FROM factory
 USER root
 COPY --from=opencode --chmod=0755 /bin/opencode /usr/local/bin/opencode
-# n8n in the person's Computer: Node.js and n8n as the n8n fork's image lays them out,
-# veoveo-n8n-computer, which runs them, and the Veoveo nodes. The factory base is Debian
-# trixie as the fork's image is, and installs the one library n8n's native modules add.
+# n8n in the person's Computer: Node.js, npm and n8n as the n8n fork's image lays them
+# out, veoveo-n8n-computer, which runs them, and the Veoveo nodes. npm installs the
+# packages of the workspaces of n8n's Assistant. The factory base is Debian trixie as the
+# fork's image is, and installs the one library n8n's native modules add.
 COPY --from=n8n /usr/local/bin/node /usr/local/bin/node
+COPY --from=n8n /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 COPY --from=n8n /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY --from=n8n /usr/local/bin/veoveo-n8n-computer /usr/local/bin/veoveo-n8n-computer
 COPY --from=n8n /opt/veoveo/n8n /opt/veoveo/n8n
@@ -18,18 +20,22 @@ COPY --chmod=0644 computer/opencode.json /etc/computer/
 # factory base leaves only the mount point, owned by the sandbox user, and
 # OpenCode and Lore create their own directories under HOME. So does cargo, as by
 # default: the toolchain's own CARGO_HOME is read-only. Connection
-# configuration stays read-only in /etc/computer.
+# configuration stays read-only in /etc/computer. n8n's Assistant uses OpenCode's
+# model, which VEOVEO_N8N_MODEL names as the provider does.
 ENV HOME=/sandbox \
     CARGO_HOME=/sandbox/.cargo \
     PATH=/opt/veoveo/lore/usr/local/bin:/opt/veoveo/hub-sdk-cli/usr/local/bin:${PATH} \
     SSL_CERT_DIR=/etc/ssl/certs \
     OPENCODE_CONFIG=/etc/computer/opencode.json \
-    OPENCODE_DISABLE_MODELS_FETCH=1
+    OPENCODE_DISABLE_MODELS_FETCH=1 \
+    VEOVEO_N8N_MODEL=XiaomiMiMo/MiMo-V2.6-Pro
 RUN test "$(id -u sandbox)" = 10001 \
     && test "$(id -g sandbox)" = 10001 \
     && chmod 0755 /etc/computer \
     && ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n \
-    && node --version && n8n --version \
+    && ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && node --version && npm --version && n8n --version \
     && veoveo-n8n-computer --help >/dev/null
 USER sandbox
 WORKDIR /sandbox

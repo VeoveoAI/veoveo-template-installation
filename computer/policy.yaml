@@ -34,6 +34,14 @@ network_policies:
     binaries:
       - path: /usr/local/bin/opencode
       - path: /usr/local/bin/veoveo-n8n-computer
+  npm_registry:
+    # n8n's Assistant installs its workspace packages with npm, which Node.js runs, in
+    # the sandboxes veoveo-n8n-computer keeps in the person's home.
+    endpoints:
+      - host: registry.npmjs.org
+        port: 443
+    binaries:
+      - path: /usr/local/bin/node
   artifact_bytes:
     # Artifact's signed object URLs, under /artifacts/ on the public host. No
     # credential binding: the proxy forwards their method, Host, path, query,
