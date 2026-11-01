@@ -396,7 +396,8 @@ to what the Computer reads. n8n's Assistant uses OpenCode's model, which the ima
 in `VEOVEO_N8N_MODEL`, through `veoveo-n8n-computer`'s loopback endpoint, and runs its
 commands as the person in sandboxes that `veoveo-n8n-computer` keeps as directories of
 the person's home, `$HOME/n8n/.sandboxes/{id}`; its web search and browser use are off.
-The image copies npm from the fork's image too, which installs the Assistant's workspace
+The image checks as the Computer's user, uid 10001, that it reads n8n's trees and the
+nodes and runs Node.js, npm, n8n and `veoveo-n8n-computer`. The image copies npm from the fork's image too, which installs the Assistant's workspace
 packages from the npm registry through the `npm_registry` rule, which admits Node.js to `registry.npmjs.org`. The [n8n server's design](https://github.com/VeoveoAI/veoveo-mcp-n8n/blob/main/crates/veoveo-mcp-n8n/DESIGN.md#n8n-in-a-persons-computer)
 holds the rest. The Computer template's memory limit is 6 GiB, up from 4: n8n's node
 holds several hundred MiB and more while it runs workflows, beside OpenCode and the

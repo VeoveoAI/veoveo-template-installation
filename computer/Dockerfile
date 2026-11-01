@@ -34,10 +34,17 @@ RUN test "$(id -u sandbox)" = 10001 \
     && chmod 0755 /etc/computer \
     && ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n \
     && ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
-    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
-    && node --version && npm --version && n8n --version \
-    && veoveo-n8n-computer --help >/dev/null
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 USER sandbox
+# The Computer's user, uid 10001, reads every tree of n8n, lists the Veoveo nodes and runs
+# Node.js, npm, n8n and veoveo-n8n-computer, with a scratch HOME so /sandbox stays empty.
+RUN set -e; scratch="$(mktemp -d)"; export HOME="$scratch"; \
+    unreadable="$(find /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/n8n /opt/veoveo/n8n \
+        \( -type d \( ! -readable -o ! -executable \) \) -o \( -type f ! -readable \) 2>&1 | head -5)"; \
+    if [ -n "$unreadable" ]; then echo "uid 10001 cannot read: $unreadable" >&2; exit 1; fi; \
+    ls /opt/veoveo/n8n/nodes/n8n-nodes-veoveo; \
+    node --version; npm --version; n8n --version; veoveo-n8n-computer --help >/dev/null; \
+    rm -rf "$scratch"
 WORKDIR /sandbox
 # Hub also supplies this fixed command as native Create governance. Native
 # templates do not contain command/policy, and callers cannot override it. It starts
