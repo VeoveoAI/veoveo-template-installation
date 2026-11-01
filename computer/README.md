@@ -42,6 +42,13 @@ deployment acceptance.
   [qualification record](../kubernetes/README.md#reference-qualification-checkpoint--2026-10-20). Use the final reviewed native
   platform package directory, with
   `bin/opencode`; an earlier prefix-only package does not contain all these changes.
+- n8n: the `computer` target of
+  [veoveo-mcp-n8n's Dockerfile](https://github.com/VeoveoAI/veoveo-mcp-n8n/blob/main/Dockerfile)
+  at the revision the lock names, built with that Dockerfile's `N8N_IMAGE`, the n8n
+  fork's image by digest in the installation's registry. The image holds Node.js and n8n
+  as the fork's image lays them out, `veoveo-n8n-computer` and the Veoveo nodes; the
+  Computer image copies them, and the factory base installs `librdkafka1`, which n8n's
+  native modules load. Both images are Debian trixie, so they share one C library.
 - Native OpenShell gateway/driver, supervisor and sandbox runtime:
   `ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65` for the gateway and `ab37a698cfd03cdfb2559af7fd4263075233a48a` for the supervisor and sandbox, as the
   [K3s gateway](../kubernetes/README.md#native-openshell-gateway) describes. It mounts
@@ -60,6 +67,7 @@ With the reviewed IDs and package directory supplied in the operator environment
 docker buildx build --platform "$COMPUTER_PLATFORM" --load \
   --build-context "factory=docker-image://$COMPUTER_FACTORY_IMAGE" \
   --build-context "opencode=$COMPUTER_OPENCODE_PACKAGE" \
+  --build-context "n8n=docker-image://$COMPUTER_N8N_IMAGE" \
   -f computer/Dockerfile -t veoveo/computer:reviewed .
 docker image inspect --format '{{.Id}}' veoveo/computer:reviewed
 ```
@@ -110,7 +118,7 @@ Mac fixture's Computer has neither CLI:
 openshell profile lint --global --from computer/providers
 openshell profile import --global --from computer/providers
 openshell sandbox template create computer --workspace installation \
-  --image "$COMPUTER_IMAGE_ID" --cpu 2 --memory 4Gi \
+  --image "$COMPUTER_IMAGE_ID" --cpu 2 --memory 6Gi \
   --driver-config-json '{"docker":{"persistent_workspace":true}}' \
   --env SSL_CERT_DIR=/etc/ssl/certs \
   --env VEOVEO_LORE_REMOTE=grpcs://host.openshell.internal:41337

@@ -88,7 +88,9 @@ tool changes its digest, never that list.
 
 The installation names each image once, in `component-lock.json`, and fills every
 manifest, template and driver configuration that uses it from there. Upgrading Lore
-builds one image and changes one value. Each workload picks it up at its next start:
+builds one image and changes one value. The Computer image is the one that copies a
+component's build: n8n, from veoveo-mcp-n8n's `computer` image, since n8n's node, its
+modules and `veoveo-n8n-computer` run as programs of the Computer version. Each workload picks it up at its next start:
 Hub when it restarts, a Computer as a new Computer version, and a factory instance
 when its next push recreates it.
 
@@ -363,7 +365,7 @@ need no flags. The model endpoint allows uninspected request bodies: a chat send
 history each time, and a credential placeholder quoted in it, as from printing the
 environment, would otherwise get every later request of that chat refused. Its key stays
 bound to the endpoint's header, and a placeholder in a body reaches the provider as text
-that resolves to nothing. need no flags. The model endpoint stays OpenCode's alone; the CLI's `login`, `logout`
+that resolves to nothing. need no flags. The model endpoint is OpenCode's and `veoveo-n8n-computer`'s alone; the CLI's `login`, `logout`
 and `ask` say that they do not apply in a Computer. `computers.collectAfterSeconds`
 sets idle collection (7200 in the reference); the forwarding capacity is Hub's
 `computers.forwardingConnectionLimit`, beside the gateway's per-sandbox and per-replica
@@ -378,6 +380,22 @@ only at the endpoint bound to it, for the programs that rule names, and refuses 
 request that carries a placeholder anywhere else (`credential_endpoint_mismatch`).
 OpenCode's file search and its `grep` and `glob` tools run ripgrep, which the factory
 base installs; without it OpenCode would download its own.
+
+n8n runs in every Computer as its program `n8n`, which `computers.apps` names on
+loopback port 5680, so the Hub forwards `/computer/c/{computer}/apps/n8n/…` to it. The
+image copies Node.js and n8n from the n8n fork's image, `veoveo-n8n-computer` and the
+Veoveo nodes, all from veoveo-mcp-n8n's `computer` image at the lock's revision; the
+factory base installs `librdkafka1`, which n8n's native modules load, and has no Node.js
+of its own. The fixed command starts `veoveo-n8n-computer` in the background, again ten
+seconds after every exit, and replaces itself with OpenCode, so n8n never delays or
+stops OpenCode, and both write to the Computer's output. `veoveo-n8n-computer` runs n8n
+with SQLite under `$HOME/.veoveo/n8n` and is the one program that calls the Hub and the
+model for n8n: the policy names its binary in the `hub` and `model` rules, beside
+OpenCode's, and n8n's own `node` in none, and adds `/opt/veoveo/n8n`, the Veoveo nodes,
+to what the Computer reads. The [n8n server's design](https://github.com/VeoveoAI/veoveo-mcp-n8n/blob/main/crates/veoveo-mcp-n8n/DESIGN.md#n8n-in-a-persons-computer)
+holds the rest. The Computer template's memory limit is 6 GiB, up from 4: n8n's node
+holds several hundred MiB and more while it runs workflows, beside OpenCode and the
+builds a Computer runs; with zero requests, no Computer reserves any of it.
 
 The factory base is the components' toolchain as their own factory images have it: clang
 for bindgen, cmake and pkg-config, and rustup's `clippy` and `rustfmt`, which a

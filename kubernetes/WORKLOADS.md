@@ -330,8 +330,8 @@ keeps its `VEOVEO_DEPLOYMENT_ID` stays the one deployment.
 The installer's `profiles` step lints [computer/providers](../computer/providers) and
 imports them globally, and its `templates` step creates `computer-v1` in workspace
 `installation` as `installation.toml` declares it: the lock's `computer` image, the
-Computer driver configuration, whose limits of 2 CPUs and 4 GiB with zero requests size
-it without reserving anything, and the environment
+Computer driver configuration, whose limits of 2 CPUs and 6 GiB with zero requests size
+it without reserving anything, room for n8n beside OpenCode and a build, and the environment
 `SSL_CERT_DIR=/etc/ssl/certs`,
 `VEOVEO_LORE_REMOTE=grpcs://lore.veoveo-system.svc.cluster.local:41337`,
 `VEOVEO_CLI_HUB`, `VEOVEO_CLI_PROFILE=computer` and
@@ -346,7 +346,11 @@ the lock, mounts the Lore and Hub SDK CLI images read-only at `/opt/veoveo/lore`
 exactly as OpenCode does: each request goes to `$HUB_ORIGIN/mcp/computer` with the
 `COMPUTER_HUB_REFERENCE` placeholder, which the proxy replaces with the owner's Hub
 token, and the [Computer policy](policies/computer-v1.yaml)'s `hub` rule admits that
-endpoint for the CLI's mounted binary. The CLI's `login`, `logout` and `ask` say that
+endpoint for the CLI's mounted binary. Hub's `computers.apps` names `n8n` on port 5680:
+the Computer's fixed command starts `veoveo-n8n-computer` there in the background and
+OpenCode in the foreground, and the `hub` and `model` rules admit
+`/usr/local/bin/veoveo-n8n-computer`, the one program that calls the Hub and the model
+for n8n. The CLI's `login`, `logout` and `ask` say that
 they do not apply in a Computer, and no rule admits the model endpoint for the CLI.
 The profiles and the template may come before or after Hub starts: Hub reads the
 template when a Computer is entered, and until it and the profiles exist, `/computer`

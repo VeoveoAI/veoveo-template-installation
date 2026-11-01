@@ -1,7 +1,7 @@
 version: 1
 filesystem_policy:
   include_workdir: true
-  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log]
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log, /opt/veoveo/n8n]
   # Native terminal PTYs use the multiplexer and dynamic slaves under devpts.
   read_write: [/sandbox, /tmp, /dev/null, /dev/pts]
 network_policies:
@@ -20,6 +20,7 @@ network_policies:
           allow_all_known_mcp_methods: true
     binaries:
       - path: /usr/local/bin/opencode
+      - path: /usr/local/bin/veoveo-n8n-computer
   model:
     endpoints:
       - host: api.deepinfra.com
@@ -32,6 +33,7 @@ network_policies:
           - allow: {method: POST, path: /v1/openai/chat/completions}
     binaries:
       - path: /usr/local/bin/opencode
+      - path: /usr/local/bin/veoveo-n8n-computer
   artifact_bytes:
     # Artifact's signed object URLs, under /artifacts/ on the public host. No
     # credential binding: the proxy forwards their method, Host, path, query,

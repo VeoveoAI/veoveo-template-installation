@@ -13,12 +13,13 @@
     "command": [
       "/bin/sh",
       "-ec",
-      "umask 077; exec /usr/local/bin/opencode serve --trusted-local-proxy --hostname 127.0.0.1 --port 4096 --base-path \"${PUBLIC_BASE_PATH:?trusted PUBLIC_BASE_PATH is required}\""
+      "umask 077; : \"${PUBLIC_BASE_PATH:?trusted PUBLIC_BASE_PATH is required}\"; (set +e; while :; do /usr/local/bin/veoveo-n8n-computer; echo \"veoveo-n8n-computer exited with $?; starting it again in 10 s\" >&2; sleep 10; done) </dev/null & exec /usr/local/bin/opencode serve --trusted-local-proxy --hostname 127.0.0.1 --port 4096 --base-path \"$PUBLIC_BASE_PATH\""
     ],
     "oauthClient": "computer-browser",
     "profile": "computer",
     "workContext": "reference-work",
     "port": 4096,
+    "apps": [{"name": "n8n", "port": 5680}],
     "forwardingConnectionLimit": 512,
     "hubProvider": {
       "profile": "vv-computer-hub",

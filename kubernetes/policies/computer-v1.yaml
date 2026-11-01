@@ -2,9 +2,10 @@
 # Lore's endpoint and credential come from the attached computer-lore provider of
 # the global vv-lore profile, whose inspected endpoint substitutes the owner's token.
 # Lore and the Hub SDK CLI are the read-only image volumes of computer-driver-config.json.
-# The hub rule admits the owner's MCP endpoint for OpenCode and for the mounted Hub SDK
-# CLI, whose bearer is the same COMPUTER_HUB_REFERENCE placeholder; the model rule stays
-# OpenCode's alone. The internet rule is the factory's open internet access, for any
+# The hub rule admits the owner's MCP endpoint for OpenCode, for the mounted Hub SDK CLI,
+# whose bearer is the same COMPUTER_HUB_REFERENCE placeholder, and for veoveo-n8n-computer,
+# the one program that calls the Hub and the model for n8n; the model rule admits OpenCode
+# and veoveo-n8n-computer. n8n's own node gets no credential rule. The internet rule is the factory's open internet access, for any
 # program: every name of three or more labels plus the two-label names in use, on ports
 # 80 and 443. A program that a rule for an exact host names keeps to that rule there, and
 # hub_computer names every program on Hub's host. OpenShell keeps private addresses closed
@@ -23,6 +24,7 @@ filesystem_policy:
   - /var/log
   - /opt/veoveo/lore
   - /opt/veoveo/hub-sdk-cli
+  - /opt/veoveo/n8n
   read_write:
   - /sandbox
   - /tmp
@@ -46,6 +48,7 @@ network_policies:
     binaries:
     - path: /usr/local/bin/opencode
     - path: /opt/veoveo/hub-sdk-cli/usr/local/bin/veoveo-hub-sdk-cli
+    - path: /usr/local/bin/veoveo-n8n-computer
   hub_computer:
     # The Computer's own status, restart, previous version, keep-on and stop, for any
     # program in it: the proxy puts the owner's Hub token in place of the
@@ -95,6 +98,7 @@ network_policies:
           path: /v1/openai/chat/completions
     binaries:
     - path: /usr/local/bin/opencode
+    - path: /usr/local/bin/veoveo-n8n-computer
   artifact_bytes:
     # Artifact's signed object URLs, under /artifacts/ on the public host. No
     # credential binding: the proxy forwards their method, Host, path, query,

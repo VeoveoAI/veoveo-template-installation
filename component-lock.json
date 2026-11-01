@@ -40,6 +40,11 @@
       "name": "veoveo-mcp-time",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-time",
       "revision": "6f17481bfa04fd6bf95aac58aeac2515a3976906"
+    },
+    {
+      "name": "veoveo-mcp-n8n",
+      "repository": "https://github.com/VeoveoAI/veoveo-mcp-n8n",
+      "revision": "6fd6f57b0d77cae26cd9535f4fe3598ac21d407d"
     }
   ]
 }

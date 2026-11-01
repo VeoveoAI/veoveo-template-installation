@@ -191,7 +191,9 @@ rebuilt from source and published under `veoveo/`: the OpenShell gateway, superv
 and sandbox runtime (`veoveo/openshell/{gateway,supervisor,sandbox}`, all from one
 OpenShell revision), Hub, Lore, the Hub SDK CLI (`veoveo/hub-sdk-cli`, the SDK
 Dockerfile's `cli` target), the PostgreSQL extension image, the factory base,
-Computer, Artifact, Media, the Media fixture provider, Embedding and its runtime.
+n8n for Computers (`veoveo/n8n-computer`, veoveo-mcp-n8n's Dockerfile's `computer`
+target, which the Computer image copies from), Computer, Artifact, Media, the Media
+fixture provider, Embedding and its runtime.
 Hub pushes environment images under `factory/`; registry cleanup touches only those.
 The installer builds no image: build each by hand and push it from the build host
 through a port-forward, then put its digest in the lock. The `localhost:5000` push is

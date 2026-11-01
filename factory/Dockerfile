@@ -5,9 +5,10 @@ USER root
 # The base of Computers: the component toolchain, as the components' own factory images
 # have it (clang for bindgen, cmake, pkg-config, and the clippy and rustfmt their
 # rust-toolchain.toml names, which rustup cannot add where the toolchain is read-only),
-# and ripgrep, which OpenCode searches with. Lore and the Hub SDK CLI are not in it:
+# ripgrep, which OpenCode searches with, and librdkafka1, the one library n8n's native
+# modules load that the Rust image lacks. Lore and the Hub SDK CLI are not in it:
 # Computers mount their images read-only (kubernetes/computer-driver-config.json).
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates clang cmake git pkg-config protobuf-compiler libprotobuf-dev ripgrep tzdata \
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates clang cmake git pkg-config protobuf-compiler libprotobuf-dev ripgrep tzdata librdkafka1 \
     && rm -rf /var/lib/apt/lists/* /var/log/apt /var/log/dpkg.log \
     && rustup component add clippy rustfmt
 # The trusted named context contains reviewed public CA certificates only, one per file.
