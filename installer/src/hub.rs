@@ -59,6 +59,10 @@ pub const PEOPLE: [&str; 7] = [
 /// Sections of the control plane Hub reads only when it starts: a change to one takes
 /// effect once Hub restarts.
 pub const READ_AT_START: [&str; 1] = ["factory"];
+/// Members of those sections Hub reads from the active control plane while it runs, so
+/// a change to one takes effect without a restart: the factory's provider grants, which
+/// change as teams do.
+pub const READ_LIVE: [&str; 1] = ["factory.providers"];
 
 /// How long Hub may take to report a server it just started healthy.
 const REGISTRATION_TIMEOUT: Duration = Duration::from_secs(180);
@@ -890,8 +894,9 @@ pub async fn plan(inputs: &Inputs, hub: &Hub, gateway: Option<&Gateway>) -> Vec<
             Outcome::Differs(differences) => {
                 let restart = if reads_at_start(&differences) {
                     format!(
-                        "; Hub reads {} only at its start, so apply restarts {}/{}",
+                        "; Hub reads {} only at its start, but for {}, so apply restarts {}/{}",
                         READ_AT_START.join(", "),
+                        READ_LIVE.join(", "),
                         hub.workspace,
                         hub.sandbox
                     )
@@ -1231,13 +1236,18 @@ impl Published {
     }
 }
 
-/// Whether a difference is in a section Hub reads only at its start.
+/// Whether a difference is in a section Hub reads only at its start, outside the members
+/// it reads while it runs.
 pub fn reads_at_start(differences: &[Difference]) -> bool {
     differences.iter().any(|difference| {
         let path = difference.path.to_string();
-        READ_AT_START
-            .iter()
-            .any(|section| path == *section || path.starts_with(&format!("{section}.")))
+        let within = |member: &str| {
+            path == member
+                || path.starts_with(&format!("{member}."))
+                || path.starts_with(&format!("{member}["))
+        };
+        READ_AT_START.iter().any(|section| within(section))
+            && !READ_LIVE.iter().any(|member| within(member))
     })
 }
 
@@ -1976,6 +1986,22 @@ mod publication_tests {
                 .unwrap()
                 .read_at_start()
         );
+        // Hub reads the factory's provider grants while it runs: a grant published, then
+        // another repository granted, restarts nothing.
+        let mut granted = factory;
+        granted["factory"]["providers"] = json!([
+            {"provider": "vv-factory-model", "repositories": ["0123456789abcdef0123456789abcdef"]},
+        ]);
+        let published = publish_over(&route, &granted).await.unwrap();
+        assert!(!published.differences.is_empty());
+        assert!(!published.read_at_start());
+        granted["factory"]["providers"][0]["repositories"] = json!([
+            "0123456789abcdef0123456789abcdef",
+            "fedcba9876543210fedcba9876543210",
+        ]);
+        let published = publish_over(&route, &granted).await.unwrap();
+        assert!(!published.differences.is_empty());
+        assert!(!published.read_at_start());
     }
 
     #[tokio::test]

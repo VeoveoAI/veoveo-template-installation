@@ -291,7 +291,8 @@ registers = "embedding"
 
 # Hub's live control plane, published through its administrative route, never reset;
 # a first installation's Hub seeds itself from its claim. Hub restarts when a section it
-# reads only at its start changes. Then the servers' registrations are checked, and
+# reads only at its start changes, `factory` but for its provider grants, which Hub reads
+# at each push. Then the servers' registrations are checked, and
 # the claim's files no revision names any longer are removed.
 [[step]]
 name = "hub-control-plane"

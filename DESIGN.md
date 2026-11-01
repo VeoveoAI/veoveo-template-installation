@@ -519,8 +519,10 @@ control plane, so what people created since the seed, such as their repositories
 survives every apply: a publication takes the members people change from the revision
 active at that moment and names that revision in `If-Match`, so Hub refuses it (412)
 when another became active first, and apply reads, validates and publishes again,
-three times at most. Hub reads its `factory` section only when it starts, so a
-publication that changes it, as Hub's validation shows, restarts Hub. To read or
+three times at most. Hub reads its `factory` section only when it starts, but for the
+provider grants, `factory.providers`, which it reads at each push as teams change, so a
+publication that changes another member of `factory`, as Hub's validation shows,
+restarts Hub, and one that changes only grants restarts nothing. To read or
 publish it, the operator signs in to Hub in the browser as themselves, an installation
 administrator, with `veoveo-installer login` (the Hub SDK's sign-in, as its
 `veoveo-hub-sdk-cli` client), so Hub's audit names the person and no standing

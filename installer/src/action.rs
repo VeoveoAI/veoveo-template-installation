@@ -149,8 +149,9 @@ impl Action {
                 hub: (workspace, name),
                 ..
             } => format!(
-                "have Hub validate the declared control plane and publish it over the active revision; restart {workspace}/{name} when a member it reads only at its start ({}) changes",
-                crate::hub::READ_AT_START.join(", ")
+                "have Hub validate the declared control plane and publish it over the active revision; restart {workspace}/{name} when a member it reads only at its start ({}, but for {}) changes",
+                crate::hub::READ_AT_START.join(", "),
+                crate::hub::READ_LIVE.join(", ")
             ),
             Self::AwaitRegistration { server, .. } => {
                 format!("wait until Hub reports {server} healthy")

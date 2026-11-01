@@ -304,7 +304,11 @@ same name, and each instance takes it at its next push, which recreates its sand
 The template may come before or after Hub starts; until it exists, every push fails
 at `create` and names it. The soft caps and base branch are Hub control-plane values
 (`factory.caps`, `execution.baseBranch`), seeded from [hub.example.json](hub.example.json)
-and changed live through Hub's control-plane route. No installation-wide factory
+and changed live through Hub's control-plane route. So are the installation's providers
+an instance may request, each with the repositories granted it (`factory.providers`):
+Hub reads them at each push, so publishing a grant or withdrawing one restarts nothing
+and an instance takes the change at its next push, while apply restarts Hub when any
+other member of `factory` changes. No installation-wide factory
 client or secret exists: each instance's Lore access comes from its own Hub client.
 
 ## SeaweedFS
