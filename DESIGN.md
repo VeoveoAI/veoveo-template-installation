@@ -358,9 +358,10 @@ mount point and sets no XDG or Lore paths, and the platform never writes there. 
 `CARGO_HOME=/sandbox/.cargo`, cargo's default under a home, because the toolchain's own
 is read-only.
 Everything outside `/sandbox` and `/tmp` comes with the Computer version and is
-read-only; `/etc/computer` holds the immutable connection configuration. The handbook's
-one source is [computer/instructions.md](computer/instructions.md), published into
-`computers.handbook` through the live control plane.
+read-only; `/etc/computer` holds the immutable connection configuration. The Hub's own
+skills for Computers are [computer/skills/](computer/skills/), one directory per skill,
+published as `computers.skills` through the live control plane; the Hub serves them to
+Computer clients at `skill://veoveo/{name}/…`.
 
 OpenCode's configuration ([opencode.json](computer/opencode.json)) selects
 `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default and offers only DeepInfra's models, the
@@ -478,10 +479,9 @@ OpenShell's canonical form, parsed by OpenShell's own crates, without the rules
 providers add to a sandbox's policy; a template's or sandbox's image, environment,
 resources, driver configuration, providers, command and restart policy, and a template's
 release note; Hub's control plane through `GET /admin/{profile}/control-plane`, against
-the seed merged by typed keys and the handbook, leaving out the members people change
-(grants, Work Context memberships, output owners and initial grants, repositories,
-assignments and groups), which a publication carries from the active revision, so the seed's
-example people, such as its example output owner, are never published; and Hub's
+the seed merged by typed keys and the Computers' skills, leaving out the members people
+change (grants, repositories, assignments and groups), which a publication carries from
+the active revision, so the seed's example people are never published; and Hub's
 trusted files, read in Hub's sandbox through native exec. It lists, in step order, what
 differs, what it could not read and what apply still has to do, and succeeds only when
 everything was read and matches. What plan deliberately does not compare counts as

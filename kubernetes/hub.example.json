@@ -17,7 +17,6 @@
     ],
     "oauthClient": "computer-browser",
     "profile": "computer",
-    "workContext": "reference-work",
     "port": 4096,
     "apps": [{"name": "n8n", "port": 5680}],
     "forwardingConnectionLimit": 512,
@@ -133,7 +132,6 @@
     {
       "id": "lore-computer",
       "authorizationServer": "hub",
-      "defaultWorkContext": "reference-work",
       "invocationMode": "direct",
       "displayName": "Native Lore public client",
       "allowedResources": [
@@ -155,7 +153,6 @@
     {
       "id": "computer-browser",
       "authorizationServer": "hub",
-      "defaultWorkContext": "reference-work",
       "invocationMode": "direct",
       "displayName": "Private Computer browser",
       "allowedResources": [
@@ -178,7 +175,6 @@
     {
       "id": "veoveo-hub-sdk-cli",
       "authorizationServer": "hub",
-      "defaultWorkContext": "reference-work",
       "invocationMode": "direct",
       "displayName": "veoveo-hub-sdk-cli",
       "allowedResources": [

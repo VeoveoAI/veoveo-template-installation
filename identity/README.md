@@ -160,15 +160,15 @@ roles and all unrelated catalog sections unchanged:
 veoveo-installer --repository "$INSTALLATION" fixture public-client \
   --control-plane-file "$FRESH_CATALOG" --output-control-plane "$CANDIDATE" \
   --application-client-id opencode-local --member-object-id "$KEYCLOAK_USER_ID" \
-  --work-context "$WORK_CONTEXT" --protected-resource "$HUB_ORIGIN/mcp/local" \
+  --tenant "$TENANT" --protected-resource "$HUB_ORIGIN/mcp/local" \
   --client-redirect-uri http://127.0.0.1:3210/callback
 ```
 
 Run this only from trusted operator tooling. `$FRESH_CATALOG` must be a fresh
 authoritative Hub control-plane snapshot; validate and publish `$CANDIDATE`
-separately with existing native Hub administration. The selected Work Context
-supplies its tenant. The helper adds only a member grant and contributor
-membership for the explicitly selected, enabled Keycloak human user IDs. It
+separately with existing native Hub administration. `$TENANT` names an existing
+tenant of the catalog, which the client and its members belong to. The helper adds only
+a member grant for the explicitly selected, enabled Keycloak human user IDs. It
 does not grant every user of the public client access. Repeating preparation is
 idempotent; a conflicting existing registration requires operator review.
 
@@ -176,7 +176,7 @@ Keycloak owns the public client's authorization-code/S256 and native refresh
 flow. The built-in User Property mapper copies each actual user's immutable
 `id` into Hub's `principal` and `initiator` claims; the native `sub` remains
 unchanged. The principal is this opaque user ID, not a service-account name.
-The exact MCP audience, direct invocation, tenant and Work Context claims are
+The exact MCP audience, direct invocation and tenant claims are
 configured on this dedicated client. No client secret, user-attribute extension,
 password grant or application refresh worker is involved. Optional `mcp` and
 `offline_access` scopes use Keycloak's existing scope configuration; the human

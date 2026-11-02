@@ -700,16 +700,16 @@ mod tests {
     #[test]
     fn text_shows_the_lines_that_differ() {
         let differences = compare(
-            &json!({"handbook": "# Handbook\nUse Lore.\nUse the Hub CLI.\n"}),
-            &json!({"handbook": "# Handbook\nUse Lore.\n"}),
+            &json!({"note": "# Notes\nUse Lore.\nUse the Hub CLI.\n"}),
+            &json!({"note": "# Notes\nUse Lore.\n"}),
         );
         let mut out = String::new();
         render_difference(&mut out, &differences[0]);
         assert_eq!(
             out,
-            "       handbook: text differs\n         \
+            "       note: text differs\n         \
              + Use the Hub CLI.\n         \
-             (+ declared, - active; 38 and 21 bytes)\n"
+             (+ declared, - active; 35 and 18 bytes)\n"
         );
     }
 

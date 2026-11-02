@@ -1012,14 +1012,11 @@ pub fn local_catalog(
             "grants": roles.iter().map(|role| json!({"role": role, "subject": {"principal": format!("{ISSUER}#vv-hub-{role}")}})).collect::<Vec<_>>()},
         "registration": {"secret": "registration_secret"},
         "tenants": [{"id": "local", "title": "Local installation"}],
-        "workContexts": [{"id": "local", "tenant": "local", "title": "Local", "policyRevision": "local",
-            "outputPolicy": {"owner": {"kind": "principal", "id": format!("{ISSUER}#vv-hub-admin")}},
-            "memberships": [{"level": "contributor", "oauthClients": clients}]}],
         "policies": [{"version": "local", "rules": []}],
         "dataLabels": [],
         "oidcClients": [],
         "oauthClients": clients.iter().map(|client| json!({"id": client, "authorizationServer": "local",
-            "defaultWorkContext": "local", "invocationMode": "automated", "allowedResources": [resource],
+            "invocationMode": "automated", "allowedResources": [resource],
             "grantTypes": ["client_credentials"], "authMethods": ["client_secret_post"], "allowedScopes": ["mcp"],
             "tenant": "local", "metadata": {}})).collect::<Vec<_>>(),
         "secrets": [{"id": "registration_secret", "source": "env", "purpose": "registration_secret",
@@ -1030,45 +1027,7 @@ pub fn local_catalog(
         "metadata": {},
     });
     if let Some(retained) = retained {
-        catalog["workContexts"] = retained["workContexts"].clone();
         catalog["policies"] = retained["policies"].clone();
-        if media {
-            let contexts = catalog["workContexts"]
-                .as_array_mut()
-                .context("a retained catalog has Work Contexts")?;
-            let mut local: Vec<&mut Value> = contexts
-                .iter_mut()
-                .filter(|context| context["id"] == "local" && context["tenant"] == "local")
-                .collect();
-            ensure!(
-                local.len() == 1,
-                "review the retained local Work Context before admitting the billed client"
-            );
-            let memberships = local[0]["memberships"]
-                .as_array_mut()
-                .context("a Work Context has memberships")?;
-            let mut contributors: Vec<&mut Value> = memberships
-                .iter_mut()
-                .filter(|membership| {
-                    membership["level"] == "contributor"
-                        && ["vv-hub-member", "vv-hub-admin"].iter().all(|client| {
-                            membership["oauthClients"]
-                                .as_array()
-                                .is_some_and(|clients| clients.iter().any(|value| value == client))
-                        })
-                })
-                .collect();
-            ensure!(
-                contributors.len() == 1,
-                "review the retained contributor membership before admitting the billed client"
-            );
-            let clients = contributors[0]["oauthClients"]
-                .as_array_mut()
-                .context("a membership lists clients")?;
-            if !clients.iter().any(|client| client == "vv-hub-billed") {
-                clients.push(json!("vv-hub-billed"));
-            }
-        }
     }
     Ok(catalog)
 }
@@ -1400,7 +1359,6 @@ pub(crate) async fn service_client(
             ),
             claim("https://veoveo.ai/claims/principal-kind", "service"),
             claim("https://veoveo.ai/claims/tenant", "local"),
-            claim("https://veoveo.ai/claims/work-context", "local"),
             claim("https://veoveo.ai/claims/invocation-mode", "automated"),
         ]
     };
@@ -1428,7 +1386,7 @@ pub(crate) async fn service_client(
 pub struct PublicClient {
     pub client_id: String,
     pub members: Vec<String>,
-    pub context: String,
+    pub tenant: String,
     pub resource: String,
     pub redirects: Vec<String>,
 }
@@ -1477,13 +1435,12 @@ pub fn local_public_catalog(retained: &Value, request: &PublicClient) -> Result<
         resource.scheme() == "https",
         "the protected resource is an HTTPS endpoint"
     );
-    let context = retained["workContexts"]
+    let tenants = retained["tenants"]
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|context| context["id"] == request.context.as_str())
-        .cloned()
-        .collect::<Vec<_>>();
+        .filter(|tenant| tenant["id"] == request.tenant.as_str())
+        .count();
     let profile = retained["profiles"]
         .as_array()
         .into_iter()
@@ -1492,10 +1449,10 @@ pub fn local_public_catalog(retained: &Value, request: &PublicClient) -> Result<
         .cloned()
         .collect::<Vec<_>>();
     ensure!(
-        context.len() == 1 && profile.len() == 1,
-        "select one existing Work Context and MCP resource"
+        tenants == 1 && profile.len() == 1,
+        "select one existing tenant and MCP resource"
     );
-    let (context, profile) = (&context[0], &profile[0]);
+    let profile = &profile[0];
     let servers = retained["authorizationServers"]
         .as_array()
         .into_iter()
@@ -1520,9 +1477,9 @@ pub fn local_public_catalog(retained: &Value, request: &PublicClient) -> Result<
         "the existing member authority is required"
     );
     let client = json!({"id": request.client_id, "authorizationServer": profile["authorizationServer"],
-        "defaultWorkContext": request.context, "invocationMode": "direct", "allowedResources": [request.resource],
+        "invocationMode": "direct", "allowedResources": [request.resource],
         "grantTypes": ["authorization_code_pkce", "refresh_token"], "authMethods": ["none"], "redirectUris": redirects,
-        "allowedScopes": ["mcp", "offline_access"], "tenant": context["tenant"], "metadata": {}});
+        "allowedScopes": ["mcp", "offline_access"], "tenant": request.tenant, "metadata": {}});
     let existing: Vec<&Value> = retained["oauthClients"]
         .as_array()
         .into_iter()
@@ -1540,7 +1497,7 @@ pub fn local_public_catalog(retained: &Value, request: &PublicClient) -> Result<
             .context("the catalog lists OAuth clients")?
             .push(client);
     }
-    let tenant = context["tenant"].clone();
+    let tenant = json!(request.tenant);
     let grants = result["authorization"]["grants"]
         .as_array_mut()
         .context("the catalog lists grants")?;
@@ -1550,42 +1507,11 @@ pub fn local_public_catalog(retained: &Value, request: &PublicClient) -> Result<
             grants.push(grant);
         }
     }
-    let selected = result["workContexts"]
-        .as_array_mut()
-        .and_then(|contexts| {
-            contexts
-                .iter_mut()
-                .find(|value| value["id"] == request.context.as_str())
-        })
-        .context("the Work Context is there")?;
-    let contributors: Vec<String> = selected["memberships"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|membership| membership["level"] == "contributor")
-        .flat_map(|membership| {
-            membership["principals"]
-                .as_array()
-                .cloned()
-                .unwrap_or_default()
-        })
-        .filter_map(|principal| principal.as_str().map(str::to_owned))
-        .collect();
-    let missing: Vec<&String> = members
-        .iter()
-        .filter(|member| !contributors.contains(member))
-        .collect();
-    if !missing.is_empty() {
-        selected["memberships"]
-            .as_array_mut()
-            .context("a Work Context lists memberships")?
-            .push(json!({"level": "contributor", "principals": missing}));
-    }
     Ok(result)
 }
 
 /// The Keycloak public client of a catalog's local client, and its mappers.
-pub fn local_public_client(client: &Value, context: &Value) -> (Value, Vec<Value>) {
+pub fn local_public_client(client: &Value) -> (Value, Vec<Value>) {
     let resource = client["allowedResources"][0]
         .as_str()
         .unwrap_or_default()
@@ -1600,11 +1526,7 @@ pub fn local_public_client(client: &Value, context: &Value) -> (Value, Vec<Value
         claim("https://veoveo.ai/claims/principal-kind", "user"),
         claim(
             "https://veoveo.ai/claims/tenant",
-            context["tenant"].as_str().unwrap_or_default(),
-        ),
-        claim(
-            "https://veoveo.ai/claims/work-context",
-            context["id"].as_str().unwrap_or_default(),
+            client["tenant"].as_str().unwrap_or_default(),
         ),
         claim("https://veoveo.ai/claims/invocation-mode", "direct"),
     ];
@@ -1630,13 +1552,7 @@ pub(crate) async fn configure_public_client(
         .flatten()
         .find(|value| value["id"] == client_id)
         .context("the catalog has the client")?;
-    let context = catalog["workContexts"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .find(|value| value["id"] == client["defaultWorkContext"])
-        .context("the catalog has its Work Context")?;
-    let (representation, mappers) = local_public_client(client, context);
+    let (representation, mappers) = local_public_client(client);
     let matches = admin
         .get(&format!("{REALM}/clients?clientId={client_id}"))
         .await?;
@@ -1751,8 +1667,6 @@ mod tests {
 
     fn retained() -> Value {
         let mut retained = local_catalog(HUB_ORIGIN, true, true, false, None).unwrap();
-        retained["workContexts"][0]["id"] = json!("chosen-work");
-        retained["workContexts"][0]["tenant"] = json!("chosen-tenant");
         retained["tenants"]
             .as_array_mut()
             .unwrap()
@@ -1764,7 +1678,7 @@ mod tests {
         PublicClient {
             client_id: "opencode-local".into(),
             members: vec![MEMBER.into()],
-            context: "chosen-work".into(),
+            tenant: "chosen-tenant".into(),
             resource: format!("{HUB_ORIGIN}/mcp/local"),
             redirects: vec!["http://127.0.0.1:3210/callback".into()],
         }
@@ -1816,10 +1730,13 @@ mod tests {
             media["authorization"]["roles"][2]["risks"],
             json!(["billed"])
         );
-        assert_eq!(
-            media["workContexts"][0]["memberships"][0]["oauthClients"],
-            json!(["vv-hub-member", "vv-hub-admin", "vv-hub-billed"])
-        );
+        let clients: Vec<&str> = media["oauthClients"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|client| client["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(clients, ["vv-hub-member", "vv-hub-admin", "vv-hub-billed"]);
     }
 
     #[test]
@@ -1849,14 +1766,10 @@ mod tests {
             .as_array_mut()
             .unwrap()
             .pop();
-        back["workContexts"][0]["memberships"]
-            .as_array_mut()
-            .unwrap()
-            .pop();
         assert_eq!(back, retained);
         for change in [
             PublicClient {
-                context: "missing".into(),
+                tenant: "missing".into(),
                 ..request()
             },
             PublicClient {
@@ -1890,10 +1803,8 @@ mod tests {
     #[test]
     fn a_public_client_has_no_secret_service_account_or_fixed_subject() {
         let prepared = local_public_catalog(&retained(), &request()).unwrap();
-        let (client, mappers) = local_public_client(
-            prepared["oauthClients"].as_array().unwrap().last().unwrap(),
-            &prepared["workContexts"][0],
-        );
+        let (client, mappers) =
+            local_public_client(prepared["oauthClients"].as_array().unwrap().last().unwrap());
         assert_eq!(client["publicClient"], true);
         for field in [
             "serviceAccountsEnabled",

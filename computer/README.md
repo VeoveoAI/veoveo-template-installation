@@ -201,8 +201,8 @@ separate: one per served branch.
 Review public origin replacements together in `opencode.json`, `policy.yaml`,
 `providers/hub.yaml` and Hub configuration. `hub.example.json` is a fragment merged
 into a valid native Hub control plane, not a second configuration schema: declare
-its public PKCE+refresh client, callback, profile/resource, Work Context and current
-user membership through the existing Hub contracts. Its environment secret
+its public PKCE+refresh client, callback and profile/resource through the existing Hub
+contracts. Its environment secret
 reference is a locator only. Select the [Computer-enabled native control installation](NATIVE_CONTROL.md): one
 new dedicated OpenShell service identity/provider supplies both upstream forwarding
 and Computer provisioning through the same native reference. The ordinary
@@ -278,49 +278,54 @@ An operator's native exec session need not inherit the workload's environment.
 Check Lore from the Computer's OpenCode shell, which inherits `HOME` and both
 variables.
 
-The [Computer handbook](instructions.md) explains the home, explicit
-Lore/Artifact publication, and served branches: a pushed branch of a server
-repository with `openshell/run` is served, and Hub's tools select which branch of
-each server the account uses. A checkout alone serves or selects nothing.
-`computer/instructions.md` is the handbook's one source. Installation supplies its
-Markdown as plain `computers.handbook` text in the trusted Hub control document,
-and Hub serves it as the MCP server `instructions` of its Computer endpoint
-(`computers.profile`) to Computer clients (`computers.oauthClient`), so every MCP
-client learns it when it connects; OpenCode puts MCP server instructions in its
-system prompt. Hub writes nothing into the Computer, and a handbook edit needs no
-image rebuild, restart or new version: clients see it on their next connection.
-An omitted or empty `handbook` serves no handbook. This is not a template language.
-Guidance references the Computer's current native inputs; it does not copy
-credentials, grants or project environment selections into a global prompt.
+The Hub's own skills, [skills/](skills/), are the Computer's guidance: `computer` (what
+the Computer provides, its home, the Hub CLI and its version), `lore` (cloning,
+committing and pushing, creating a repository, bringing a Git checkout in, sharing),
+`served-branches` and `artifact-transfers`. Each is a directory with its `SKILL.md`, in the
+Agent Skills format. Installation publishes them as `computers.skills` in the trusted Hub
+control document, each skill's name mapping each of its files, by its path within the
+skill, to the file's text. Hub serves them only to Computer clients
+(`computers.oauthClient` on `computers.profile`) under the MCP Skills extension: it declares
+`io.modelcontextprotocol/skills`, lists them in `skills/list` with their SHA-256 digests,
+answers `skills/get`, serves each file at `skill://veoveo/{name}/{path}` through
+`resources/read`, and its MCP `instructions` name them. OpenCode and n8n's Assistant load a
+skill when a task needs it; a client without skills support reads one with
+`resources/read`. Hub writes nothing into the Computer, and a skill edit needs no image
+rebuild, restart or new version: clients see it at their next listing. Skills reference
+the Computer's current native inputs; they copy no credentials, grants or project
+selections.
 
-On Linux the installer fills the field from this file: the Hub step of
-`installation.toml` names it as the seed's handbook, `veoveo-installer identity hub`
-writes it into the complete seed, and the `hub-control-plane` step publishes a changed
-handbook through the live admin control-plane API, preserving unrelated settings.
+On Linux the installer fills the field from this directory: the Hub step of
+`installation.toml` names it as `skills`, `veoveo-installer identity hub` writes it into
+the complete seed, and the `hub-control-plane` step publishes changed skills through the
+live admin control-plane API, preserving unrelated settings.
 
-For the Mac fixture's initial trusted import, set the field in the complete seed
-before `veoveo-hub validate` / `import-control-plane`:
+For the Mac fixture's initial trusted import, set the field in the complete seed before
+`veoveo-hub validate` / `import-control-plane`:
 
 ```sh
 umask 077
-jq --rawfile handbook computer/instructions.md '.computers.handbook = $handbook' \
+find computer/skills -type f -print0 | sort -z |
+  xargs -0 jq -Rs '{(input_filename | ltrimstr("computer/skills/")): .}' |
+  jq -s 'add | to_entries | reduce .[] as $file ({};
+    ($file.key | split("/")) as $path | .[$path[0]][$path[1:] | join("/")] = $file.value)' \
+  > "$PRIVATE/skills.json"
+jq --slurpfile skills "$PRIVATE/skills.json" '.computers.skills = $skills[0]' \
   "$PRIVATE/hub.json" > "$PRIVATE/hub.candidate.json"
 ```
 
-To update the fixture's guidance later, read the fresh full control response using
-the existing admin API, then prepare the ordinary publication candidate from the same
-file:
+To update the fixture's skills later, read the fresh full control response using the
+existing admin API, then prepare the ordinary publication candidate from the same file:
 
 ```sh
 umask 077
-jq --rawfile handbook computer/instructions.md \
-  '.controlPlane | .computers.handbook = $handbook' \
+jq --slurpfile skills "$PRIVATE/skills.json" '.controlPlane | .computers.skills = $skills[0]' \
   "$PRIVATE/control-read.json" > "$PRIVATE/control-candidate.json"
 ```
 
 Publish that full candidate through the same live admin control-plane API, preserving
 unrelated settings. [hub.example.json](hub.example.json) omits the field so that the
-handbook has no second copy.
+skills have no second copy.
 
 The [native OIDC fragment](lore-oidc.example.toml), Hub contribution/client records
 and exact OAuth REST paths in policy must be selected together. Native private
@@ -331,8 +336,8 @@ receipts. Existing source/image pins remain unchanged until coordinated review.
 
 ## Validation boundary
 
-Handbook changes are published through `computers.handbook` and reach clients on
-their next MCP connection; no image rebuild or restart is needed. Template, policy and
+Skill changes are published through `computers.skills` and reach clients at their next
+listing; no image rebuild or restart is needed. Template, policy and
 `computers` setting changes make a new Computer version, which each Computer takes at
 its owner's next restart; policy changes alone require no binary rebuild.
 

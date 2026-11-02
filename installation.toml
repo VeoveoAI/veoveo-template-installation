@@ -299,7 +299,7 @@ name = "hub-control-plane"
 [step.hub]
 profile = "local"
 seed = ["identity/entra.example.json", "kubernetes/hub.example.json"]
-handbook = "computer/instructions.md"
+skills = "computer/skills"
 claim = "hub-claim"
 workspace = "vv-control"
 sandbox = "hub"

@@ -7,8 +7,7 @@ These are installation and qualification instructions; the
 [Media execution record](https://github.com/VeoveoAI/veoveo-docs/blob/main/records/OPENSHELL_HARDCUT_PLAN.md#media-native-integration-plan)
 records actual deployed evidence and remaining gates. Preserve the qualified Time/Artifact paths, existing
 PostgreSQL/SeaweedFS data and registration keys. Endpoint/provider/placement
-selection stays in this installation and uses the existing local Work Context;
-there is no Media registry or fixed dev/stage/release environment hierarchy.
+selection stays in this installation; there is no Media registry or fixed dev/stage/release environment hierarchy.
 
 ## Source and identity prerequisites
 
@@ -59,8 +58,8 @@ The helper adds only the reviewed private binding
 `http://media.internal:8802/media/mcp` → `vv-services/media:8802`. Ordinary reruns
 retain selected Time, Artifact and Media bindings; foreign placements fail for
 review. Media requires selected Artifact. Existing keys, registration secret and
-IdP client secrets/subjects persist. Existing Work Context output owner, policy and
-membership constraints are retained; an ambiguous contributor membership fails.
+IdP client secrets/subjects persist. An output Media stores belongs to the person whose
+Task produced it, with Media and the Task in its provenance.
 
 Only selected/retained Media adds `vv-hub-billed`: its Hub role grants read/write
 with the `billed` risk, without sensitive, destructive, physical or administer
@@ -259,13 +258,11 @@ export VEOVEO_ACCEPTANCE_MEMBER_BEARER_ENV=HUB_MEMBER_REFERENCE
 export VEOVEO_ACCEPTANCE_ADMIN_BEARER_ENV=HUB_ADMIN_REFERENCE
 export VEOVEO_ACCEPTANCE_MEDIA_FIXTURE=https://vv-services--media-provider--http.openshell.localhost:17670
 export VEOVEO_ACCEPTANCE_BILLED_PRINCIPAL='https://auth.localhost:8443/realms/veoveo#vv-hub-billed'
-export VEOVEO_ACCEPTANCE_WORK_CONTEXT=local
 export VEOVEO_ACCEPTANCE_LABELS='[]'
 /sandbox/bin/media-acceptance --ignored --skip real_provider --skip restart --nocapture --test-threads=1
 ```
 
-The expected principal, Work Context and labels must match the actual retained
-Hub configuration; the values above describe this local installation. They are
+The expected principal and labels must match the actual retained Hub configuration; the values above describe this local installation. They are
 assertions about ownership/provenance, not authority to change the output policy.
 
 Run restart phases separately. The in-flight probe is

@@ -205,12 +205,6 @@ pub fn prepare_in(
         ));
     }
     let document = seed_document(seed, people.as_ref(), &kid);
-    let unowned = control_plane::unowned_contexts(&document);
-    ensure!(
-        unowned.is_empty(),
-        "the seed's Work Context {} names no output owner: a person owns its outputs, so name the owner in the people document ([identity] people) or keep the earlier seed's; the repository's example owner is never written",
-        unowned.join(", ")
-    );
     missing_secrets(&document, &environment)?;
     // The seed is kept while it holds the same document, however it is laid out.
     let existing = std::fs::read_to_string(&paths.seed)
@@ -459,7 +453,6 @@ mod tests {
                 seed: json!({
                     "authorizationServers": [{"id": "hub", "accessTokenKeyId": "example", "accessTokenSigningKey": "access_token_signing_key"}],
                     "authorization": {"grants": [{"role": "admin", "subject": {"principal": "55555555"}}], "roles": []},
-                    "workContexts": [{"id": "reference-work", "memberships": [{"principals": ["44444444"]}]}],
                     "lore": {"deployments": [], "repositories": [], "assignments": []},
                     "secrets": [
                         {"id": "access_token_signing_key", "source": "env", "locator": "VEOVEO_ACCESS_TOKEN_SIGNING_KEY_B64"},
@@ -541,7 +534,6 @@ mod tests {
             key_set["keys"][0]["kid"]
         );
         assert_eq!(seed["authorization"]["grants"], json!([]));
-        assert_eq!(seed["workContexts"][0]["memberships"], json!([]));
         assert!(
             !String::from_utf8_lossy(&first[0].1).contains(
                 &environment
@@ -708,7 +700,6 @@ mod tests {
     fn a_seed_keeps_the_earlier_seeds_people() {
         let earlier = json!({
             "authorization": {"grants": [{"role": "admin", "subject": {"principal": "e8c1"}}]},
-            "workContexts": [{"id": "reference-work", "memberships": [{"principals": ["e8c1"]}]}],
             "lore": {"repositories": [{"id": "01a1"}], "assignments": [{"repository": "01a1", "principal": "e8c1"}]},
         });
         let fixture = Fixture::new("people");
@@ -718,10 +709,6 @@ mod tests {
             earlier["authorization"]["grants"]
         );
         assert_eq!(
-            document["workContexts"][0]["memberships"],
-            earlier["workContexts"][0]["memberships"]
-        );
-        assert_eq!(
             document["lore"]["repositories"],
             earlier["lore"]["repositories"]
         );
@@ -729,32 +716,5 @@ mod tests {
             document["authorizationServers"][0]["accessTokenKeyId"],
             "kid-1"
         );
-    }
-
-    #[test]
-    fn a_seed_names_the_people_who_own_outputs_and_never_the_example_owner() {
-        let fixture = Fixture::new("owner");
-        let mut seed = fixture.seed.clone();
-        seed["workContexts"][0]["outputPolicy"] =
-            json!({"owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"}});
-        // A first seed without a people document has no owner to name, and writes nothing.
-        let error = prepare_in(&fixture.paths(), &fixture.wanted, &seed, None, false).unwrap_err();
-        assert!(error.to_string().contains("reference-work"), "{error}");
-        assert!(fixture.files().is_empty());
-        // The people document, or an earlier seed, names the owner.
-        let owner = json!({"kind": "principal", "id": "https://login.example/v2.0#e8c1"});
-        let people = json!({"workContexts": [{"id": "reference-work", "memberships": [], "outputPolicy": {"owner": owner}}]});
-        prepare_in(
-            &fixture.paths(),
-            &fixture.wanted,
-            &seed,
-            Some(people),
-            false,
-        )
-        .unwrap();
-        let written: Value =
-            serde_json::from_str(&std::fs::read_to_string(fixture.paths().seed).unwrap()).unwrap();
-        assert_eq!(written["workContexts"][0]["outputPolicy"]["owner"], owner);
-        assert!(!written.to_string().contains("55555555"));
     }
 }

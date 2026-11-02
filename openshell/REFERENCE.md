@@ -89,13 +89,12 @@ identity is required for these OIDC users; ordinary server TLS verification and
 native supervisor/control certificates remain required.
 
 Hub application clients use its existing OIDC code broker. Entra authenticates
-the user; Hub issues the normal application access/refresh grant, including its
-Work Context authority. A plain Entra access token is not substituted for Hub's
+the user; Hub issues the normal application access/refresh grant. A plain Entra access token is not substituted for Hub's
 RFC 9068 profile bearer. The Entra confidential Web registration must include
 `https://veoveo.example.com/oauth/callback`; the secret is held only by trusted
 Hub, not by the agent. Hub checks signature, issuer, application audience and
 nonce, maps `oid` to the stable subject and maps only the selected `tid` to the
-installation tenant. Sign-in alone grants no Work Context or permission.
+installation tenant. Sign-in alone grants no permission.
 
 ## Prepare trusted Hub configuration
 
@@ -114,9 +113,9 @@ Use the actual application's supported exact callback; the loopback example is n
 an assertion that every client uses that port/path. Member/admin/billed selectors
 are explicit stable Entra object IDs, never display names. Their installation
 roles select declared access/risk; billed grants only `billed`, not administrative
-or destructive risk. The selected administrator owns output policy. Work Context
-membership lists principals, not the shared public application client, so another
-tenant user cannot gain membership merely by logging in. A single identity given
+or destructive risk. Grants and group memberships name principals, not the shared
+public application client, so another tenant user gains nothing merely by logging in.
+A single identity given
 admin authority cannot also prove the ordinary-member denial case.
 
 It performs no identity-administration, database, provider or deployment

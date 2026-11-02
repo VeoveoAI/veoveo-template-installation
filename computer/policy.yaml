@@ -15,7 +15,7 @@ network_policies:
         credential_binding: {provider: computer-hub}
         mcp:
           versions: ["2026-07-28"]
-          # Hub applies current user/profile/Work Context authorization to every
+          # Hub applies current user and profile authorization to every
           # route. Native MCP framing/known-method enforcement still applies.
           allow_all_known_mcp_methods: true
     binaries:

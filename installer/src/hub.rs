@@ -1,11 +1,11 @@
 //! Hub's control plane, read and published through Hub's administrative route as the
 //! operator, an installation administrator signed in through the browser with the Hub
-//! SDK's sign-in. This repository's seed, filled with the handbook and the names of
+//! SDK's sign-in. This repository's seed, filled with the Computers' skills and the names of
 //! Hub's trusted files, is what the installation publishes; Hub's validation answers it
 //! as Hub would keep and serve it, with its SHA-256, which is compared with the active
 //! revision's, so Hub's own serialization, with its defaults, decides what differs.
-//! The members people change (their grants, memberships, Work Context output owners and
-//! initial grants, repositories and assignments) are never the installation's: they are
+//! The members people change (their grants, repositories, assignments and groups) are
+//! never the installation's: they are
 //! left out of the comparison, and a publication keeps them as they are at that moment.
 //! Nothing resets the control plane; a first installation's Hub seeds itself.
 //!
@@ -46,11 +46,8 @@ pub const SIGN_IN_REDIRECT: &str = "http://127.0.0.1:3211/callback";
 pub const SIGN_IN_SCOPE: &str = "mcp";
 
 /// Members of the control plane that people change, never the installation.
-pub const PEOPLE: [&str; 7] = [
+pub const PEOPLE: [&str; 4] = [
     "authorization.grants",
-    "workContexts.*.memberships",
-    "workContexts.*.outputPolicy.owner",
-    "workContexts.*.outputPolicy.initialGrants",
     "lore.repositories",
     "lore.assignments",
     "lore.groups",
@@ -274,8 +271,8 @@ fn sha256_hex(text: &str) -> String {
 
 // ----- the seed -----
 
-/// The seed documents merged by their typed keys, with the handbook and the claim's
-/// file names filled.
+/// The seed documents merged by their typed keys, with the Computers' skills and the
+/// claim's file names filled.
 pub fn declared_seed(inputs: &Inputs, hub: &Hub) -> Result<Value> {
     let claim = inputs
         .declaration
@@ -290,12 +287,67 @@ pub fn declared_seed(inputs: &Inputs, hub: &Hub) -> Result<Value> {
             .with_context(|| format!("{} is not JSON", file.display()))?;
         merge_seed(&mut seed, document);
     }
-    let handbook = inputs.text(&hub.handbook)?;
+    let skills = declared_skills(&inputs.path(&hub.skills))?;
     seed.get_mut("computers")
         .and_then(Value::as_object_mut)
-        .context("the seed has no computers section for the handbook")?
-        .insert("handbook".to_owned(), Value::String(handbook));
+        .context("the seed has no computers section for the skills")?
+        .insert("skills".to_owned(), skills);
     Ok(seed)
+}
+
+/// The Computers' skills under `directory`, as `computers.skills` holds them: each skill
+/// directory's name, then each of its files by its `/`-separated path within the skill,
+/// with its text. Hub checks names and computes each file's digest.
+fn declared_skills(directory: &Path) -> Result<Value> {
+    let mut skills = serde_json::Map::new();
+    for entry in sorted_entries(directory)? {
+        let path = entry.path();
+        let name = entry
+            .file_name()
+            .into_string()
+            .map_err(|name| anyhow!("skill directory {name:?} is not UTF-8"))?;
+        if !entry.file_type()?.is_dir() {
+            bail!("{} is not a skill directory", path.display());
+        }
+        let mut files = serde_json::Map::new();
+        skill_files(&path, "", &mut files)?;
+        if !files.contains_key("SKILL.md") {
+            bail!("skill {name} has no SKILL.md");
+        }
+        skills.insert(name, Value::Object(files));
+    }
+    Ok(Value::Object(skills))
+}
+
+/// Every file below `directory`, by its path within the skill under `prefix`.
+fn skill_files(
+    directory: &Path,
+    prefix: &str,
+    files: &mut serde_json::Map<String, Value>,
+) -> Result<()> {
+    for entry in sorted_entries(directory)? {
+        let name = entry
+            .file_name()
+            .into_string()
+            .map_err(|name| anyhow!("skill file {name:?} is not UTF-8"))?;
+        let relative = format!("{prefix}{name}");
+        if entry.file_type()?.is_dir() {
+            skill_files(&entry.path(), &format!("{relative}/"), files)?;
+        } else {
+            let text = std::fs::read_to_string(entry.path())
+                .with_context(|| format!("{} is not UTF-8 text", entry.path().display()))?;
+            files.insert(relative, Value::String(text));
+        }
+    }
+    Ok(())
+}
+
+fn sorted_entries(directory: &Path) -> Result<Vec<std::fs::DirEntry>> {
+    let mut entries = std::fs::read_dir(directory)
+        .with_context(|| format!("reading {}", directory.display()))?
+        .collect::<std::io::Result<Vec<_>>>()?;
+    entries.sort_by_key(std::fs::DirEntry::file_name);
+    Ok(entries)
 }
 
 /// Merges one seed document into the others by their typed keys: sections merge member
@@ -358,8 +410,7 @@ pub fn installation_owned(mut control_plane: Value) -> Value {
 }
 
 /// The document to publish: the declared members, with the members people change taken
-/// from the active revision. A Work Context the active revision lacks gets no members,
-/// and no output owner or initial grants: the seed's example people are never published.
+/// from the active revision, so the seed's example people are never published.
 pub fn publication(declared: &Value, active: &Value) -> Value {
     let mut document = installation_owned(declared.clone());
     if let (Some(grants), Some(authorization)) = (
@@ -378,58 +429,7 @@ pub fn publication(declared: &Value, active: &Value) -> Value {
             lore.insert(member.to_owned(), value.clone());
         }
     }
-    if let Some(contexts) = document
-        .get_mut("workContexts")
-        .and_then(Value::as_array_mut)
-    {
-        for context in contexts {
-            let active_context = active["workContexts"]
-                .as_array()
-                .and_then(|active| active.iter().find(|other| other["id"] == context["id"]));
-            let memberships = active_context
-                .and_then(|other| other.get("memberships").cloned())
-                .unwrap_or_else(|| Value::Array(Vec::new()));
-            let Some(context) = context.as_object_mut() else {
-                continue;
-            };
-            context.insert("memberships".to_owned(), memberships);
-            for member in OUTPUT_PEOPLE {
-                let Some(value) = active_context
-                    .and_then(|other| other.pointer(&format!("/outputPolicy/{member}")))
-                else {
-                    continue;
-                };
-                if let Some(policy) = context
-                    .entry("outputPolicy")
-                    .or_insert_with(|| Value::Object(serde_json::Map::new()))
-                    .as_object_mut()
-                {
-                    policy.insert(member.to_owned(), value.clone());
-                }
-            }
-        }
-    }
     document
-}
-
-/// The members of a Work Context's output policy that are people's.
-const OUTPUT_PEOPLE: [&str; 2] = ["owner", "initialGrants"];
-
-/// The Work Contexts of `document` whose output policy names no owner: a context the
-/// active revision lacks, whose owner is a person's and set in Hub, never this
-/// repository's example.
-pub fn unowned_contexts(document: &Value) -> Vec<String> {
-    document["workContexts"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|context| {
-            context
-                .get("outputPolicy")
-                .is_some_and(|policy| policy.get("owner").is_none())
-        })
-        .map(|context| context["id"].as_str().unwrap_or_default().to_owned())
-        .collect()
 }
 
 // ----- signing in -----
@@ -781,16 +781,7 @@ pub(crate) async fn compare_with_hub(
 ) -> Result<Comparison> {
     let active = route.read().await?;
     let document = publication(declared, &active.control_plane);
-    let unowned = unowned_contexts(&document);
-    let validation = if unowned.is_empty() {
-        route.validate(&document).await?
-    } else {
-        Validation::Refused(format!(
-            "the active revision has no Work Context {}, whose output owner is a person's and set in Hub; this repository's example owner is never published",
-            unowned.join(", ")
-        ))
-    };
-    let outcome = match validation {
+    let outcome = match route.validate(&document).await? {
         Validation::Refused(reason) => Outcome::Refused(reason),
         Validation::Valid { sha256, .. } if sha256 == active.sha256 => Outcome::Differs(Vec::new()),
         Validation::Valid {
@@ -1447,17 +1438,13 @@ mod tests {
                 "profiles": [{"id": "local", "protectedResource": "https://veoveo.example.com/mcp/local"}],
                 "oauthClients": [{"id": "entra-browser"}],
                 "authorization": {"grants": [{"subject": {"principal": "55555555"}, "role": "admin"}], "roles": []},
-                "workContexts": [
-                    {"id": "reference-work", "memberships": [{"principals": ["44444444"]}]},
-                    {"id": "new-work", "memberships": [{"principals": ["44444444"]}]},
-                ],
             }),
         );
         merge_seed(
             &mut seed,
             json!({
                 "oauthClients": [{"id": "veoveo-hub-sdk-cli"}],
-                "computers": {"policyFile": "/etc/veoveo/hub/computer-policy-0123456789ab.yaml", "handbook": "# Handbook\nUse Lore.\nUse the Hub CLI.\n"},
+                "computers": {"policyFile": "/etc/veoveo/hub/computer-policy-0123456789ab.yaml", "skills": {"lore": {"SKILL.md": "---\nname: lore\ndescription: Use Lore.\n---\nUse Lore.\n"}}},
                 "factory": {"policyFile": "/etc/veoveo/hub/factory-base-ba9876543210.yaml"},
                 "lore": {"deployments": [{"id": "primary"}], "repositories": [], "assignments": []},
             }),
@@ -1466,14 +1453,12 @@ mod tests {
     }
 
     /// A recorded active control plane: the seed after people created a repository,
-    /// were granted it and joined the Work Context, with the handbook of an earlier
-    /// release and the policy files an operator named by hand.
+    /// were granted it and joined a group, with the skills of an earlier release and the
+    /// policy files an operator named by hand.
     fn active() -> Value {
         let mut active = seed();
         active["authorization"]["grants"] =
             json!([{"subject": {"principal": "e8c1"}, "role": "admin"}]);
-        active["workContexts"] =
-            json!([{"id": "reference-work", "memberships": [{"principals": ["e8c1", "77aa"]}]}]);
         active["lore"]["repositories"] =
             json!([{"id": "01a1586c89057ea3adcfc848da54077b", "title": "time"}]);
         active["lore"]["assignments"] = json!([
@@ -1482,7 +1467,8 @@ mod tests {
         ]);
         active["lore"]["groups"] = json!([{"id": "5f0c1d2e3a4b5c6d7e8f90a1b2c3d4e5", "name": "flight",
             "members": [{"principal": "e8c1", "role": "owner"}]}]);
-        active["computers"]["handbook"] = json!("# Handbook\nUse Lore.\n");
+        active["computers"]["skills"] =
+            json!({"lore": {"SKILL.md": "---\nname: lore\ndescription: Lore.\n---\n"}});
         active["computers"]["policyFile"] = json!("/etc/veoveo/hub/computer-policy-v3.yaml");
         active["factory"]["policyFile"] = json!("/etc/veoveo/hub/factory-base-v2.yaml");
         active
@@ -1513,6 +1499,40 @@ mod tests {
     }
 
     #[test]
+    fn skills_are_read_by_directory_with_their_files_by_path() {
+        let root =
+            std::env::temp_dir().join(format!("veoveo-installer-skills-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("lore/references")).unwrap();
+        std::fs::create_dir_all(root.join("computer")).unwrap();
+        std::fs::write(root.join("lore/SKILL.md"), "---\nname: lore\n---\n").unwrap();
+        std::fs::write(root.join("lore/references/clone.md"), "lore clone\n").unwrap();
+        std::fs::write(root.join("computer/SKILL.md"), "---\nname: computer\n---\n").unwrap();
+        assert_eq!(
+            declared_skills(&root).unwrap(),
+            json!({
+                "computer": {"SKILL.md": "---\nname: computer\n---\n"},
+                "lore": {"SKILL.md": "---\nname: lore\n---\n", "references/clone.md": "lore clone\n"},
+            })
+        );
+        std::fs::remove_file(root.join("computer/SKILL.md")).unwrap();
+        let error = declared_skills(&root).unwrap_err();
+        assert!(
+            error.to_string().contains("computer has no SKILL.md"),
+            "{error}"
+        );
+        std::fs::write(root.join("stray.md"), "x").unwrap();
+        std::fs::remove_dir_all(root.join("computer")).unwrap();
+        assert!(
+            declared_skills(&root)
+                .unwrap_err()
+                .to_string()
+                .contains("not a skill directory")
+        );
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
     fn the_origin_is_the_profiles_protected_resource_origin() {
         assert_eq!(
             origin(&seed(), "local").unwrap().as_str(),
@@ -1531,67 +1551,11 @@ mod tests {
         assert_eq!(
             paths,
             [
-                "computers.handbook",
                 "computers.policyFile",
+                "computers.skills.lore[\"SKILL.md\"]",
                 "factory.policyFile",
-                "workContexts[id=new-work]"
             ]
         );
-    }
-
-    #[test]
-    fn a_work_contexts_output_owner_and_initial_grants_are_the_active_revisions() {
-        let mut declared = seed();
-        declared["workContexts"][0]["outputPolicy"] = json!({
-            "owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"},
-            "initialGrants": [{"subject": {"kind": "principal", "id": "https://login.example/v2.0#44444444"}, "level": "viewer"}],
-            "classification": "internal",
-        });
-        declared["workContexts"][1]["outputPolicy"] = json!({
-            "owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"},
-        });
-        let mut active = active();
-        active["workContexts"][0]["outputPolicy"] = json!({
-            "owner": {"kind": "principal", "id": "https://login.example/v2.0#e8c1"},
-            "initialGrants": [{"subject": {"kind": "principal", "id": "https://login.example/v2.0#77aa"}, "level": "editor"}],
-            "classification": "restricted",
-        });
-        let document = publication(&declared, &active);
-        // The person who owns the outputs, and the grants people made, as active; the
-        // installation's classification as declared.
-        assert_eq!(
-            document["workContexts"][0]["outputPolicy"],
-            json!({
-                "owner": active["workContexts"][0]["outputPolicy"]["owner"],
-                "initialGrants": active["workContexts"][0]["outputPolicy"]["initialGrants"],
-                "classification": "internal",
-            })
-        );
-        // Neither is a difference the installation would publish.
-        let paths: Vec<String> = compare(
-            &installation_owned(declared.clone()),
-            &installation_owned(active.clone()),
-        )
-        .iter()
-        .map(|difference| difference.path.to_string())
-        .collect();
-        assert!(
-            !paths
-                .iter()
-                .any(|path| path.contains("owner") || path.contains("initialGrants")),
-            "{paths:?}"
-        );
-        // A Work Context the active revision lacks has no owner to publish, never the
-        // repository's example.
-        assert_eq!(document["workContexts"][1]["outputPolicy"], json!({}));
-        assert!(!document.to_string().contains("55555555"));
-        assert_eq!(unowned_contexts(&document), ["new-work"]);
-        // Once the active revision has it, its owner is carried too.
-        active["workContexts"]
-            .as_array_mut()
-            .unwrap()
-            .push(json!({"id": "new-work", "memberships": [], "outputPolicy": {"owner": {"kind": "principal", "id": "https://login.example/v2.0#e8c1"}}}));
-        assert!(unowned_contexts(&publication(&declared, &active)).is_empty());
     }
 
     #[test]
@@ -1611,15 +1575,8 @@ mod tests {
             active()["lore"]["assignments"]
         );
         assert_eq!(document["lore"]["groups"], active()["lore"]["groups"]);
-        assert_eq!(
-            document["workContexts"][0]["memberships"],
-            active()["workContexts"][0]["memberships"]
-        );
-        // A new Work Context gets no member; the seed's example person is not published.
-        assert_eq!(
-            document["workContexts"][1],
-            json!({"id": "new-work", "memberships": []})
-        );
+        // The seed's example person is not published.
+        assert!(!document.to_string().contains("55555555"));
         // The installation's members as declared.
         assert_eq!(document["computers"], seed()["computers"]);
         assert_eq!(
@@ -1902,10 +1859,9 @@ mod publication_tests {
 
     fn active() -> Value {
         json!({
-            "computers": {"handbook": "old", "gateway": {"endpoint": "https://openshell.openshell.svc.cluster.local:8080"}},
+            "computers": {"skills": {}, "gateway": {"endpoint": "https://openshell.openshell.svc.cluster.local:8080"}},
             "oauthClients": [{"id": "veoveo-hub-sdk-cli", "grantTypes": ["authorization_code_pkce"]}],
             "authorization": {"grants": [{"role": "admin", "subject": {"principal": "person-1"}}], "roles": []},
-            "workContexts": [],
             "lore": {"deployments": [], "repositories": [], "assignments": []},
         })
     }
@@ -1931,7 +1887,7 @@ mod publication_tests {
     async fn a_change_differs_where_hubs_forms_differ_and_a_second_publication_changes_nothing() {
         let route = Route::over(active());
         let mut declared = active();
-        declared["computers"]["handbook"] = json!("new");
+        declared["computers"]["skills"] = json!({"lore": {"SKILL.md": "new"}});
         let comparison = compare_with_hub(&route, &declared).await.unwrap();
         let Outcome::Differs(differences) = comparison.outcome else {
             panic!("Hub validates the document");
@@ -1941,7 +1897,7 @@ mod publication_tests {
                 .iter()
                 .map(|difference| difference.path.to_string())
                 .collect::<Vec<_>>(),
-            ["computers.handbook"]
+            ["computers.skills.lore"]
         );
         assert_eq!(
             publish_over(&route, &declared).await.unwrap().revision,
@@ -1953,7 +1909,10 @@ mod publication_tests {
         );
         assert_eq!(*route.writes.lock().unwrap(), 1);
         let revisions = route.revisions.lock().unwrap();
-        assert_eq!(revisions.last().unwrap().1["computers"]["handbook"], "new");
+        assert_eq!(
+            revisions.last().unwrap().1["computers"]["skills"],
+            json!({"lore": {"SKILL.md": "new"}})
+        );
         // The person's grant is kept, never the seed's example.
         assert_eq!(
             revisions.last().unwrap().1["authorization"]["grants"],
@@ -1967,15 +1926,10 @@ mod publication_tests {
         started["factory"] =
             json!({"policyFile": "/etc/veoveo/hub/factory-base-111111111111.yaml"});
         let route = Route::over(started.clone());
-        let mut handbook = started.clone();
-        handbook["computers"]["handbook"] = json!("new");
-        assert!(
-            !publish_over(&route, &handbook)
-                .await
-                .unwrap()
-                .read_at_start()
-        );
-        let mut factory = handbook;
+        let mut skills = started.clone();
+        skills["computers"]["skills"] = json!({"lore": {"SKILL.md": "new"}});
+        assert!(!publish_over(&route, &skills).await.unwrap().read_at_start());
+        let mut factory = skills;
         factory["factory"]["policyFile"] = json!("/etc/veoveo/hub/factory-base-222222222222.yaml");
         let published = publish_over(&route, &factory).await.unwrap();
         assert!(published.read_at_start());
@@ -2005,28 +1959,11 @@ mod publication_tests {
     }
 
     #[tokio::test]
-    async fn a_work_context_without_its_owner_is_refused_before_hub_validates_it() {
-        let route = Route::over(active());
-        let mut declared = active();
-        declared["workContexts"] = json!([{"id": "new-work", "memberships": [],
-            "outputPolicy": {"owner": {"kind": "principal", "id": "https://login.example/v2.0#55555555"}}}]);
-        let comparison = compare_with_hub(&route, &declared).await.unwrap();
-        let Outcome::Refused(reason) = comparison.outcome else {
-            panic!("an owner-less Work Context is refused");
-        };
-        assert!(reason.contains("new-work"), "{reason}");
-        assert!(!comparison.document.to_string().contains("55555555"));
-        let error = publish_over(&route, &declared).await.unwrap_err();
-        assert!(error.to_string().contains("example owner"), "{error}");
-        assert_eq!(*route.writes.lock().unwrap(), 0);
-    }
-
-    #[tokio::test]
     async fn a_document_hub_refuses_is_never_written() {
         let mut route = Route::over(active());
         route.refusal = Some("duplicate policy rule `a` in policy `b`".into());
         let mut declared = active();
-        declared["computers"]["handbook"] = json!("new");
+        declared["computers"]["skills"] = json!({"lore": {"SKILL.md": "new"}});
         let comparison = compare_with_hub(&route, &declared).await.unwrap();
         assert_eq!(
             comparison.outcome,
@@ -2043,7 +1980,7 @@ mod publication_tests {
     #[tokio::test]
     async fn a_repository_created_while_publishing_survives_the_publication() {
         let mut declared = active();
-        declared["computers"]["handbook"] = json!("new");
+        declared["computers"]["skills"] = json!({"lore": {"SKILL.md": "new"}});
         declared["authorization"]["grants"] = json!([{"role": "example"}]);
         let mut created = active();
         created["lore"]["repositories"] = json!([{"id": "01a1586c89057ea3adcfc848da54077b"}]);
@@ -2054,7 +1991,10 @@ mod publication_tests {
         // The first write was refused (412); the second was based on the new revision.
         assert_eq!(revision, "gcp-3");
         let (_, published) = revisions.last().unwrap();
-        assert_eq!(published["computers"]["handbook"], "new");
+        assert_eq!(
+            published["computers"]["skills"],
+            json!({"lore": {"SKILL.md": "new"}})
+        );
         assert_eq!(
             published["lore"]["repositories"],
             json!([{"id": "01a1586c89057ea3adcfc848da54077b"}])
@@ -2087,7 +2027,7 @@ mod publication_tests {
             }
         }
         let mut declared = active();
-        declared["computers"]["handbook"] = json!("new");
+        declared["computers"]["skills"] = json!({"lore": {"SKILL.md": "new"}});
         let error = publish_over(&Busy, &declared).await.unwrap_err();
         assert!(
             error.to_string().contains("nothing was published"),

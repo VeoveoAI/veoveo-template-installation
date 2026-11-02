@@ -107,8 +107,9 @@ enum FixtureCommand {
         /// The existing MCP resource of the client.
         #[arg(long)]
         protected_resource: String,
+        /// The tenant the client and its members belong to.
         #[arg(long)]
-        work_context: String,
+        tenant: String,
         #[arg(long = "member-object-id", required = true)]
         members: Vec<String>,
         #[arg(long = "client-redirect-uri", required = true)]
@@ -195,7 +196,7 @@ async fn fixture_command(repository: &std::path::Path, command: &FixtureCommand)
             control_plane_file,
             output_control_plane,
             protected_resource,
-            work_context,
+            tenant,
             members,
             redirects,
             application_client_id,
@@ -207,7 +208,7 @@ async fn fixture_command(repository: &std::path::Path, command: &FixtureCommand)
                 &keycloak::PublicClient {
                     client_id: application_client_id.clone(),
                     members: members.clone(),
-                    context: work_context.clone(),
+                    tenant: tenant.clone(),
                     resource: protected_resource.clone(),
                     redirects: redirects.clone(),
                 },

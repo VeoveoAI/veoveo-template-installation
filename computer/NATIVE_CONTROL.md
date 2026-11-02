@@ -112,8 +112,8 @@ configuration. Keep both gateway blocks on the same actual endpoint, workload CA
 and `HUB_NATIVE_CONTROL_REFERENCE`. The fragment shows the reference service
 bindings; retain the installation's reviewed `nativeUpstreams.bindings` rather than
 blindly replacing them. Merge secrets by ID, retaining signing, registration and
-IdP references. Configure the public PKCE client/callback, profile, Work Context
-and memberships through the existing native Hub contracts. The public token URL
+IdP references. Configure the public PKCE client/callback and profile through the existing native
+Hub contracts. The public token URL
 must agree with the browser origin, user Hub refresh profile and exact policy.
 
 On Linux the installer's `hub-claim` step writes the Computer policy, named by its

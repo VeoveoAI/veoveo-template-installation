@@ -54,8 +54,8 @@ VEOVEO_DEPLOYMENT_ID = "01990000-0000-7000-8000-000000000004"
 [identity]
 directory = "hub-config"
 # The people of a first seed: a JSON document holding the seed's members people
-# change (grants, memberships, Work Context output owners and initial grants,
-# repositories and assignments). Later seeds keep the earlier seed's people.
+# change (grants, repositories, assignments and groups). Later seeds keep the earlier
+# seed's people.
 people = "hub-people.json"
 
 # Hub's settings in hub.env that are not secret.

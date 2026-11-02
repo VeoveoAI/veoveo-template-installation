@@ -230,8 +230,9 @@ pub struct Hub {
     pub profile: String,
     /// The seed documents, merged by their typed keys.
     pub seed: Vec<PathBuf>,
-    /// The file published as `computers.handbook`.
-    pub handbook: PathBuf,
+    /// The directory published as `computers.skills`: one directory per skill, each
+    /// with its `SKILL.md`.
+    pub skills: PathBuf,
     /// The claim step whose files the seed names as `@claim:<name>@`.
     pub claim: String,
     /// Hub's sandbox, restarted when a member Hub reads only at its start changes.
@@ -389,7 +390,7 @@ impl Declaration {
                 }
                 StepKind::Hub(hub) => {
                     files.extend(hub.seed.iter().map(PathBuf::as_path));
-                    files.push(&hub.handbook);
+                    files.push(&hub.skills);
                 }
             }
         }
