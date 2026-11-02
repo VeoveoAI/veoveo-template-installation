@@ -38,8 +38,16 @@ the directory that becomes its workspace, or call the Hub tool
 once, so the next `lore` command can push or clone it.
 The owner or agent chooses the repository, branch and destination. An empty Lore
 repository list does not determine whether a known assigned repository can be
-cloned. Clone with the chosen repository URI and destination, then use that
-checkout's configured remote.
+cloned. `$VEOVEO_LORE_REMOTE` is a Lore endpoint, not a Git remote. Clone a repository
+from it with `lore clone "$VEOVEO_LORE_REMOTE/<repository ID>" <destination>`, adding
+`--branch <branch>` for another branch; `lore repository list` shows each ID. In a Lore
+checkout, `lore stage --scan .` stages new and changed files (`lore status` lists only
+what is staged or tracked), `lore commit "<message>"` records them and `lore push`
+publishes them; `lore sync` updates the checkout.
+Git works as usual for other sources. To bring a Git checkout into Lore, first add
+`.git/` to a `.loreignore` file at its top, because Lore leaves out only what that file
+lists and an ignore rule does not remove what is already committed; then run
+`lore repository create "$VEOVEO_LORE_REMOTE/<name>"` in it.
 Source reaches remote followers only after explicit commit and push, not file saves
 or local commits alone.
 
