@@ -48,6 +48,10 @@ network_policies:
         versions:
         - '2026-07-28'
         allow_all_known_mcp_methods: true
+      # Known methods do not cover extensions: the skills extension's list is named.
+      rules:
+      - allow:
+          method: skills/list
     binaries:
     - path: /usr/local/bin/opencode
     - path: /opt/veoveo/hub-sdk-cli/usr/local/bin/veoveo-hub-sdk-cli
