@@ -1,0 +1,16 @@
+# Static pages served at Cloudflare's edge, before the tunnel (DESIGN.md, Public
+# Ingress). Cloudflare holds these, never this file, and veoveo-installer does not apply
+# them; they are recorded in the shape of Cloudflare's API bodies. An installation that
+# serves no static pages leaves both lists empty.
+#
+# Workers route: POST /zones/{zone_id}/workers/routes
+workersRoutes:
+  - pattern: veoveo.example.com/docs/*
+    script: veoveo-docs
+# Access application: POST /accounts/{account_id}/access/apps, with a policy that
+# admits the installation's people through its identity provider.
+accessApplications:
+  - name: Veoveo docs
+    type: self_hosted
+    domain: veoveo.example.com/docs
+    identityProvider: the installation's OIDC provider

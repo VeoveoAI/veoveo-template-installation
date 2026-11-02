@@ -259,6 +259,17 @@ installation whose Media checks run status instead publishes no Media route. The
 verifies TLS to every Service against its public CA. Public origins stay installation
 data.
 
+An installation may also serve static pages, such as its documentation, under one path of
+its public host from Cloudflare's edge. A Workers route, `{host}/{path}/*`, answers those
+requests before the tunnel, so they reach neither the tunnel nor Hub, and the pages stay
+up while the cluster is down. The path must not overlap the tunnel's routes or a path Hub
+serves. Pages that describe the installation sit behind a Cloudflare Access application
+that signs people in with the installation's identity provider. The Worker, its route and
+the Access application live in Cloudflare, outside `veoveo-installer apply`; the
+installation records them in [edge-routes.yaml](kubernetes/edge-routes.yaml), as it records
+the tunnel's routes. The steps are in the
+[workload guide](kubernetes/WORKLOADS.md#static-pages-at-the-edge).
+
 ## Factory
 
 Factory sandboxes run in `vv-factory`. Each gets the base policy

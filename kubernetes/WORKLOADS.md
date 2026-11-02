@@ -116,6 +116,32 @@ pins the official cloudflared `2026.10.3` multi-arch index digest; the installer
 native exposure Host; S3 routing must **not** set `httpHostHeader`, since SigV4
 binds the public Host.
 
+### Static pages at the edge
+
+An installation can publish static pages, such as its architecture diagram, on its public
+host without Hub serving them ([design](../DESIGN.md#public-ingress)). A Cloudflare Worker
+with static assets answers one path of the host at Cloudflare's edge; everything else still
+goes through the tunnel. This is optional, and `veoveo-installer` does not apply it.
+
+1. Choose a path, such as `/docs/`, that neither the tunnel's routes nor Hub serves. Hub
+   serves its root page, `/.well-known/`, `/oauth/`, `/mcp/`, `/computer/`, `/apps/`,
+   `/lore/`, `/factory/`, `/selection/`, `/admin/`, `/instances/`, `/livez` and `/readyz`;
+   check the path against [Hub's design](https://github.com/VeoveoAI/veoveo-hub/blob/main/crates/veoveo-hub/DESIGN.md)
+   when Hub changes.
+2. Build the Worker. Static assets are matched by the full request path, so lay the files
+   out under the chosen path, for example `docs/architecture/index.html`. Turn off the
+   `workers.dev` address (`workers_dev = false`) so the pages are reachable only on the
+   installation's host. A Worker that serves another repository's files, such as
+   veoveo-docs, deploys from that repository.
+3. In Cloudflare Zero Trust, add a self-hosted Access application for `{host}/{path}/*`
+   whose policy admits the installation's people, signing in with the installation's
+   identity provider. Add it before the route, so the pages are never public.
+4. On the host's zone, add the Workers route `{host}/{path}/*` for the Worker.
+5. Record the route and the Access application in [edge-routes.yaml](edge-routes.yaml),
+   rendered to the public host.
+6. Check: a page under the path asks for sign-in and then loads; `/artifacts/`, `/computer/`
+   and an App's `/apps/{slug}/{page}` still reach their services.
+
 ## Workspace-local trusted service configuration
 
 The installer's `workspaces` step creates `vv-control`, `vv-services`, `installation`
