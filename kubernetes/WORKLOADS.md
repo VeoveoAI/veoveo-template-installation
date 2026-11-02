@@ -133,10 +133,11 @@ goes through the tunnel. This is optional, and `veoveo-installer` does not apply
    `workers.dev` address (`workers_dev = false`) so the pages are reachable only on the
    installation's host. A Worker that serves another repository's files, such as
    veoveo-docs, deploys from that repository.
-3. In Cloudflare Zero Trust, add a self-hosted Access application for `{host}/{path}/*`
-   whose policy admits the installation's people, signing in with the installation's
-   identity provider. Add it before the route, so the pages are never public.
-4. On the host's zone, add the Workers route `{host}/{path}/*` for the Worker.
+3. Decide whether the pages are public. If not, add a self-hosted Access application for
+   `{host}/{path}/*` in Cloudflare Zero Trust whose policy admits the installation's
+   people, signing in with the installation's identity provider, before the route.
+4. On the host's zone, add the Workers routes `{host}/{path}` and `{host}/{path}/*` for the
+   Worker; the second alone does not match the path without its trailing slash.
 5. Record the route and the Access application in [edge-routes.yaml](edge-routes.yaml),
    rendered to the public host.
 6. Check: a page under the path asks for sign-in and then loads; `/artifacts/`, `/computer/`

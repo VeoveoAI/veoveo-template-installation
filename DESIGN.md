@@ -263,8 +263,8 @@ An installation may also serve static pages, such as its documentation, under on
 its public host from Cloudflare's edge. A Workers route, `{host}/{path}/*`, answers those
 requests before the tunnel, so they reach neither the tunnel nor Hub, and the pages stay
 up while the cluster is down. The path must not overlap the tunnel's routes or a path Hub
-serves. Pages that describe the installation sit behind a Cloudflare Access application
-that signs people in with the installation's identity provider. The Worker, its route and
+serves. The pages are public unless a Cloudflare Access application in front of the path
+signs people in with the installation's identity provider. The Worker, its route and
 the Access application live in Cloudflare, outside `veoveo-installer apply`; the
 installation records them in [edge-routes.yaml](kubernetes/edge-routes.yaml), as it records
 the tunnel's routes. The steps are in the

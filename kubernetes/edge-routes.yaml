@@ -5,10 +5,13 @@
 #
 # Workers route: POST /zones/{zone_id}/workers/routes
 workersRoutes:
+  - pattern: veoveo.example.com/docs
+    script: veoveo-docs
   - pattern: veoveo.example.com/docs/*
     script: veoveo-docs
-# Access application: POST /accounts/{account_id}/access/apps, with a policy that
-# admits the installation's people through its identity provider.
+# Access application, when the pages are not public: POST
+# /accounts/{account_id}/access/apps, with a policy that admits the installation's
+# people through its identity provider.
 accessApplications:
   - name: Veoveo docs
     type: self_hosted
