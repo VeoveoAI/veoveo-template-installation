@@ -101,6 +101,27 @@ network_policies:
       - allow:
           method: tools/call
           tool: artifact__create_download
+    - host: veoveo.example.com
+      port: 443
+      path: /mcp/computer
+      protocol: mcp
+      enforcement: enforce
+      mcp:
+        versions:
+        - '2026-07-28'
+        allow_all_known_mcp_methods: false
+      # Native ServerCalls supplies the delegated JWT; do not bind a static
+      # member/admin provider to this same-origin MCP group.
+      rules:
+      - allow:
+          method: server/discover
+      - allow:
+          method: ping
+      - allow:
+          method: tools/list
+      - allow:
+          method: tools/call
+          tool: artifact__create_download
     binaries:
     - path: /usr/local/bin/veoveo-mcp-embedding
   embedding_runtime:

@@ -112,6 +112,38 @@ network_policies:
           method: resources/read
       - allow:
           method: subscriptions/listen
+    - host: veoveo.example.com
+      port: 443
+      path: /mcp/computer
+      protocol: mcp
+      enforcement: enforce
+      mcp:
+        versions:
+        - '2026-07-28'
+        allow_all_known_mcp_methods: false
+      rules:
+      - allow:
+          method: server/discover
+      - allow:
+          method: ping
+      - allow:
+          method: tools/list
+      - allow:
+          method: tools/call
+          tool: artifact__create_upload
+      - allow:
+          method: tools/call
+          tool: artifact__sign_upload_parts
+      - allow:
+          method: tools/call
+          tool: artifact__complete_upload
+      - allow:
+          method: tools/call
+          tool: artifact__abort_upload
+      - allow:
+          method: resources/read
+      - allow:
+          method: subscriptions/listen
     binaries:
     - path: /usr/local/bin/veoveo-mcp-media
   generation:
