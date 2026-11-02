@@ -1,6 +1,6 @@
 ---
 name: lore
-description: Clone, change, commit and push Lore repositories; create one; bring a Git checkout into Lore; share a repository and read who can reach it.
+description: "Clone, change, commit and push Lore repositories; create one; bring a Git checkout into Lore; share a repository and read who can reach it."
 ---
 
 # Lore repositories

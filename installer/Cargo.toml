@@ -35,12 +35,13 @@ tonic = "=0.14.6"
 url = "=2.5.8"
 uuid = { version = "1.25.0", features = ["v4"] }
 # The component lock, read with core's installation contract.
-veoveo-installation-contract = { git = "https://github.com/VeoveoAI/veoveo-core", rev = "04560dce911282156d86e925d2f18853979236d3" }
+veoveo-installation-contract = { git = "https://github.com/VeoveoAI/veoveo-core", rev = "05b6c47540680e085cc5356ed4ba8742ecc78bff" }
 # The Hub SDK's browser sign-in and stored grant, at the SDK revision the lock pins, and
 # the core types it names.
-veoveo-hub-sdk = { git = "https://github.com/VeoveoAI/veoveo-hub-sdk", rev = "a41c9cc6c81f6c0305dd41165defb142740ed6b1", default-features = false, features = ["client"] }
-veoveo-hub-sdk-cli = { git = "https://github.com/VeoveoAI/veoveo-hub-sdk", rev = "a41c9cc6c81f6c0305dd41165defb142740ed6b1" }
-veoveo-types = { git = "https://github.com/VeoveoAI/veoveo-core", rev = "120306eb969c6134dadd422dca701a2ce63e9492" }
+veoveo-hub-sdk = { git = "https://github.com/VeoveoAI/veoveo-hub-sdk", rev = "aff002265f681aa03ac8747ed5008f5c4eddf979", default-features = false, features = ["client"] }
+veoveo-hub-sdk-cli = { git = "https://github.com/VeoveoAI/veoveo-hub-sdk", rev = "aff002265f681aa03ac8747ed5008f5c4eddf979" }
+veoveo-skills = { git = "https://github.com/VeoveoAI/veoveo-core", rev = "05b6c47540680e085cc5356ed4ba8742ecc78bff", features = ["load"] }
+veoveo-types = { git = "https://github.com/VeoveoAI/veoveo-core", rev = "05b6c47540680e085cc5356ed4ba8742ecc78bff" }
 
 [dev-dependencies]
 pretty_assertions = "1.4"

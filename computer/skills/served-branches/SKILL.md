@@ -1,6 +1,6 @@
 ---
 name: served-branches
-description: How a pushed branch of a server repository is built, served and selected, and how to tell why one does not serve.
+description: "How a pushed branch of a server repository is built, served and selected, and how to tell why one does not serve."
 ---
 
 # Served branches

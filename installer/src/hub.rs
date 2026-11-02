@@ -297,7 +297,8 @@ pub fn declared_seed(inputs: &Inputs, hub: &Hub) -> Result<Value> {
 
 /// The Computers' skills under `directory`, as `computers.skills` holds them: each skill
 /// directory's name, then each of its files by its `/`-separated path within the skill,
-/// with its text. Hub checks names and computes each file's digest.
+/// with its text. Each is checked with the loader Hub uses at catalog load, so plan
+/// refuses a skill Hub would refuse.
 fn declared_skills(directory: &Path) -> Result<Value> {
     let mut skills = serde_json::Map::new();
     for entry in sorted_entries(directory)? {
@@ -311,9 +312,16 @@ fn declared_skills(directory: &Path) -> Result<Value> {
         }
         let mut files = serde_json::Map::new();
         skill_files(&path, "", &mut files)?;
-        if !files.contains_key("SKILL.md") {
-            bail!("skill {name} has no SKILL.md");
-        }
+        veoveo_skills::load::skill(
+            &name,
+            files.iter().map(|(file, text)| {
+                (
+                    file.clone(),
+                    text.as_str().unwrap_or_default().as_bytes().to_vec(),
+                )
+            }),
+        )
+        .with_context(|| format!("skill {name} in {} is not valid", path.display()))?;
         skills.insert(name, Value::Object(files));
     }
     Ok(Value::Object(skills))
@@ -1505,22 +1513,30 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("lore/references")).unwrap();
         std::fs::create_dir_all(root.join("computer")).unwrap();
-        std::fs::write(root.join("lore/SKILL.md"), "---\nname: lore\n---\n").unwrap();
+        let lore = "---\nname: lore\ndescription: Use Lore.\n---\n";
+        let computer = "---\nname: computer\ndescription: This Computer.\n---\n";
+        std::fs::write(root.join("lore/SKILL.md"), lore).unwrap();
         std::fs::write(root.join("lore/references/clone.md"), "lore clone\n").unwrap();
-        std::fs::write(root.join("computer/SKILL.md"), "---\nname: computer\n---\n").unwrap();
+        std::fs::write(root.join("computer/SKILL.md"), computer).unwrap();
         assert_eq!(
             declared_skills(&root).unwrap(),
             json!({
-                "computer": {"SKILL.md": "---\nname: computer\n---\n"},
-                "lore": {"SKILL.md": "---\nname: lore\n---\n", "references/clone.md": "lore clone\n"},
+                "computer": {"SKILL.md": computer},
+                "lore": {"SKILL.md": lore, "references/clone.md": "lore clone\n"},
             })
         );
+        // A skill Hub would refuse is refused here: one whose name is not its directory's,
+        // or one without SKILL.md.
+        std::fs::write(
+            root.join("computer/SKILL.md"),
+            "---\nname: other\ndescription: x\n---\n",
+        )
+        .unwrap();
+        let error = format!("{:#}", declared_skills(&root).unwrap_err());
+        assert!(error.contains("skill computer"), "{error}");
         std::fs::remove_file(root.join("computer/SKILL.md")).unwrap();
-        let error = declared_skills(&root).unwrap_err();
-        assert!(
-            error.to_string().contains("computer has no SKILL.md"),
-            "{error}"
-        );
+        let error = format!("{:#}", declared_skills(&root).unwrap_err());
+        assert!(error.contains("skill computer"), "{error}");
         std::fs::write(root.join("stray.md"), "x").unwrap();
         std::fs::remove_dir_all(root.join("computer")).unwrap();
         assert!(

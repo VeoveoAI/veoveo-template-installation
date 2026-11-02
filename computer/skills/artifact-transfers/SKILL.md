@@ -1,6 +1,6 @@
 ---
 name: artifact-transfers
-description: Upload or download Artifact bytes through Hub's signed transfers, keeping signed URLs private.
+description: "Upload or download Artifact bytes through Hub's signed transfers, keeping signed URLs private."
 ---
 
 # Artifact transfers

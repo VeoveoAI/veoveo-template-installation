@@ -1,6 +1,6 @@
 ---
 name: computer
-description: Use at the start of a session and whenever work depends on this private Computer: what it provides, what persists in the home, the Hub CLI, and checking or applying a Computer update.
+description: "Use at the start of a session and whenever work depends on this private Computer: what it provides, what persists in the home, the Hub CLI, and checking or applying a Computer update."
 ---
 
 # This Computer
