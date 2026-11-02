@@ -31,9 +31,12 @@ deployment acceptance.
 - Hub SDK CLI: the `cli` target of the SDK's Dockerfile, an image holding only
   `/usr/local/bin/veoveo-hub-sdk-cli`, which the Computer template mounts read-only
   beside Lore and the lock names the same way.
-- OpenCode: source commit `c5fb62662c9c6fcb5064ef191956ca0da14e1af9`, including
-  runtime base paths, trusted-local-proxy admission, mount-scoped browser caches and
-  online-only UI, mounted-router navigation and route-relative titlebar history.
+- OpenCode: source commit `e3dd1a161397501c8414a61ecce3bc289b2c27e4` of the VeoveoAI fork,
+  including runtime base paths, trusted-local-proxy admission, mount-scoped browser caches
+  and online-only UI, mounted-router navigation, route-relative titlebar history, and MCP
+  Skills (skills of connected servers, loaded on demand with their origin, approval for
+  those not in `mcp.servers.hub.skills.approved`, and a gate before code runs while one is
+  active).
   The earlier Linux reference image digest was
   `sha256:12c2ba83bd6f3dea715d1f8ab25ee20dd81dfb8145868f9a193f73cb4ce695d4`.
   Both fresh owner homepages render. Direct mounted Settings, Back to app,

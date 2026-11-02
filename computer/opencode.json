@@ -25,7 +25,10 @@
         "url": "{env:COMPUTER_HUB_URL}",
         "protocol": "2026-07-28",
         "oauth": false,
-        "headers": {"Authorization": "Bearer {env:COMPUTER_HUB_REFERENCE}"}
+        "headers": {"Authorization": "Bearer {env:COMPUTER_HUB_REFERENCE}"},
+        "skills": {
+          "approved": ["skill://veoveo/", "skill://console/", "skill://artifact/", "skill://media/", "skill://embedding/"]
+        }
       }
     }
   }

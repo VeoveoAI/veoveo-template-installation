@@ -153,8 +153,8 @@ image = "computer"
 driver_config = "kubernetes/computer-driver-config.json"
 environment = { SSL_CERT_DIR = "/etc/ssl/certs", VEOVEO_LORE_REMOTE = "grpcs://lore.veoveo-system.svc.cluster.local:41337", VEOVEO_CLI_HUB = "https://veoveo.example.com", VEOVEO_CLI_PROFILE = "computer", VEOVEO_CLI_BEARER_ENV = "COMPUTER_HUB_REFERENCE" }
 release_note = """
-npm installs scoped packages in your Computer, so n8n's Assistant can set up its workspace.
-npm now reaches the npm registry for packages whose names hold a scope, such as @n8n/workflow-sdk and @types/node, which it could not fetch before, for the Assistant's workspaces and for your own installs. The registry is read-only: npm's security audit is refused, so install with --no-audit. Your files, OpenCode, its models, Lore and the Hub CLI are unchanged."""
+Your agent learns how to use the platform from skills, and projects are groups.
+Guidance now comes as skills each service serves (Lore, Artifact transfers, served branches, this Computer, and each server's own), which your agent loads when a task needs them. OpenCode lists each skill with the service it came from, and asks before it uses one from a server someone pushed. Work Context is gone: what you share with a group is what its members reach, in Lore and in Artifact. Your files, models and n8n are unchanged."""
 [[step.template]]
 workspace = "installation"
 name = "factory-v1"
