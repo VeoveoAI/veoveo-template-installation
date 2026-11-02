@@ -29,7 +29,9 @@ on each repository the owner can reach: their own, and those shared with them or
 group they belong to. A share or a membership change while the Computer runs reaches
 it within five minutes. To share a repository, use `console__share_repository`; to
 manage groups, `console__create_group`, `console__set_group_member` and
-`console__delete_group`.
+`console__delete_group`. Groups and repository access change while you work, so read
+them when you need them: `console__groups` lists the groups the owner belongs to now,
+and `console__repository_access` who can reach a repository.
 `LORE_ACCESS_TOKEN` holds only a placeholder that the sandbox's proxy replaces in
 Lore's requests; never copy it elsewhere.
 To start a new repository, run `lore repository create "$VEOVEO_LORE_REMOTE/<name>"` in
