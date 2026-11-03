@@ -404,8 +404,9 @@ tunnel, and never rewrite the public host to Service DNS.
 
 ## Native OpenShell gateway
 
-Build the chart's gateway from maintained OpenShell source `c80bda2013a5656bc2421a38013463709481671f`, its
-supervisor from its parent `49761d1eb3dc45f6f8f2b69b762d8316a7f217a7` and its sandbox runtime from `1ab0e2386cbd943ec84a8701cd5d54dfa68e55a7`
+Build the chart's gateway and supervisor from maintained OpenShell source `8bd83351d776127fcd619fb9329ecc9e41873016`,
+which adds strict credential binding and uses HTTP/2 upstream only when the upstream selects it, and its sandbox
+runtime from `1ab0e2386cbd943ec84a8701cd5d54dfa68e55a7`
 (the chart is identical at all three), with OpenShell's own image workflow
 and publish all three to the [local registry](#logs-image-builder-and-registry) as
 `veoveo/openshell/gateway`, `veoveo/openshell/supervisor` and
@@ -512,7 +513,7 @@ retain **both** database-CA and destination-CA mounts: Helm replaces volume list
 rather than appending them. These inputs are not deployed TLS acceptance.
 
 The installer's `openshell` step installs the chart from OpenShell's source at
-`ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65`, whose chart is identical to that of `c80bda201`, the revision the gateway image is built from, from the checkout `private.toml` names
+`ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65`, whose chart is identical to that of `8bd83351d`, the revision the gateway and supervisor images are built from, from the checkout `private.toml` names
 (`[helm.openshell] source`), with
 openshell.values.yaml and the private identity values (`[helm.openshell] values`).
 The service endpoint is `https://openshell.openshell.svc.cluster.local:8080`.

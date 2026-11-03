@@ -2374,7 +2374,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 [[package]]
 name = "openshell-core"
 version = "0.0.0"
-source = "git+https://github.com/VeoveoAI/OpenShell?rev=ab37a698cfd03cdfb2559af7fd4263075233a48a#ab37a698cfd03cdfb2559af7fd4263075233a48a"
+source = "git+https://github.com/VeoveoAI/OpenShell?rev=8bd83351d776127fcd619fb9329ecc9e41873016#8bd83351d776127fcd619fb9329ecc9e41873016"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2411,7 +2411,7 @@ dependencies = [
 [[package]]
 name = "openshell-crypto"
 version = "0.0.0"
-source = "git+https://github.com/VeoveoAI/OpenShell?rev=ab37a698cfd03cdfb2559af7fd4263075233a48a#ab37a698cfd03cdfb2559af7fd4263075233a48a"
+source = "git+https://github.com/VeoveoAI/OpenShell?rev=8bd83351d776127fcd619fb9329ecc9e41873016#8bd83351d776127fcd619fb9329ecc9e41873016"
 dependencies = [
  "aws-lc-rs",
  "jsonwebtoken 10.4.0",
@@ -2429,7 +2429,7 @@ dependencies = [
 [[package]]
 name = "openshell-extension-core"
 version = "0.0.0"
-source = "git+https://github.com/VeoveoAI/OpenShell?rev=ab37a698cfd03cdfb2559af7fd4263075233a48a#ab37a698cfd03cdfb2559af7fd4263075233a48a"
+source = "git+https://github.com/VeoveoAI/OpenShell?rev=8bd83351d776127fcd619fb9329ecc9e41873016#8bd83351d776127fcd619fb9329ecc9e41873016"
 dependencies = [
  "hyper-util",
  "serde",
@@ -2442,7 +2442,7 @@ dependencies = [
 [[package]]
 name = "openshell-policy"
 version = "0.0.0"
-source = "git+https://github.com/VeoveoAI/OpenShell?rev=ab37a698cfd03cdfb2559af7fd4263075233a48a#ab37a698cfd03cdfb2559af7fd4263075233a48a"
+source = "git+https://github.com/VeoveoAI/OpenShell?rev=8bd83351d776127fcd619fb9329ecc9e41873016#8bd83351d776127fcd619fb9329ecc9e41873016"
 dependencies = [
  "hickory-proto",
  "miette",
@@ -2456,7 +2456,7 @@ dependencies = [
 [[package]]
 name = "openshell-policy-schema"
 version = "0.0.0"
-source = "git+https://github.com/VeoveoAI/OpenShell?rev=ab37a698cfd03cdfb2559af7fd4263075233a48a#ab37a698cfd03cdfb2559af7fd4263075233a48a"
+source = "git+https://github.com/VeoveoAI/OpenShell?rev=8bd83351d776127fcd619fb9329ecc9e41873016#8bd83351d776127fcd619fb9329ecc9e41873016"
 dependencies = [
  "miette",
  "noyalib",
@@ -2469,7 +2469,7 @@ dependencies = [
 [[package]]
 name = "openshell-providers"
 version = "0.0.0"
-source = "git+https://github.com/VeoveoAI/OpenShell?rev=ab37a698cfd03cdfb2559af7fd4263075233a48a#ab37a698cfd03cdfb2559af7fd4263075233a48a"
+source = "git+https://github.com/VeoveoAI/OpenShell?rev=8bd83351d776127fcd619fb9329ecc9e41873016#8bd83351d776127fcd619fb9329ecc9e41873016"
 dependencies = [
  "glob",
  "noyalib",
@@ -2485,7 +2485,7 @@ dependencies = [
 [[package]]
 name = "openshell-sdk"
 version = "0.0.0"
-source = "git+https://github.com/VeoveoAI/OpenShell?rev=ab37a698cfd03cdfb2559af7fd4263075233a48a#ab37a698cfd03cdfb2559af7fd4263075233a48a"
+source = "git+https://github.com/VeoveoAI/OpenShell?rev=8bd83351d776127fcd619fb9329ecc9e41873016#8bd83351d776127fcd619fb9329ecc9e41873016"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -2869,9 +2869,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.13.5"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "278e9268c93b9e498a2da46c34d90ba93a3255eb99009646398f34bc73ab36eb"
+checksum = "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b"
 dependencies = [
  "bitflags 2.13.2",
  "memchr",
