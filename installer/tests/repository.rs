@@ -50,14 +50,57 @@ fn the_hub_seed_merges_and_names_hubs_origin() {
     }
     let origin = veoveo_installer::hub::origin(&seed, &hub.profile).unwrap();
     assert_eq!(origin.scheme(), "https");
-    // Entries of one id merge into one.
-    let entra = seed["oidcClients"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter(|client| client["id"] == "entra")
-        .count();
-    assert_eq!(entra, 1);
+}
+
+/// Each identity provider's seed, merged with the K3s fragment, names only the identity
+/// provider it defines: the fragment is the same whichever the installation chooses.
+#[test]
+fn each_identity_seed_merges_with_the_fragment_into_one_provider() {
+    for (identity, provider) in [
+        ("identity/entra.example.json", "entra"),
+        ("identity/keycloak.example.json", "keycloak"),
+    ] {
+        let mut seed = serde_json::json!({});
+        for file in [identity, "kubernetes/hub.example.json"] {
+            let text = std::fs::read_to_string(repository().join(file)).unwrap();
+            veoveo_installer::hub::merge_seed(&mut seed, serde_json::from_str(&text).unwrap());
+        }
+        let defined: Vec<_> = seed["identityProviders"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|it| it["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(defined, [provider], "{identity}");
+        for section in ["profiles", "authorizationServers", "oidcClients"] {
+            for entry in seed[section].as_array().unwrap() {
+                assert_eq!(entry["identityProvider"], provider, "{identity}: {section}");
+            }
+        }
+        let origin = veoveo_installer::hub::origin(&seed, "local").unwrap();
+        assert_eq!(origin.scheme(), "https");
+    }
+}
+
+/// The Keycloak alternatives installation.toml names beside the Entra inputs are what
+/// OpenShell admits, and the profile is the same provider as the Entra one.
+#[test]
+fn the_keycloak_alternatives_are_valid_openshell_inputs() {
+    use veoveo_installer::openshell::{declared_policy, declared_profile};
+    let read = |file: &str| std::fs::read_to_string(repository().join(file)).unwrap();
+    declared_policy(&read(
+        "kubernetes/policies/hub-computer-keycloak.example.yaml",
+    ))
+    .unwrap();
+    let keycloak = declared_profile(&read(
+        "openshell/providers/keycloak-hub-native-control.example.yaml",
+    ))
+    .unwrap();
+    let entra = declared_profile(&read(
+        "openshell/providers/entra-hub-native-control.example.yaml",
+    ))
+    .unwrap();
+    assert_eq!(keycloak["id"], entra["id"]);
 }
 
 /// The repository's inputs with a lock naming every image the declaration uses, and

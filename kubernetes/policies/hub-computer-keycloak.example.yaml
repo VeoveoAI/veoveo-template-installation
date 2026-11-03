@@ -1,0 +1,151 @@
+# Kubernetes Service inputs; preserve exact native rules and provider bindings.
+# The Keycloak counterpart of hub-computer-entra.example.yaml: Hub reads the in-cluster
+# Keycloak's keys and exchanges sign-in codes at its public issuer, as it does Entra's.
+version: 1
+filesystem_policy:
+  include_workdir: true
+  read_only:
+  - /bin
+  - /usr
+  - /lib
+  - /lib64
+  - /etc
+  - /proc
+  - /dev/urandom
+  - /var/log
+  - /var/lib/veoveo
+  - /opt/veoveo/lore
+  read_write:
+  - /tmp
+  - /dev/null
+network_policies:
+  native_control:
+    endpoints:
+    - host: openshell.openshell.svc.cluster.local
+      port: 8080
+      path: /openshell.v1.OpenShell/**
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: vv-hub-native-control
+      rules:
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetGatewayInfo
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/ForwardTcp
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetProviderProfile
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetWorkspace
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateWorkspace
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetSandboxTemplate
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateSandboxTemplate
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/DeleteSandboxTemplate
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetProvider
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateProvider
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/GetSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/CreateSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/StartSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/StopSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/DeleteSandbox
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/ConfigureProviderRefresh
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/RotateProviderCredential
+      - allow:
+          method: POST
+          path: /openshell.v1.OpenShell/DeleteProvider
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+  # Lore for repository creation and factory watches (the Hub binary) and for reading a
+  # pushed revision's openshell/ as its pusher (Lore's command line, the read-only image
+  # volume of hub-driver-config.json).
+  native_workspace:
+    endpoints:
+    - host: lore.veoveo-system.svc.cluster.local
+      port: 41337
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+    - path: /opt/veoveo/lore/usr/local/bin/lore
+  # BuildKit builds each branch's openshell/image/; buildctl runs as its own executable.
+  image_builder:
+    endpoints:
+    - host: buildkitd.veoveo-system.svc.cluster.local
+      port: 1234
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/buildctl
+  browser_code_exchange:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /oauth/token
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+  keycloak:
+    endpoints:
+    - host: auth.veoveo.example.com
+      port: 443
+      path: /realms/veoveo/protocol/openid-connect/certs
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /realms/veoveo/protocol/openid-connect/certs
+    - host: auth.veoveo.example.com
+      port: 443
+      path: /realms/veoveo/protocol/openid-connect/token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /realms/veoveo/protocol/openid-connect/token
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
+  database:
+    endpoints:
+    - host: veoveo-postgres-rw.veoveo-system.svc.cluster.local
+      port: 5432
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/veoveo-hub

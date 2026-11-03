@@ -1,0 +1,167 @@
+# Keycloak in the cluster, for an installation that runs its own identity provider
+# instead of Entra (see DESIGN.md#identity and identity/README.md#keycloak-in-the-cluster).
+# A Kubernetes workload, never an OpenShell sandbox: the gateway reads its issuer when it
+# starts. Official Keycloak 26.8.1, the release the Mac fixture runs, pinned by digest.
+#
+# Before applying, the operator creates three Secrets in veoveo-system, never committed:
+#   keycloak-db          password: the login of postgres-keycloak.sql
+#   keycloak-bootstrap   username, password: the temporary administrator Keycloak makes
+#                        on its first start; replace it with a permanent one and delete it
+#   keycloak-clients     hub-broker, hub-native-control: the confidential clients'
+#                        secrets, which the realm import reads, and which Hub's
+#                        private identity files and OpenShell's provider custody hold too
+# and the realm ConfigMap from the example, with this installation's hosts:
+#   kubectl -n veoveo-system create configmap keycloak-realm \
+#     --from-file=veoveo-realm.json=identity/keycloak-realm.example.json
+#
+# The issuer is public: browsers sign in at https://auth.veoveo.example.com through the
+# tunnel's route (tunnel-routes.yaml), which terminates TLS; Keycloak serves plain HTTP
+# inside the cluster and trusts the forwarded headers only for its own hostname.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: veoveo-system
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244
+          # --import-realm imports a realm only when it does not exist yet; later changes
+          # to the realm are made in Keycloak, not by editing the ConfigMap.
+          args: [start, --import-realm]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: KC_HOSTNAME
+              value: https://auth.veoveo.example.com
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432/keycloak?sslmode=verify-full&sslrootcert=/etc/keycloak/postgres-ca/postgres-ca.crt
+            - name: KC_DB_USERNAME
+              value: keycloak
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: keycloak-db, key: password}
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef: {name: keycloak-bootstrap, key: username}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: keycloak-bootstrap, key: password}
+            # Read by the realm import's ${...} placeholders.
+            - name: VEOVEO_KEYCLOAK_HUB_BROKER_SECRET
+              valueFrom:
+                secretKeyRef: {name: keycloak-clients, key: hub-broker}
+            - name: VEOVEO_KEYCLOAK_HUB_NATIVE_CONTROL_SECRET
+              valueFrom:
+                secretKeyRef: {name: keycloak-clients, key: hub-native-control}
+          ports:
+            - name: http
+              containerPort: 8080
+            # Health and metrics; not routed by the tunnel.
+            - name: management
+              containerPort: 9000
+          readinessProbe:
+            httpGet: {path: /health/ready, port: management}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health/live, port: management}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            limits:
+              memory: 2Gi
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+            - name: postgres-ca
+              mountPath: /etc/keycloak/postgres-ca
+              readOnly: true
+      volumes:
+        - name: realm
+          configMap:
+            name: keycloak-realm
+        - name: postgres-ca
+          configMap:
+            name: postgres-client-ca
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: veoveo-system
+spec:
+  selector:
+    app.kubernetes.io/name: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# Only the tunnel reaches Keycloak; Keycloak reaches only DNS and PostgreSQL.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: keycloak
+  namespace: veoveo-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: public-tunnel
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: veoveo-postgres
+      ports:
+        - protocol: TCP
+          port: 5432

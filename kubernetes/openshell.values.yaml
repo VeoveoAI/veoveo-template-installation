@@ -107,6 +107,10 @@ gatewayConfig:
     scopes_claim: roles
     admin_role: openshell-admin
     user_role: openshell-user
+    # With Keycloak in the cluster instead (identity/README.md#keycloak-in-the-cluster):
+    # issuer https://auth.veoveo.example.com/realms/veoveo and audience openshell; the
+    # realm puts the openshell client's roles, scopes among them, in roles, so the claims
+    # and role names stay as above. The issuer must answer before the gateway starts.
   openshell.drivers.kubernetes:
     additional_ca_bundle: /etc/openshell/platform-ca/ca.crt
     allow_driver_config: true

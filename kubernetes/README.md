@@ -3,7 +3,10 @@
 These are foundation inputs, not an inventory of application sandboxes. The
 Linux-only target uses K3s `v1.36.5+k3s1`, Helm `v3.22.1`, Cilium `1.20.3`,
 Agent Sandbox `v1.0.6`, PostgreSQL as a plain StatefulSet and the official
-SeaweedFS chart `4.48.0` (server `4.48`). Mac remains native development and
+SeaweedFS chart `4.48.0` (server `4.48`). K3s runs on the operator's Linux host or a
+cloud instance, such as AWS EC2; a managed Kubernetes service such as EKS is not the
+reference, since the foundation's K3s pieces (its registry entry, local-path storage,
+Cilium as installed here) would need that service's counterparts. Mac remains native development and
 component/integration testing; do not create a Mac cluster. Single-node PVCs
 provide restart persistence, not multi-host HA or a backup. Development data may be
 reset and reseeded.

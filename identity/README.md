@@ -5,11 +5,12 @@ Local Keycloak, its Compose services and `veoveo-installer fixture` (`keycloak`,
 installation, `veoveo-installer identity hub` prepares Hub's trusted files from the
 identity provider's registration (see the
 [design](../DESIGN.md#applying-an-installation)). Build it with
-`cargo build --release --manifest-path installer/Cargo.toml`. Linux uses Entra and
-needs no Keycloak: its Hub seed is [entra.example.json](entra.example.json)
+`cargo build --release --manifest-path installer/Cargo.toml`. The Linux reference
+uses Entra and needs no Keycloak: its Hub seed is [entra.example.json](entra.example.json)
 merged with the [K3s Hub fragment](../kubernetes/hub.example.json), as the
 [workload bootstrap](../kubernetes/WORKLOADS.md#hub-and-automatic-private-computers)
-describes.
+describes. An installation that wants its own identity provider runs
+[Keycloak in the cluster](#keycloak-in-the-cluster) instead.
 
 Local development uses persistent Keycloak. The remote Linux reference uses
 Microsoft Entra ID. Installers may keep the bundled Keycloak service or configure
@@ -221,9 +222,8 @@ normal encrypted backup process too. Test restoration before relying on a backup
 ## Installer choice and the Linux reference
 
 Bundled Keycloak is a supported provider choice, not a required Veoveo dependency.
-For a network installation, give Keycloak its own HTTPS hostname, adjust
-`KC_HOSTNAME`, Envoy's hosts/certificate/forwarded headers, the Hub's issuer,
-client callback and identity configuration together. Keep the database and
+On Linux it runs in the cluster, as [below](#keycloak-in-the-cluster), not from this
+Compose stack. Keep the database and
 management interface private. Use the provider's supported clustering and backup
 configuration when the installation needs high availability. A local loopback
 configuration is not a public production ingress configuration.
@@ -249,6 +249,86 @@ bootstrap does not provision that application ingress. Follow Microsoft's
 and [authorization code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow)
 documentation. Entra requires the reference tenant and app registration; this
 local setup does not create those or modify the remote deployment.
+
+## Keycloak in the cluster
+
+An installation that runs its own identity provider instead of Entra runs Keycloak in
+its K3s cluster, as a Kubernetes workload beside PostgreSQL and Lore
+([design](../DESIGN.md#identity)). The cluster can be any Linux host the
+[K3s foundation](../kubernetes/README.md) runs on, a cloud instance such as AWS EC2
+included. Nothing in Hub, Lore, Computers or factories changes: Hub reads any OIDC
+provider's issuer, keys, `sub`, `tenant`, `groups` and `roles`, and Lore trusts only Hub.
+This path has not yet been qualified: the first installation proves it (below).
+
+The files, with the example hosts `veoveo.example.com` (Hub) and `auth.veoveo.example.com`
+(Keycloak) to render:
+
+| File | What it is |
+|---|---|
+| [kubernetes/keycloak.yaml](../kubernetes/keycloak.yaml) | Keycloak 26.8.1 by digest, its Service and NetworkPolicy; it lists the Secrets it reads |
+| [kubernetes/postgres-keycloak.sql](../kubernetes/postgres-keycloak.sql) | Keycloak's login and database on the installation's PostgreSQL |
+| [keycloak-realm.example.json](keycloak-realm.example.json) | The realm `veoveo`, imported at Keycloak's first start |
+| [keycloak.example.json](keycloak.example.json) | Hub's seed, in place of `entra.example.json` |
+| [hub-computer-keycloak.example.yaml](../kubernetes/policies/hub-computer-keycloak.example.yaml) | Hub's network policy, in place of the Entra one |
+| [keycloak-hub-native-control.example.yaml](../openshell/providers/keycloak-hub-native-control.example.yaml) | Hub's native-control provider profile, in place of the Entra one |
+| [openshell.values.yaml](../kubernetes/openshell.values.yaml) | The gateway's issuer `https://auth.veoveo.example.com/realms/veoveo` and audience `openshell` |
+| [tunnel-routes.yaml](../kubernetes/tunnel-routes.yaml) | The public route of `auth.veoveo.example.com` to the Keycloak Service |
+
+[installation.toml](../installation.toml) names where each swap goes.
+
+The realm holds:
+
+- `hub-broker`, Hub's confidential authorization-code client, redirecting to
+  `https://veoveo.example.com/oauth/callback`. Its ID token carries `groups` (group names,
+  not paths), `roles` (realm roles; `administrator` is installation administration) and
+  `tenant` (the seed's tenant, `reference`). Hub's principal is
+  `https://auth.veoveo.example.com/realms/veoveo#<Keycloak user ID>`.
+- `openshell`, the gateway's audience; its client roles are the gateway's roles
+  (`openshell-admin`, `openshell-user`) and scopes (`config:read`, `workspace:read`,
+  `workspace:write`, `sandbox:read`, `sandbox:write`, `provider:read`, `provider:write`),
+  which the other clients put in `roles`, as Entra's app roles do.
+- `hub-native-control`, Hub's client-credentials identity at the gateway, with exactly
+  `openshell-admin` and those seven scopes, never `openshell:all`.
+- `openshell-cli`, the operators' public PKCE client for the `openshell` command line;
+  members of the group `openshell-operators` hold the same roles.
+
+Steps, beside the [K3s foundation](../kubernetes/README.md) and the
+[workload bootstrap](../kubernetes/WORKLOADS.md):
+
+1. Make three random secrets in the private directory and their Secrets in
+   `veoveo-system`, as `keycloak.yaml`'s header lists: `keycloak-db`, `keycloak-bootstrap`
+   and `keycloak-clients` (`hub-broker`, `hub-native-control`).
+2. Before PostgreSQL's first start, add `postgres-keycloak.sql` to the initdb ConfigMap in
+   `installation.toml` and `VEOVEO_KEYCLOAK_DATABASE_PASSWORD` (from `keycloak-db`) to
+   PostgreSQL's environment in `postgres.yaml`; on a running PostgreSQL, run the script
+   once as the owner.
+3. Render the hosts and the tenant in the realm file and create the ConfigMap
+   `keycloak-realm` from it, as `keycloak.yaml`'s header shows.
+4. In `installation.toml`, uncomment the `keycloak` step and move the `tunnel` step after
+   it, so the issuer answers before the gateway starts, and swap the three Hub inputs.
+   Publish the `auth.` route of `tunnel-routes.yaml`; an installation without Cloudflare
+   uses any TLS ingress that sets `X-Forwarded-*` for that host.
+5. Set the gateway's issuer and audience in `openshell.values.yaml`.
+6. Give Hub the broker secret as `VEOVEO_IDP_OIDC_CLIENT_SECRET` in `private.toml`'s
+   `[identity.secrets]`, and OpenShell the native-control credential (`client_id`
+   `hub-native-control`, `client_secret` its secret) as the Entra one is given, through
+   [native control](../computer/NATIVE_CONTROL.md#trusted-preparation-and-attachment).
+7. Once Keycloak is ready, sign in to `https://auth.veoveo.example.com/admin/` as the
+   bootstrap administrator, make a permanent administrator and delete the bootstrap one.
+   Create the people; give installation administrators the realm role `administrator`,
+   put operators in `openshell-operators`, and make Hub's seed grants name their
+   principals, issuer `#` user ID.
+
+The realm import runs only when the realm does not exist: later changes are made in
+Keycloak, and the ConfigMap is only the first state. Keycloak's database holds password
+hashes, signing keys and client secrets; back it up with the installation's PostgreSQL
+and keep the bootstrap and client secrets with the other private material.
+
+To prove on the first installation: the realm imports with its `${...}` secrets; a person
+signs in to Hub and refreshes, and a person without `administrator` is refused an
+administration route (checklist A1 to A3); Hub starts with its native-control token and
+the gateway accepts it; an operator signs in with the `openshell` command line; a person
+enters their Computer and a factory push serves.
 
 ## Lore identity and repository ownership
 

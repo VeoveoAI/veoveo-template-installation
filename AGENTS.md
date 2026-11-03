@@ -19,8 +19,10 @@
   APIs, lifecycle, credential store, policy and diagnostics. Do not add an orchestrator,
   Helm sandbox inventory, token worker or second launcher. The undeployed native-Docker
   infrastructure candidate is superseded; preserve Mac test/identity bootstrap tooling.
-- Use permanent Keycloak locally and provider-agnostic OIDC configuration elsewhere.
-  Generic installation must not require Keycloak administration credentials.
+- Use permanent Keycloak locally. On Linux, Entra is the reference and Keycloak in the
+  cluster is an installation's own-provider choice; any other provider uses
+  provider-agnostic OIDC configuration. An installation that does not choose Keycloak
+  must not require Keycloak administration credentials.
 - Real provider tokens, signing keys, operator state, bootstrap volumes and Docker
   access stay outside author and agent-controlled service workloads. Use native
   OpenShell credential mediation. Unsupported enforcement fails closed.

@@ -115,6 +115,22 @@ initializes its OIDC issuer before it recovers workloads, so an issuer hosted in
 could never start. An installation that uses Entra or another external issuer runs no
 Keycloak.
 
+An installation that wants its own identity provider on Linux runs Keycloak in the
+cluster, as a Kubernetes workload beside PostgreSQL and Lore, never as an OpenShell
+sandbox, for the same reason. Its realm is imported at its start from
+[identity/keycloak-realm.example.json](identity/keycloak-realm.example.json): the Hub's
+broker client, which puts `groups`, `roles` and `tenant` in the ID token; the OpenShell
+resource `openshell`, whose roles carry the gateway's roles and scopes in `roles`, as
+Entra's app roles do; Hub's native-control client with exactly the scopes the Entra
+reference assigns; and the operators' OpenShell command-line client. Its database and
+login are its own on the installation's PostgreSQL. The issuer is public
+(`https://auth.{host}/realms/veoveo`), since browsers sign in there, and the Hub and the
+gateway reach it by that address, as they reach Entra; it must answer before the
+gateway starts. Choosing Keycloak swaps four inputs for their Keycloak examples: Hub's
+seed, Hub's network policy, Hub's native-control provider profile and the gateway's
+OIDC values. Nothing in Hub, Lore, Computers or factories depends on the choice. The
+[identity guide](identity/README.md#keycloak-in-the-cluster) lists the steps.
+
 Installation administration is the identity provider's `administrator` app role,
 which Hub reads from the token's `roles` claim and which the control-plane policy rule
 `installation-administration` names. Hub's `admin` installation role governs only

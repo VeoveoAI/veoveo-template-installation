@@ -50,6 +50,15 @@ restart = { "ConfigMap veoveo-system/veoveo-postgres-hba" = ["StatefulSet veoveo
 namespace = "veoveo-system"
 name = "veoveo-postgres-initdb"
 files = { "owner.sql" = "postgres/initdb/owner.sql", "platform.sql" = "kubernetes/postgres-platform.sql", "zz-extensions.sql" = "postgres/initdb/zz-extensions.sql" }
+# With Keycloak in the cluster, also "platform-keycloak.sql" = "kubernetes/postgres-keycloak.sql",
+# before PostgreSQL's first start.
+
+# With Keycloak in the cluster instead of Entra (identity/README.md#keycloak-in-the-cluster),
+# Keycloak and the tunnel that publishes its issuer start here, before the gateway, which
+# reads its issuer when it starts: uncomment this step and move the tunnel step after it.
+# [[step]]
+# name = "keycloak"
+# manifests = ["kubernetes/keycloak.yaml"]
 
 [[step]]
 name = "seaweedfs"
@@ -119,6 +128,7 @@ file = "computer/providers/hub.yaml"
 file = "computer/providers/model.yaml"
 [[step.profile]]
 file = "openshell/providers/entra-hub-native-control.example.yaml"
+# With Keycloak: openshell/providers/keycloak-hub-native-control.example.yaml
 workspace = "vv-control"
 [[step.profile]]
 file = "openshell/providers/console-registration.yaml"
@@ -188,6 +198,7 @@ name = "hub"
 workspace = "vv-control"
 name = "hub"
 image = "hub"
+# With Keycloak: kubernetes/policies/hub-computer-keycloak.example.yaml
 policy = "kubernetes/policies/hub-computer-entra.example.yaml"
 providers = ["vv-hub-native-control"]
 driver_config = "kubernetes/hub-driver-config.json"
@@ -298,6 +309,7 @@ registers = "embedding"
 name = "hub-control-plane"
 [step.hub]
 profile = "local"
+# With Keycloak: identity/keycloak.example.json in place of identity/entra.example.json.
 seed = ["identity/entra.example.json", "kubernetes/hub.example.json"]
 skills = "computer/skills"
 claim = "hub-claim"

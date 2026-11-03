@@ -47,4 +47,8 @@ config:
         httpHostHeader: vv-control--hub--apps.openshell.localhost
         originServerName: vv-control--hub--apps.openshell.localhost
         caPool: /etc/cloudflared-ca/gateway.crt
+    # Only with Keycloak in the cluster (keycloak.yaml): people sign in at its public
+    # issuer. Keycloak's management port and its other services stay private.
+    # - hostname: auth.veoveo.example.com
+    #   service: http://keycloak.veoveo-system.svc.cluster.local:8080
     - service: http_status:404

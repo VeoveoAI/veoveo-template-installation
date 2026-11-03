@@ -1,0 +1,237 @@
+{
+  "identityProviders": [
+    {
+      "id": "keycloak",
+      "issuer": "https://auth.veoveo.example.com/realms/veoveo",
+      "jwks": {
+        "source": "remote",
+        "jwksUri": "https://auth.veoveo.example.com/realms/veoveo/protocol/openid-connect/certs"
+      },
+      "claimMapping": {
+        "subject": "sub",
+        "tenant": {
+          "claim": "tenant"
+        }
+      },
+      "authorizationEndpoint": "https://auth.veoveo.example.com/realms/veoveo/protocol/openid-connect/auth",
+      "tokenEndpoint": "https://auth.veoveo.example.com/realms/veoveo/protocol/openid-connect/token",
+      "metadata": {}
+    }
+  ],
+  "authorizationServers": [
+    {
+      "id": "hub",
+      "issuer": "https://veoveo.example.com/oauth",
+      "jwks": {
+        "source": "file",
+        "path": "/etc/veoveo/hub/authorization-server.jwks.json"
+      },
+      "accessTokenKeyId": "REPLACE_WITH_SIGNING_KEY_THUMBPRINT",
+      "accessTokenSigningKey": "access_token_signing_key",
+      "identityProvider": "keycloak",
+      "authorizationEndpoint": "https://veoveo.example.com/oauth/authorize",
+      "tokenEndpoint": "https://veoveo.example.com/oauth/token",
+      "metadata": {}
+    }
+  ],
+  "profiles": [
+    {
+      "id": "local",
+      "identityProvider": "keycloak",
+      "authorizationServer": "hub",
+      "protectedResource": "https://veoveo.example.com/mcp/local",
+      "policyVersion": "reference-policy",
+      "authModes": [
+        "oidc_authorization_code_pkce"
+      ],
+      "requiredScopes": [
+        "mcp"
+      ],
+      "metadata": {}
+    },
+    {
+      "id": "computer",
+      "identityProvider": "keycloak",
+      "authorizationServer": "hub",
+      "protectedResource": "https://veoveo.example.com/mcp/computer",
+      "policyVersion": "reference-policy",
+      "authModes": [
+        "oidc_authorization_code_pkce"
+      ],
+      "requiredScopes": [
+        "mcp"
+      ],
+      "metadata": {}
+    }
+  ],
+  "authorization": {
+    "roles": [
+      {
+        "name": "member",
+        "access": [
+          "read",
+          "write"
+        ]
+      },
+      {
+        "name": "admin",
+        "access": [
+          "read",
+          "write"
+        ],
+        "risks": [
+          "sensitive",
+          "destructive",
+          "billed",
+          "physical",
+          "administer"
+        ]
+      },
+      {
+        "name": "billed",
+        "access": [
+          "read",
+          "write"
+        ],
+        "risks": [
+          "billed"
+        ]
+      }
+    ],
+    "grants": [
+      {
+        "role": "member",
+        "subject": {
+          "principal": "https://auth.veoveo.example.com/realms/veoveo#44444444-4444-4444-8444-444444444444"
+        },
+        "tenant": "reference"
+      },
+      {
+        "role": "admin",
+        "subject": {
+          "principal": "https://auth.veoveo.example.com/realms/veoveo#55555555-5555-4555-8555-555555555555"
+        },
+        "tenant": "reference"
+      },
+      {
+        "role": "billed",
+        "subject": {
+          "principal": "https://auth.veoveo.example.com/realms/veoveo#66666666-6666-4666-8666-666666666666"
+        },
+        "tenant": "reference"
+      }
+    ]
+  },
+  "registration": {
+    "secret": "registration_secret"
+  },
+  "tenants": [
+    {
+      "id": "reference",
+      "title": "reference"
+    }
+  ],
+  "policies": [
+    {
+      "version": "reference-policy",
+      "rules": [
+        {
+          "id": "installation-administration",
+          "effect": "allow",
+          "actions": [
+            "admin_read",
+            "admin_write"
+          ],
+          "profiles": [
+            "local"
+          ],
+          "roles": [
+            "administrator"
+          ],
+          "tenantIds": [
+            "reference"
+          ]
+        }
+      ]
+    }
+  ],
+  "dataLabels": [],
+  "oidcClients": [
+    {
+      "id": "keycloak",
+      "identityProvider": "keycloak",
+      "authorizationServer": "hub",
+      "allowedResources": [
+        "https://veoveo.example.com/mcp/computer",
+        "https://veoveo.example.com/mcp/local",
+        "https://veoveo.example.com/resources/lore"
+      ],
+      "clientId": "hub-broker",
+      "redirectUri": "https://veoveo.example.com/oauth/callback",
+      "authMethod": "client_secret_post",
+      "credentialSecret": "keycloak_client_secret",
+      "scopes": [
+        "openid",
+        "profile"
+      ],
+      "metadata": {}
+    }
+  ],
+  "oauthClients": [
+    {
+      "id": "opencode",
+      "authorizationServer": "hub",
+      "invocationMode": "direct",
+      "allowedResources": [
+        "https://veoveo.example.com/mcp/local"
+      ],
+      "grantTypes": [
+        "authorization_code_pkce",
+        "refresh_token"
+      ],
+      "authMethods": [
+        "none"
+      ],
+      "redirectUris": [
+        "http://127.0.0.1:3210/callback"
+      ],
+      "allowedScopes": [
+        "mcp"
+      ],
+      "metadata": {}
+    }
+  ],
+  "secrets": [
+    {
+      "id": "registration_secret",
+      "source": "env",
+      "purpose": "registration_secret",
+      "locator": "VEOVEO_REGISTRATION_SECRET",
+      "owner": {
+        "kind": "hub"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "access_token_signing_key",
+      "source": "env",
+      "purpose": "jwks_private_key",
+      "locator": "VEOVEO_ACCESS_TOKEN_SIGNING_KEY_B64",
+      "owner": {
+        "kind": "hub"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "keycloak_client_secret",
+      "source": "env",
+      "purpose": "oauth_client_secret",
+      "locator": "VEOVEO_IDP_OIDC_CLIENT_SECRET",
+      "owner": {
+        "kind": "hub"
+      },
+      "metadata": {}
+    }
+  ],
+  "metadata": {}
+}
