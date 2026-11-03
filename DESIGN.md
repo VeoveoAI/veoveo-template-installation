@@ -122,8 +122,8 @@ server tool permissions.
 
 Hub's seed catalog is [identity/entra.example.json](identity/entra.example.json) merged
 with [kubernetes/hub.example.json](kubernetes/hub.example.json) by typed keys. Its names
-are one set: identity provider and broker client `entra`, tenant `reference`, Work
-Context `reference-work`, policy revision `reference-policy`, profiles `local` and
+are one set: identity provider and broker client `entra`, tenant `reference`,
+policy revision `reference-policy`, profiles `local` and
 `computer`, and authorization server `hub`. The OpenShell gateway accepts the same
 provider for its management API, with its role names in the `roles` claim.
 
