@@ -389,7 +389,7 @@ Anthropic's, Claude Haiku 5.5, Sonnet 5.5, Opus 5.5 and Fable 5.1, the two vendo
 endpoints the policy binds a credential to; a person picks the model of each session. Its
 policies deny `provider.use` for every provider but `deepinfra` and `anthropic`, so a key
 someone pastes for another vendor offers nothing the Computer could not reach, and it
-hides Anthropic's older models. It turns off OpenCode's own provider, whose free models
+hides Anthropic's older models and the Fast modes OpenCode makes of Opus models. It turns off OpenCode's own provider, whose free models
 it would otherwise offer. The model catalog is the one OpenCode was built with
 (`OPENCODE_DISABLE_MODELS_FETCH`), so a new model appears with a new OpenCode. A session's
 small tasks, such as its title, use a small model of the session's own vendor. Hub
