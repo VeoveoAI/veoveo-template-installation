@@ -1,4 +1,4 @@
-# Native MCP, Artifact delegation and private inference; no GPU on this service.
+# Native MCP and private inference; no GPU on this service. Media arrives as the caller's signed URLs; this service calls no other server.
 version: 1
 filesystem_policy:
   include_workdir: true
@@ -63,65 +63,6 @@ network_policies:
       - allow:
           method: DELETE
           path: /oauth/register/*
-    binaries:
-    - path: /usr/local/bin/veoveo-mcp-embedding
-  hub_token_exchange:
-    endpoints:
-    - host: veoveo.example.com
-      port: 443
-      path: /oauth/token
-      protocol: rest
-      enforcement: enforce
-      rules:
-      - allow:
-          method: POST
-          path: /oauth/token
-    binaries:
-    - path: /usr/local/bin/veoveo-mcp-embedding
-  artifact_calls:
-    endpoints:
-    - host: veoveo.example.com
-      port: 443
-      path: /mcp/local
-      protocol: mcp
-      enforcement: enforce
-      mcp:
-        versions:
-        - '2026-07-28'
-        allow_all_known_mcp_methods: false
-      # Native ServerCalls supplies the delegated JWT; do not bind a static
-      # member/admin provider to this same-origin MCP group.
-      rules:
-      - allow:
-          method: server/discover
-      - allow:
-          method: ping
-      - allow:
-          method: tools/list
-      - allow:
-          method: tools/call
-          tool: artifact__create_download
-    - host: veoveo.example.com
-      port: 443
-      path: /mcp/computer
-      protocol: mcp
-      enforcement: enforce
-      mcp:
-        versions:
-        - '2026-07-28'
-        allow_all_known_mcp_methods: false
-      # Native ServerCalls supplies the delegated JWT; do not bind a static
-      # member/admin provider to this same-origin MCP group.
-      rules:
-      - allow:
-          method: server/discover
-      - allow:
-          method: ping
-      - allow:
-          method: tools/list
-      - allow:
-          method: tools/call
-          tool: artifact__create_download
     binaries:
     - path: /usr/local/bin/veoveo-mcp-embedding
   embedding_runtime:

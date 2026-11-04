@@ -239,7 +239,7 @@ policies, which the installer reads:
 
 | Connection | Required native boundary |
 | --- | --- |
-| MCP → Hub | Exact issuer/registration/token paths and `artifact__create_download`; native delegated JWT on the MCP group |
+| MCP → Hub | Exact issuer and registration paths; no call to another server |
 | MCP → runtime | Exact native exposure `/capabilities`, `/readyz`, `/embeddings`, bound to `vv-embedding-inference` |
 | MCP → Core DB | Private PostgreSQL Service; native TLS passthrough plus granted URI `verify-full` and mounted public CA |
 | Runtime → media bytes | Exact Artifact **signed object origin**, TCP/443 passthrough, ordinary public TLS trust |
@@ -280,9 +280,8 @@ GET on `/artifacts/**`, as Computer curl's is.
 
 Retain native `vv-embedding-registration` and `vv-embedding-inference` profiles
 and approved provider custody. Registration and inference use separate exact
-credential bindings. Do not attach a member/admin provider to the MCP delegation
-group, broaden declared uses, or deploy the older Hub over current live-binding
-work. The current qualified Hub and Artifact must retain the nested SDK chain.
+credential bindings. Embedding declares no uses and holds no token-exchange rule; do not add one, and
+do not deploy the older Hub over current live-binding work.
 
 After foundation readiness and review, the installer's `platform-servers` step creates
 both sandboxes from `installation.toml`, with the lock's immutable image digests, the
@@ -354,8 +353,8 @@ Do not invent a standalone `openshell policy validate` command. No shared chart,
 service-storage or existing application file is changed by these inputs.
 
 Then separately prove native GPU allocation/actual CUDA forwards, read-only cache
-and token files, registration/discovery, Artifact byte identity, ordered multimodal
-vectors/coverage/tokens, usage, real ACL refusal, composition and service restart
+and token files, registration/discovery, signed-URL byte identity, ordered multimodal
+vectors/coverage/tokens, usage, refused tampered and expired signatures, and service restart
 recovery. Reuse the frozen media/options/8192 recipes and the six retained native
 Linux outputs for matching deployed Linux comparisons. Follow the coordinator's
 [Linux CUDA qualification decision](https://github.com/VeoveoAI/veoveo-docs/blob/main/records/OPENSHELL_HARDCUT_PLAN.md#multimodal-embedding-replacement--2026-10-19).
