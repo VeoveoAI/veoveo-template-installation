@@ -30,6 +30,14 @@
       "credentialKey": "DEEPINFRA_API_KEY",
       "secret": "computer-model-api-key"
     },
+    "additionalModelProviders": [
+      {
+        "name": "computer-anthropic",
+        "profile": "vv-computer-anthropic",
+        "credentialKey": "ANTHROPIC_API_KEY",
+        "secret": "computer-anthropic-api-key"
+      }
+    ],
     "loreProvider": {
       "profile": "vv-lore",
       "credentialKey": "LORE_ACCESS_TOKEN"
@@ -41,6 +49,16 @@
       "source": "env",
       "purpose": "provider_api_key",
       "locator": "VEOVEO_COMPUTER_MODEL_API_KEY",
+      "owner": {
+        "kind": "hub"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "computer-anthropic-api-key",
+      "source": "env",
+      "purpose": "provider_api_key",
+      "locator": "VEOVEO_COMPUTER_ANTHROPIC_API_KEY",
       "owner": {
         "kind": "hub"
       },

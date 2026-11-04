@@ -69,3 +69,4 @@ VEOVEO_SERVER_DATABASE_URL = "postgres://veoveo-postgres-rw.veoveo-system.svc.cl
 VEOVEO_DATABASE_PASSWORD = "veoveo-owner-db.password"
 VEOVEO_IDP_OIDC_CLIENT_SECRET = "entra-hub-client.secret"
 VEOVEO_COMPUTER_MODEL_API_KEY = "computer-model-api-key.secret"
+VEOVEO_COMPUTER_ANTHROPIC_API_KEY = "computer-anthropic-api-key.secret"

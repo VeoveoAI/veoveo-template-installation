@@ -233,7 +233,8 @@ reads only, with one token per repository each request names: the instance's own
 for a runner its linked repository's, as its tracked branch's latest pusher), both
 refreshed by the gateway with each one's own Hub client,
 `vv-factory-registration` (an instance's registration token), the Computer's
-`vv-computer-hub` and `vv-computer-model`, each platform server's
+`vv-computer-hub`, and its model vendors' `vv-computer-model` (DeepInfra) and
+`vv-computer-anthropic` (Anthropic, its key in the `x-api-key` header), each platform server's
 `vv-<server>-registration`, and Hub's own `vv-hub-native-control` and
 `vv-hub-forwarder`, which never attach to a Computer.
 
@@ -383,10 +384,19 @@ tools are taught by that server's own skills, which reach the agent through disc
 so these name no server, server tool or server skill.
 
 OpenCode's configuration ([opencode.json](computer/opencode.json)) selects
-`deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default and offers only DeepInfra's models, the
-one model endpoint the policy binds a credential to: it turns off OpenCode's own provider, whose free
-models it would otherwise offer. It turns off its Git and Mercurial plugins and its
-snapshots, since Lore owns source history and undo, and connects one
+`deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default and offers DeepInfra's models and four of
+Anthropic's, Claude Haiku 5.5, Sonnet 5.5, Opus 5.5 and Fable 5.1, the two vendors whose
+endpoints the policy binds a credential to; a person picks the model of each session. Its
+policies deny `provider.use` for every provider but `deepinfra` and `anthropic`, so a key
+someone pastes for another vendor offers nothing the Computer could not reach, and it
+hides Anthropic's older models. It turns off OpenCode's own provider, whose free models
+it would otherwise offer. The model catalog is the one OpenCode was built with
+(`OPENCODE_DISABLE_MODELS_FETCH`), so a new model appears with a new OpenCode. A session's
+small tasks, such as its title, use a small model of the session's own vendor. Hub
+seeds each vendor's key as its own workspace provider, each bound by name in its own
+policy rule: `computers.modelProvider` the default vendor's, `computer-model`, and
+`computers.additionalModelProviders` Anthropic's, `computer-anthropic`.
+It turns off its Git and Mercurial plugins and its snapshots, since Lore owns source history and undo, and connects one
 MCP server, `hub`, with the Computer's own Hub credential. The mounted Hub SDK CLI acts
 as the owner the same way: the template sets `VEOVEO_CLI_HUB` to the Hub's public
 origin, `VEOVEO_CLI_PROFILE=computer` and `VEOVEO_CLI_BEARER_ENV=COMPUTER_HUB_REFERENCE`,
@@ -396,7 +406,10 @@ need no flags. The model endpoint allows uninspected request bodies: a chat send
 history each time, and a credential placeholder quoted in it, as from printing the
 environment, would otherwise get every later request of that chat refused. Its key stays
 bound to the endpoint's header, and a placeholder in a body reaches the provider as text
-that resolves to nothing. need no flags. The model endpoint is OpenCode's and `veoveo-n8n-computer`'s alone; the CLI's `login`, `logout`
+that resolves to nothing. The model endpoint is OpenCode's and `veoveo-n8n-computer`'s
+alone, and Anthropic's Messages API, `POST /v1/messages` on `api.anthropic.com`, which
+the `anthropic` rule admits likewise, is OpenCode's alone: n8n's Assistant keeps
+DeepInfra's model. The CLI's `login`, `logout`
 and `ask` say that they do not apply in a Computer. `computers.collectAfterSeconds`
 sets idle collection (7200 in the reference); the forwarding capacity is Hub's
 `computers.forwardingConnectionLimit`, beside the gateway's per-sandbox and per-replica
@@ -576,9 +589,14 @@ with that key ID and the people of the earlier seed or of `[identity] people`, n
 the examples; a seed holding the same document however laid out is kept. Keys are
 made once: over existing files it recovers them, checks that they agree with what the
 private directory supplies, and otherwise refuses without writing, since a rotation is
-a reviewed act of its own. The claim step writes these files into Hub's claim when the
-claim lacks them, as on a first installation, and a changed seed; a changed key is
-refused. The Mac fixtures are
+a reviewed act of its own. A secret `[identity.secrets]` newly supplies, such as a
+further model vendor's key, is an addition, not a rotation: `identity hub` appends it to
+`hub.env` and keeps every line it held. The claim step writes these files into Hub's
+claim when the claim lacks them, as on a first installation, a changed seed, and an
+addition: a `hub.env` whose beginning, up to the end of a line, has the claim's file's
+digest and whose further lines set only variables that beginning does not, which it
+tells by digests alone. Hub reads `hub.env` only when it starts, so apply restarts Hub
+after writing an addition and waits until it serves. Any other changed key is refused. The Mac fixtures are
 `veoveo-installer fixture keycloak` (the persistent local Keycloak, its TLS leaf and
 realm), `fixture openshell` (the native gateway's OIDC clients), `fixture hub` (the
 fixture Hub's catalog, keys and service clients) and `fixture public-client` (a local

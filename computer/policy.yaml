@@ -34,6 +34,20 @@ network_policies:
     binaries:
       - path: /usr/local/bin/opencode
       - path: /usr/local/bin/veoveo-n8n-computer
+  anthropic:
+    # Claude for OpenCode alone, through Anthropic's Messages API; OpenCode's adapter
+    # adds the query `beta=true`, which a rule without a query matcher admits.
+    endpoints:
+      - host: api.anthropic.com
+        port: 443
+        path: /v1/messages
+        protocol: rest
+        enforcement: enforce
+        credential_binding: {provider: computer-anthropic}
+        rules:
+          - allow: {method: POST, path: /v1/messages}
+    binaries:
+      - path: /usr/local/bin/opencode
   npm_registry:
     # n8n's Assistant installs its workspace packages with npm, which Node.js runs, in
     # the sandboxes veoveo-n8n-computer keeps in the person's home. Read-only, with the

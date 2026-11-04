@@ -60,9 +60,12 @@ pub enum Action {
         exists: bool,
     },
     /// Write files into Hub's trusted claim with its seed Job, from a temporary Secret.
+    /// `restart` is Hub's origin when the files add to the `hub.env` a running Hub read at
+    /// its start: apply then restarts Hub and waits until it serves.
     WriteClaimFiles {
         claim: HubClaim,
         files: Vec<(String, String)>,
+        restart: Option<url::Url>,
     },
     /// Publish the declared members through Hub's administrative route, keeping the
     /// members people change from the revision active at that moment, and restart Hub's
@@ -136,14 +139,26 @@ impl Action {
                 "delete the exposure and expose the service again".to_owned()
             }
             Self::ExposeService { exists: false, .. } => "expose the service".to_owned(),
-            Self::WriteClaimFiles { claim, files } => format!(
-                "write {} with seed Job {}",
+            Self::WriteClaimFiles {
+                claim,
+                files,
+                restart,
+            } => format!(
+                "write {} with seed Job {}{}",
                 files
                     .iter()
                     .map(|(name, _)| name.as_str())
                     .collect::<Vec<_>>()
                     .join(", "),
-                claim.job
+                claim.job,
+                if restart.is_some() {
+                    format!(
+                        ", then restart {}/{}, which reads hub.env only at its start",
+                        claim.workspace, claim.sandbox
+                    )
+                } else {
+                    String::new()
+                }
             ),
             Self::Publish {
                 hub: (workspace, name),

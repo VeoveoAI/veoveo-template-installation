@@ -205,12 +205,27 @@ async fn execute(inputs: &Inputs, connections: &mut Connections, action: &Action
                 .ensure_service(workspace, sandbox, service)
                 .await
         }
-        Action::WriteClaimFiles { claim, files } => {
+        Action::WriteClaimFiles {
+            claim,
+            files,
+            restart,
+        } => {
             connections
                 .cluster()
                 .map_err(|reason| anyhow!(reason))?
                 .write_claim(inputs, claim, files)
-                .await
+                .await?;
+            if let Some(origin) = restart {
+                println!(
+                    "   {}/{} reads hub.env only at its start; restarting it",
+                    claim.workspace, claim.sandbox
+                );
+                gateway(connections)?
+                    .restart_sandbox(&claim.workspace, &claim.sandbox)
+                    .await?;
+                hub::await_serving(origin, SERVE_TIMEOUT).await?;
+            }
+            Ok(())
         }
         Action::Publish {
             origin,

@@ -83,8 +83,11 @@ veoveo-installer --private ~/private identity hub [--check]
 Prepares Hub's trusted files (`hub.env`, `authorization-server.jwks.json`, `hub.json`)
 in the private directory's `[identity] directory`, from the identity provider's
 registration in `private.toml`. Keys are made once; over existing files it verifies
-them and refuses rather than replace one. `--check` verifies and says what it would
-write, and writes nothing.
+them and refuses rather than replace one. A secret `[identity.secrets]` newly supplies,
+such as another model vendor's key, is appended to `hub.env`, which keeps every line it
+held; the `hub-claim` step then writes it into Hub's claim and restarts Hub, which reads
+`hub.env` only when it starts. `--check` verifies and says what it would write, and
+writes nothing.
 
 ## Mac fixtures
 

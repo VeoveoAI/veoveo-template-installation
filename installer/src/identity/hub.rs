@@ -154,18 +154,39 @@ pub fn prepare_in(
     let environment = if environment_exists {
         let text = std::fs::read_to_string(&paths.environment)
             .with_context(|| format!("cannot read {}", paths.environment.display()))?;
-        let values = parse_environment(&text)
+        let mut values = parse_environment(&text)
             .with_context(|| format!("{} is not valid", paths.environment.display()))?;
-        recover(&values, wanted).with_context(|| {
+        let additions = recover(&values, wanted).with_context(|| {
             format!(
                 "{} does not agree with this installation",
                 paths.environment.display()
             )
         })?;
-        decided.push((
-            &paths.environment,
-            format!("kept, {} values; Hub's keys recovered", values.len()),
-        ));
+        if additions.is_empty() {
+            decided.push((
+                &paths.environment,
+                format!("kept, {} values; Hub's keys recovered", values.len()),
+            ));
+        } else {
+            // An addition keeps every line the file holds and appends the new variables.
+            let names: Vec<&str> = additions.iter().map(|(name, _)| name.as_str()).collect();
+            decided.push((
+                &paths.environment,
+                format!(
+                    "{} {}, keeping its {} values; Hub's keys recovered",
+                    if check { "would add" } else { "added" },
+                    names.join(", "),
+                    values.len()
+                ),
+            ));
+            let mut appended = text.clone();
+            if !appended.is_empty() && !appended.ends_with('\n') {
+                appended.push('\n');
+            }
+            appended.push_str(&render_environment(&additions));
+            writes.push((&paths.environment, appended, false));
+            values.extend(additions);
+        }
         values
     } else {
         let values = create(wanted)?;
@@ -294,7 +315,9 @@ fn create(wanted: &Wanted) -> Result<Vec<(String, String)>> {
 
 /// An existing `hub.env` keeps its keys; it must hold every one, the origin and
 /// settings this installation has, and every secret a file supplies must be its value.
-pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<()> {
+/// A secret a file supplies that it lacks is an addition, which this returns with its
+/// value; a different value is a rotation, refused.
+pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<Vec<(String, String)>> {
     let value = |name: &str| {
         values
             .iter()
@@ -332,6 +355,7 @@ pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<()> {
         "it holds other values of {} than private.toml: change them through a reviewed rotation",
         differing.join(", ")
     );
+    let mut additions = Vec::new();
     for (name, file) in &wanted.secrets {
         match (value(name), file.exists()) {
             (Some(held), true) => ensure!(
@@ -340,13 +364,17 @@ pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<()> {
                 file.display()
             ),
             (Some(_), false) => {}
-            (None, _) => bail!(
-                "it lacks {name}, which {} supplies: add it through a reviewed rotation",
+            (None, true) => additions.push((
+                name.clone(),
+                read_secret(file).with_context(|| format!("{name} is supplied in a file"))?,
+            )),
+            (None, false) => bail!(
+                "it lacks {name}, and {}, which supplies it, is not there",
                 file.display()
             ),
         }
     }
-    Ok(())
+    Ok(additions)
 }
 
 /// The seed: this repository's, with the access-token key's ID, and people's members
@@ -653,6 +681,86 @@ mod tests {
             "{error:#}"
         );
         assert_eq!(fixture.files(), before);
+    }
+
+    #[test]
+    fn a_newly_supplied_secret_is_appended_keeping_every_held_line() {
+        let mut fixture = Fixture::new("addition");
+        prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            None,
+            false,
+        )
+        .unwrap();
+        let before = fixture.files();
+        let seed: Value = serde_json::from_slice(&before[2].1).unwrap();
+        let key = fixture.directory.join("vendor.key");
+        std::fs::write(&key, "fixture-vendor-key").unwrap();
+        fixture
+            .wanted
+            .secrets
+            .push(("VEOVEO_COMPUTER_VENDOR_API_KEY".into(), key));
+
+        let report = prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            Some(seed.clone()),
+            true,
+        )
+        .unwrap();
+        assert!(
+            report.lines[0].contains("would add VEOVEO_COMPUTER_VENDOR_API_KEY"),
+            "{report:?}"
+        );
+        assert!(!report.lines.join("\n").contains("fixture-vendor-key"));
+        assert_eq!(fixture.files(), before, "a check writes nothing");
+
+        let report = prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            Some(seed.clone()),
+            false,
+        )
+        .unwrap();
+        assert!(
+            report.lines[0].contains("added VEOVEO_COMPUTER_VENDOR_API_KEY"),
+            "{report:?}"
+        );
+        let after = fixture.files();
+        assert!(
+            after[1].1.starts_with(&before[1].1),
+            "every line hub.env held is kept as it was"
+        );
+        let environment = parse_environment(std::str::from_utf8(&after[1].1).unwrap()).unwrap();
+        assert_eq!(
+            environment.last().unwrap(),
+            &(
+                "VEOVEO_COMPUTER_VENDOR_API_KEY".to_owned(),
+                "fixture-vendor-key".to_owned()
+            )
+        );
+        assert_eq!(
+            (&after[0], &after[2]),
+            (&before[0], &before[2]),
+            "the key set and the seed are kept"
+        );
+        let rerun = prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            Some(seed),
+            false,
+        )
+        .unwrap();
+        assert!(
+            rerun.lines.iter().all(|line| line.contains("kept")),
+            "{rerun:?}"
+        );
+        assert_eq!(fixture.files(), after);
     }
 
     #[test]

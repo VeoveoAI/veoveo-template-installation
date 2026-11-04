@@ -13,9 +13,32 @@
     "-opencode.provider.vllm",
     "-opencode.provider.opencode"
   ],
+  "policies": [
+    {"action": "provider.use", "resource": "*", "effect": "deny"},
+    {"action": "provider.use", "resource": "deepinfra", "effect": "allow"},
+    {"action": "provider.use", "resource": "anthropic", "effect": "allow"}
+  ],
   "providers": {
     "deepinfra": {
       "settings": {"apiKey": "{env:DEEPINFRA_API_KEY}"}
+    },
+    "anthropic": {
+      "settings": {"apiKey": "{env:ANTHROPIC_API_KEY}"},
+      "models": {
+        "claude-fable-5": {"disabled": true},
+        "claude-haiku-4-5": {"disabled": true},
+        "claude-haiku-4-5-20251001": {"disabled": true},
+        "claude-opus-4-5": {"disabled": true},
+        "claude-opus-4-5-20251101": {"disabled": true},
+        "claude-opus-4-6": {"disabled": true},
+        "claude-opus-4-7": {"disabled": true},
+        "claude-opus-4-8": {"disabled": true},
+        "claude-opus-5": {"disabled": true},
+        "claude-sonnet-4-5": {"disabled": true},
+        "claude-sonnet-4-5-20250929": {"disabled": true},
+        "claude-sonnet-4-6": {"disabled": true},
+        "claude-sonnet-5": {"disabled": true}
+      }
     }
   },
   "mcp": {

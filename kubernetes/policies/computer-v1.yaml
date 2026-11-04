@@ -111,6 +111,26 @@ network_policies:
     binaries:
     - path: /usr/local/bin/opencode
     - path: /usr/local/bin/veoveo-n8n-computer
+  anthropic:
+    # Claude for OpenCode alone, through Anthropic's Messages API; OpenCode's adapter
+    # adds the query `beta=true`, which a rule without a query matcher admits.
+    endpoints:
+    - host: api.anthropic.com
+      port: 443
+      path: /v1/messages
+      protocol: rest
+      enforcement: enforce
+      credential_binding:
+        provider: computer-anthropic
+      # As for the model rule: a chat's history may quote a placeholder, and the key
+      # stays bound to its header.
+      allow_uninspected_credentials: true
+      rules:
+      - allow:
+          method: POST
+          path: /v1/messages
+    binaries:
+    - path: /usr/local/bin/opencode
   artifact_bytes:
     # Artifact's signed object URLs, under /artifacts/ on the public host. No
     # credential binding: the proxy forwards their method, Host, path, query,

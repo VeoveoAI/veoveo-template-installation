@@ -213,8 +213,10 @@ sandbox-only forwarder remains unchanged and is insufficient. Native workspace
 creation/global-profile access require the configured platform-admin role plus
 the six scoped permissions; that authority never enters user Computers.
 
-Hub creates workspace-local `computer-hub` from global `vv-computer-hub` and
-`computer-model` from `vv-computer-model`. The user's existing Hub OAuth refresh
+Hub creates workspace-local `computer-hub` from global `vv-computer-hub`,
+`computer-model` from `vv-computer-model` (DeepInfra, `computers.modelProvider`), and
+one provider for each entry of `computers.additionalModelProviders`: here
+`computer-anthropic` from `vv-computer-anthropic` (Anthropic). The user's existing Hub OAuth refresh
 grant is handed to native ConfigureProviderRefresh, followed by native
 RotateProviderCredential before setup is ready. Refresh scopes stay omitted.
 OpenShell is the sole custodian; OpenCode MCP OAuth is disabled and receives only
@@ -223,10 +225,13 @@ custody is pending. Browser sessions bind to the native Hub family and current
 owner/membership, including revocation of open streams, independently of refresh
 rotation. No operator-only credential export is used.
 
-Hub resolves the trusted Env `ProviderApiKey` reference to seed the workspace-local
-model provider; OpenCode sees only its native `DEEPINFRA_API_KEY` placeholder.
-The explicit model is `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro`, present in the selected
-OpenCode bundled catalog. Catalog fetch, warming, self-update and sharing are
+Hub resolves each model provider's trusted Env `ProviderApiKey` reference to seed it;
+OpenCode sees only the native `DEEPINFRA_API_KEY` and `ANTHROPIC_API_KEY` placeholders.
+The default model is `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro`, present in the selected
+OpenCode bundled catalog; a person may pick a DeepInfra model or Claude Haiku 5.5, Sonnet
+5.5, Opus 5.5 or Fable 5.1 for a session. Adding the Anthropic key to an installation is
+an addition to Hub's `hub.env`: supply it in `[identity.secrets]`, run
+`veoveo-installer identity hub`, then `plan` and `apply`. Catalog fetch, warming, self-update and sharing are
 disabled. Computer configuration sets `snapshots: false` and disables the built-in
 `opencode.vcs.git` and `opencode.vcs.hg` plugins. Native Lore supplies source history
 and undo. It also disables the `opencode.provider.ollama`, `opencode.provider.lmstudio`

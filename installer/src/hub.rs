@@ -176,12 +176,22 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
         }
     }
     let mut items = Vec::new();
+    let mut restart = None;
     if !claim.private.is_empty() {
         match private_files(inputs, claim, gateway, present.is_some()).await {
-            Ok((private_differences, private_writes, refused)) => {
+            Ok((private_differences, private_writes, refused, added)) => {
                 differences.extend(private_differences);
                 writes.extend(private_writes);
                 items.extend(refused);
+                if added {
+                    match claim_origin(inputs, claim) {
+                        Ok(origin) => restart = Some(origin),
+                        Err(error) => items.push(Item::unusable(
+                            format!("Hub's private trusted files in {}", claim.directory),
+                            &error,
+                        )),
+                    }
+                }
             }
             Err(error) => items.push(Item::unread(
                 format!("Hub's private trusted files in {}", claim.directory),
@@ -198,6 +208,7 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
     let item = Item::compared(subject, differences, note).with_action(Action::WriteClaimFiles {
         claim: claim.clone(),
         files: writes,
+        restart,
     });
     items.insert(0, item);
     items
@@ -206,14 +217,15 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
 /// The claim's private files against the private directory's, which `identity hub`
 /// prepares, by SHA-256, read in Hub's sandbox; no content leaves either side. Hub
 /// reads them when it starts, so a missing one is written, and so is a changed seed,
-/// which Hub reads only for an empty control plane; a changed key or key set is a
+/// which Hub reads only for an empty control plane, and an addition to `hub.env`, which
+/// the last member says, so that apply restarts Hub; a changed key or key set is a
 /// reviewed rotation, which apply does not make.
 async fn private_files(
     inputs: &Inputs,
     claim: &HubClaim,
     gateway: &Gateway,
     running: bool,
-) -> Result<(Vec<Difference>, Vec<(String, String)>, Vec<Item>)> {
+) -> Result<(Vec<Difference>, Vec<(String, String)>, Vec<Item>, bool)> {
     let (directory, _) = crate::identity::hub::directory(inputs)?;
     let mut local = Vec::new();
     for name in &claim.private {
@@ -239,10 +251,27 @@ async fn private_files(
         Default::default()
     };
     let (mut differences, mut writes, mut refused) = (Vec::new(), Vec::new(), Vec::new());
+    let mut added = false;
     for (name, text) in local {
         let digest = sha256_hex(&text);
         let held = active.get(&format!("{}/{name}", claim.directory));
         if held == Some(&digest) {
+            continue;
+        }
+        if let Some(held) = held
+            && name == crate::identity::hub::ENVIRONMENT_FILE
+            && let Some(names) = addition(&text, held)
+        {
+            differences.push(Difference::new(
+                ValuePath::root().member(&name),
+                Some(Value::String(format!(
+                    "the private directory's, which adds {}",
+                    names.join(", ")
+                ))),
+                Some(Value::String("its beginning".to_owned())),
+            ));
+            writes.push((name, text));
+            added = true;
             continue;
         }
         if held.is_some() && name != crate::identity::hub::SEED_FILE {
@@ -259,7 +288,56 @@ async fn private_files(
         ));
         writes.push((name, text));
     }
-    Ok((differences, writes, refused))
+    Ok((differences, writes, refused, added))
+}
+
+/// The variables `text` adds to the file whose SHA-256 is `held`: when `held` is the
+/// digest of `text` up to the end of one of its lines, and the lines after that set only
+/// variables that part does not, those are an addition; otherwise none, and the change is
+/// a rotation.
+fn addition(text: &str, held: &str) -> Option<Vec<String>> {
+    let mut end = 0;
+    for line in text.split_inclusive('\n') {
+        end += line.len();
+        if sha256_hex(&text[..end]) != held {
+            continue;
+        }
+        let (kept, rest) = text.split_at(end);
+        let kept = crate::identity::files::parse_environment(kept).ok()?;
+        let rest = crate::identity::files::parse_environment(rest).ok()?;
+        if rest.is_empty()
+            || rest
+                .iter()
+                .any(|(name, _)| kept.iter().any(|(held, _)| held == name))
+        {
+            return None;
+        }
+        return Some(rest.into_iter().map(|(name, _)| name).collect());
+    }
+    None
+}
+
+/// The public origin of the Hub whose claim `claim` is, from its declared seed.
+fn claim_origin(inputs: &Inputs, claim: &HubClaim) -> Result<Url> {
+    let hub = inputs
+        .declaration
+        .steps
+        .iter()
+        .find_map(|step| match &step.kind {
+            crate::declaration::StepKind::Hub(hub)
+                if inputs
+                    .declaration
+                    .claim(&hub.claim)
+                    .is_some_and(|declared| {
+                        declared.workspace == claim.workspace && declared.sandbox == claim.sandbox
+                    }) =>
+            {
+                Some(hub)
+            }
+            _ => None,
+        })
+        .context("installation.toml declares no Hub step for this claim")?;
+    origin(&declared_seed(inputs, hub)?, &hub.profile)
 }
 
 fn sha256_hex(text: &str) -> String {
@@ -1480,6 +1558,31 @@ mod tests {
         active["computers"]["policyFile"] = json!("/etc/veoveo/hub/computer-policy-v3.yaml");
         active["factory"]["policyFile"] = json!("/etc/veoveo/hub/factory-base-v2.yaml");
         active
+    }
+
+    #[test]
+    fn an_addition_to_hub_env_is_told_by_digests_and_anything_else_is_a_rotation() {
+        let held =
+            "VEOVEO_ISSUER=https://veoveo.example.com\nVEOVEO_COMPUTER_MODEL_API_KEY=first\n";
+        let digest = sha256_hex(held);
+        let added = format!("{held}VEOVEO_COMPUTER_VENDOR_API_KEY=second\nVEOVEO_OTHER=third\n");
+        assert_eq!(
+            addition(&added, &digest),
+            Some(vec![
+                "VEOVEO_COMPUTER_VENDOR_API_KEY".to_owned(),
+                "VEOVEO_OTHER".to_owned()
+            ])
+        );
+        // A changed value, a variable set again, an unchanged file and another file are
+        // no addition.
+        for text in [
+            "VEOVEO_ISSUER=https://veoveo.example.com\nVEOVEO_COMPUTER_MODEL_API_KEY=other\nVEOVEO_COMPUTER_VENDOR_API_KEY=second\n".to_owned(),
+            format!("{held}VEOVEO_COMPUTER_MODEL_API_KEY=other\n"),
+            held.to_owned(),
+            "VEOVEO_ISSUER=https://other.example.com\n".to_owned(),
+        ] {
+            assert_eq!(addition(&text, &digest), None, "{text}");
+        }
     }
 
     #[test]
