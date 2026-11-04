@@ -146,7 +146,9 @@ initial registration token only in native credential custody:
 Inspect existing definitions before creation; preserve matching state and refuse
 foreign/conflicting definitions. Artifact receives only its opaque registration
 reference, bound to POST `/oauth/register`. SDK metadata/JWKS and registration
-management have separate narrow REST rules in [its policy](artifact.yaml).
+management have separate narrow REST rules in [its policy](artifact.yaml), and so
+does the token exchange through which Artifact embeds the artifacts it indexes: it
+calls only `embedding__embed` on the Hub's MCP route, as the caller who uploaded.
 The supervisor's workload CA supplies verified HTTPS trust; no TLS bypass or
 caller/provider secrets are added to the Artifact image.
 

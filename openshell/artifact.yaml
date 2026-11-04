@@ -42,6 +42,36 @@ network_policies:
           - allow: {method: DELETE, path: /oauth/register/*}
     binaries:
       - path: /usr/local/bin/veoveo-mcp-artifact
+  hub_token_exchange:
+    endpoints:
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /oauth/token
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: POST, path: /oauth/token}
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-artifact
+  embedding_calls:
+    # Embeds the artifacts it indexes, as their caller. Disjoint from the REST
+    # registration/metadata/token paths above.
+    endpoints:
+      - host: vv-control--hub--http.openshell.localhost
+        port: 17670
+        path: /mcp/local
+        protocol: mcp
+        enforcement: enforce
+        mcp:
+          versions: ["2026-07-28"]
+          allow_all_known_mcp_methods: false
+        rules:
+          - allow: {method: server/discover}
+          - allow: {method: ping}
+          - allow: {method: tools/list}
+          - allow: {method: tools/call, tool: embedding__embed}
+    binaries:
+      - path: /usr/local/bin/veoveo-mcp-artifact
   database:
     endpoints:
       - host: host.openshell.internal

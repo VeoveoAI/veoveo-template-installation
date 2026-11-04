@@ -65,6 +65,63 @@ network_policies:
           path: /oauth/register/*
     binaries:
     - path: /usr/local/bin/veoveo-mcp-artifact
+  hub_token_exchange:
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /oauth/token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: POST
+          path: /oauth/token
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-artifact
+  embedding_calls:
+    # Embeds the artifacts it indexes, as their caller, on the profile the caller came
+    # through.
+    endpoints:
+    - host: veoveo.example.com
+      port: 443
+      path: /mcp/local
+      protocol: mcp
+      enforcement: enforce
+      mcp:
+        versions:
+        - '2026-07-28'
+        allow_all_known_mcp_methods: false
+      rules:
+      - allow:
+          method: server/discover
+      - allow:
+          method: ping
+      - allow:
+          method: tools/list
+      - allow:
+          method: tools/call
+          tool: embedding__embed
+    - host: veoveo.example.com
+      port: 443
+      path: /mcp/computer
+      protocol: mcp
+      enforcement: enforce
+      mcp:
+        versions:
+        - '2026-07-28'
+        allow_all_known_mcp_methods: false
+      rules:
+      - allow:
+          method: server/discover
+      - allow:
+          method: ping
+      - allow:
+          method: tools/list
+      - allow:
+          method: tools/call
+          tool: embedding__embed
+    binaries:
+    - path: /usr/local/bin/veoveo-mcp-artifact
   database:
     endpoints:
     - host: veoveo-postgres-rw.veoveo-system.svc.cluster.local
