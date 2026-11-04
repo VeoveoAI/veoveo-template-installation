@@ -59,6 +59,9 @@ network_policies:
           path: /openshell.v1.OpenShell/CreateProvider
       - allow:
           method: POST
+          path: /openshell.v1.OpenShell/UpdateProvider
+      - allow:
+          method: POST
           path: /openshell.v1.OpenShell/GetSandbox
       - allow:
           method: POST
