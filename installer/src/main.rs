@@ -67,6 +67,11 @@ enum IdentityCommand {
         /// Verify the existing files and say what would be written; write nothing.
         #[arg(long)]
         check: bool,
+        /// Rotate a secret [identity.secrets] supplies: set its hub.env line to the value
+        /// its file now holds. Repeat it for more; Hub's own keys, origin and settings
+        /// cannot be named.
+        #[arg(long, value_name = "NAME")]
+        rotate: Vec<String>,
     },
 }
 
@@ -157,8 +162,8 @@ async fn run(cli: Cli) -> Result<ExitCode> {
             hub::login(&inputs()?, *no_browser).await?;
             Ok(ExitCode::SUCCESS)
         }
-        Command::Identity(IdentityCommand::Hub { check }) => {
-            let report = identity::hub::prepare(&inputs()?, *check)?;
+        Command::Identity(IdentityCommand::Hub { check, rotate }) => {
+            let report = identity::hub::prepare(&inputs()?, *check, rotate)?;
             for line in report.lines {
                 println!("{line}");
             }

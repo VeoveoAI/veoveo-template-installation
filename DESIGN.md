@@ -591,12 +591,19 @@ made once: over existing files it recovers them, checks that they agree with wha
 private directory supplies, and otherwise refuses without writing, since a rotation is
 a reviewed act of its own. A secret `[identity.secrets]` newly supplies, such as a
 further model vendor's key, is an addition, not a rotation: `identity hub` appends it to
-`hub.env` and keeps every line it held. The claim step writes these files into Hub's
-claim when the claim lacks them, as on a first installation, a changed seed, and an
-addition: a `hub.env` whose beginning, up to the end of a line, has the claim's file's
-digest and whose further lines set only variables that beginning does not, which it
-tells by digests alone. Hub reads `hub.env` only when it starts, so apply restarts Hub
-after writing an addition and waits until it serves. Any other changed key is refused. The Mac fixtures are
+`hub.env` and keeps every line it held. Rotating a supplied secret is that reviewed act:
+the operator replaces its file and names it, `identity hub --rotate NAME`, which sets
+that variable's line to the file's value and keeps every other line; a supplied secret
+whose file differs without being named is still refused, and Hub's own keys, its origin
+and its settings cannot be named. The claim step writes these files into Hub's claim
+when the claim lacks them, as on a first installation, a changed seed, and a `hub.env`
+that only adds or rotates supplied secrets. It tells that by digests alone: each
+variable of the claim's file, read in Hub's sandbox as its name and the SHA-256 of its
+line, against the private directory's; every other variable keeps its digest and none
+goes, and plan names the variables added and rotated. Hub reads `hub.env` only when it
+starts, so apply restarts Hub after writing it and waits until it serves, and Hub gives
+each Computer a rotated model key when it next enters or is replaced. Any other changed
+key is refused. The Mac fixtures are
 `veoveo-installer fixture keycloak` (the persistent local Keycloak, its TLS leaf and
 realm), `fixture openshell` (the native gateway's OIDC clients), `fixture hub` (the
 fixture Hub's catalog, keys and service clients) and `fixture public-client` (a local

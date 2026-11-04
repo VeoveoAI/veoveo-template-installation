@@ -810,6 +810,24 @@ impl Gateway {
             .collect())
     }
 
+    /// Each variable a sandbox's environment file sets, in its order, with the SHA-256
+    /// of its line, read as [`crate::hub::VARIABLE_DIGESTS`] reads it; none for a
+    /// missing file. No value leaves the sandbox.
+    pub async fn variable_digests(
+        &self,
+        workspace: &str,
+        sandbox: &str,
+        path: &str,
+    ) -> Result<Vec<(String, String)>> {
+        let command = ["/bin/sh", "-c", crate::hub::VARIABLE_DIGESTS, "sh", path];
+        let output = self.exec(workspace, sandbox, &command).await?;
+        Ok(output
+            .lines()
+            .filter_map(|line| line.split_once(' '))
+            .map(|(name, digest)| (name.to_owned(), digest.to_owned()))
+            .collect())
+    }
+
     /// The names in a sandbox directory.
     pub async fn list_directory(
         &self,

@@ -77,7 +77,7 @@ ssh -L 3211:127.0.0.1:3211 operator@install-host
 ## identity hub
 
 ```sh
-veoveo-installer --private ~/private identity hub [--check]
+veoveo-installer --private ~/private identity hub [--check] [--rotate NAME]...
 ```
 
 Prepares Hub's trusted files (`hub.env`, `authorization-server.jwks.json`, `hub.json`)
@@ -86,8 +86,12 @@ registration in `private.toml`. Keys are made once; over existing files it verif
 them and refuses rather than replace one. A secret `[identity.secrets]` newly supplies,
 such as another model vendor's key, is appended to `hub.env`, which keeps every line it
 held; the `hub-claim` step then writes it into Hub's claim and restarts Hub, which reads
-`hub.env` only when it starts. `--check` verifies and says what it would write, and
-writes nothing.
+`hub.env` only when it starts. To rotate a supplied secret, replace its file and name
+it with `--rotate NAME`: only that line of `hub.env` changes, and `hub-claim` writes and
+restarts Hub the same way; Hub gives each Computer a rotated model key when it next
+enters or is replaced. A supplied secret whose file differs without being named is
+refused, and Hub's own keys, origin and settings cannot be named. `--check` verifies and
+says what it would write, and writes nothing.
 
 ## Mac fixtures
 

@@ -179,11 +179,11 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
     let mut restart = None;
     if !claim.private.is_empty() {
         match private_files(inputs, claim, gateway, present.is_some()).await {
-            Ok((private_differences, private_writes, refused, added)) => {
+            Ok((private_differences, private_writes, refused, environment)) => {
                 differences.extend(private_differences);
                 writes.extend(private_writes);
                 items.extend(refused);
-                if added {
+                if environment {
                     match claim_origin(inputs, claim) {
                         Ok(origin) => restart = Some(origin),
                         Err(error) => items.push(Item::unusable(
@@ -217,9 +217,9 @@ pub async fn plan_claim(inputs: &Inputs, claim: &HubClaim, gateway: &Gateway) ->
 /// The claim's private files against the private directory's, which `identity hub`
 /// prepares, by SHA-256, read in Hub's sandbox; no content leaves either side. Hub
 /// reads them when it starts, so a missing one is written, and so is a changed seed,
-/// which Hub reads only for an empty control plane, and an addition to `hub.env`, which
-/// the last member says, so that apply restarts Hub; a changed key or key set is a
-/// reviewed rotation, which apply does not make.
+/// which Hub reads only for an empty control plane, and a `hub.env` that only adds or
+/// rotates supplied secrets, which the last member says, so that apply restarts Hub;
+/// any other changed key or key set is refused.
 async fn private_files(
     inputs: &Inputs,
     claim: &HubClaim,
@@ -250,29 +250,40 @@ async fn private_files(
     } else {
         Default::default()
     };
+    let supplied: Vec<String> = inputs
+        .private
+        .identity
+        .iter()
+        .flat_map(|identity| identity.secrets.keys().cloned())
+        .collect();
     let (mut differences, mut writes, mut refused) = (Vec::new(), Vec::new(), Vec::new());
-    let mut added = false;
+    let mut environment = false;
     for (name, text) in local {
         let digest = sha256_hex(&text);
-        let held = active.get(&format!("{}/{name}", claim.directory));
+        let path = format!("{}/{name}", claim.directory);
+        let held = active.get(&path);
         if held == Some(&digest) {
             continue;
         }
-        if let Some(held) = held
-            && name == crate::identity::hub::ENVIRONMENT_FILE
-            && let Some(names) = addition(&text, held)
-        {
-            differences.push(Difference::new(
-                ValuePath::root().member(&name),
-                Some(Value::String(format!(
-                    "the private directory's, which adds {}",
-                    names.join(", ")
-                ))),
-                Some(Value::String("its beginning".to_owned())),
-            ));
-            writes.push((name, text));
-            added = true;
-            continue;
+        if held.is_some() && name == crate::identity::hub::ENVIRONMENT_FILE {
+            let held = gateway
+                .variable_digests(&claim.workspace, &claim.sandbox, &path)
+                .await?;
+            if let Some(change) = environment_change(&text, &held, &supplied) {
+                differences.push(Difference::new(
+                    ValuePath::root().member(&name),
+                    Some(Value::String(format!(
+                        "the private directory's, which {}",
+                        change.describe()
+                    ))),
+                    Some(Value::String(
+                        "the same other variables, by digest".to_owned(),
+                    )),
+                ));
+                writes.push((name, text));
+                environment = true;
+                continue;
+            }
         }
         if held.is_some() && name != crate::identity::hub::SEED_FILE {
             refused.push(Item::new(
@@ -288,33 +299,98 @@ async fn private_files(
         ));
         writes.push((name, text));
     }
-    Ok((differences, writes, refused, added))
+    Ok((differences, writes, refused, environment))
 }
 
-/// The variables `text` adds to the file whose SHA-256 is `held`: when `held` is the
-/// digest of `text` up to the end of one of its lines, and the lines after that set only
-/// variables that part does not, those are an addition; otherwise none, and the change is
-/// a rotation.
-fn addition(text: &str, held: &str) -> Option<Vec<String>> {
-    let mut end = 0;
-    for line in text.split_inclusive('\n') {
-        end += line.len();
-        if sha256_hex(&text[..end]) != held {
-            continue;
+/// How Hub's sandbox reads an environment file, its one argument: each line that begins
+/// with a letter or underscore and holds `=`, as the name before the first `=` and the
+/// SHA-256 of the line without its line break, as [`variable_digests`] reads text.
+pub const VARIABLE_DIGESTS: &str = r#"export LC_ALL=C
+file=$1
+[ -f "$file" ] || exit 0
+while IFS= read -r line || [ -n "$line" ]; do
+  case $line in
+    [A-Za-z_]*=*)
+      set -- $(printf '%s' "$line" | /usr/bin/sha256sum)
+      printf '%s %s\n' "${line%%=*}" "$1" ;;
+  esac
+done < "$file""#;
+
+/// Each variable `text` sets, in its order, with the SHA-256 of its line, as
+/// [`VARIABLE_DIGESTS`] reads a file.
+fn variable_digests(text: &str) -> Vec<(String, String)> {
+    text.split('\n')
+        .filter_map(|line| {
+            let (name, _) = line.split_once('=')?;
+            name.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+                .then(|| (name.to_owned(), sha256_hex(line)))
+        })
+        .collect()
+}
+
+/// What a `hub.env` changes from the one whose variables' digests are `held`.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct EnvironmentChange {
+    added: Vec<String>,
+    rotated: Vec<String>,
+}
+
+impl EnvironmentChange {
+    fn describe(&self) -> String {
+        let mut parts = Vec::new();
+        if !self.added.is_empty() {
+            parts.push(format!("adds {}", self.added.join(", ")));
         }
-        let (kept, rest) = text.split_at(end);
-        let kept = crate::identity::files::parse_environment(kept).ok()?;
-        let rest = crate::identity::files::parse_environment(rest).ok()?;
-        if rest.is_empty()
-            || rest
-                .iter()
-                .any(|(name, _)| kept.iter().any(|(held, _)| held == name))
-        {
-            return None;
+        if !self.rotated.is_empty() {
+            parts.push(format!("rotates {}", self.rotated.join(", ")));
         }
-        return Some(rest.into_iter().map(|(name, _)| name).collect());
+        if parts.is_empty() {
+            "sets the same variables".to_owned()
+        } else {
+            parts.join(" and ")
+        }
     }
-    None
+}
+
+/// The variables `text` adds and rotates against `held`, the claim's file's variables
+/// by digest, when each is a secret `supplied` names, every other variable keeps its
+/// digest and none goes; otherwise none, and the change is refused. A variable set
+/// twice on either side is not told apart, so it is refused too.
+fn environment_change(
+    text: &str,
+    held: &[(String, String)],
+    supplied: &[String],
+) -> Option<EnvironmentChange> {
+    let local = variable_digests(text);
+    let twice = |variables: &[(String, String)]| {
+        variables.iter().enumerate().any(|(index, (name, _))| {
+            variables[..index]
+                .iter()
+                .any(|(earlier, _)| earlier == name)
+        })
+    };
+    if twice(&local)
+        || twice(held)
+        || held
+            .iter()
+            .any(|(name, _)| !local.iter().any(|(kept, _)| kept == name))
+    {
+        return None;
+    }
+    let mut change = EnvironmentChange::default();
+    for (name, digest) in local {
+        match held.iter().find(|(earlier, _)| *earlier == name) {
+            Some((_, earlier)) if *earlier == digest => {}
+            Some(_) => change.rotated.push(name),
+            None => change.added.push(name),
+        }
+    }
+    change
+        .added
+        .iter()
+        .chain(&change.rotated)
+        .all(|name| supplied.contains(name))
+        .then_some(change)
 }
 
 /// The public origin of the Hub whose claim `claim` is, from its declared seed.
@@ -1561,28 +1637,90 @@ mod tests {
     }
 
     #[test]
-    fn an_addition_to_hub_env_is_told_by_digests_and_anything_else_is_a_rotation() {
-        let held =
-            "VEOVEO_ISSUER=https://veoveo.example.com\nVEOVEO_COMPUTER_MODEL_API_KEY=first\n";
-        let digest = sha256_hex(held);
-        let added = format!("{held}VEOVEO_COMPUTER_VENDOR_API_KEY=second\nVEOVEO_OTHER=third\n");
+    fn hub_env_changes_are_told_by_variable_digests_and_only_supplied_secrets_change() {
+        let held = "# Hub's trusted environment\nVEOVEO_ISSUER=https://veoveo.example.com\nVEOVEO_COMPUTER_MODEL_API_KEY=first\n";
+        let digests = variable_digests(held);
         assert_eq!(
-            addition(&added, &digest),
-            Some(vec![
-                "VEOVEO_COMPUTER_VENDOR_API_KEY".to_owned(),
-                "VEOVEO_OTHER".to_owned()
-            ])
+            digests
+                .iter()
+                .map(|(name, _)| name.as_str())
+                .collect::<Vec<_>>(),
+            ["VEOVEO_ISSUER", "VEOVEO_COMPUTER_MODEL_API_KEY"],
+            "a comment sets nothing"
         );
-        // A changed value, a variable set again, an unchanged file and another file are
-        // no addition.
+        let supplied = [
+            "VEOVEO_COMPUTER_MODEL_API_KEY".to_owned(),
+            "VEOVEO_COMPUTER_VENDOR_API_KEY".to_owned(),
+        ];
+        let change = |text: &str| environment_change(text, &digests, &supplied);
+        let vendor = "VEOVEO_COMPUTER_VENDOR_API_KEY".to_owned();
+        let model = "VEOVEO_COMPUTER_MODEL_API_KEY".to_owned();
+        assert_eq!(
+            change(&format!("{held}VEOVEO_COMPUTER_VENDOR_API_KEY=second\n")),
+            Some(EnvironmentChange {
+                added: vec![vendor.clone()],
+                rotated: vec![],
+            })
+        );
+        let rotated = "# Hub's trusted environment\nVEOVEO_ISSUER=https://veoveo.example.com\nVEOVEO_COMPUTER_MODEL_API_KEY=other\nVEOVEO_COMPUTER_VENDOR_API_KEY=second";
+        assert_eq!(
+            change(rotated),
+            Some(EnvironmentChange {
+                added: vec![vendor],
+                rotated: vec![model],
+            })
+        );
+        assert_eq!(
+            change(rotated).unwrap().describe(),
+            "adds VEOVEO_COMPUTER_VENDOR_API_KEY and rotates VEOVEO_COMPUTER_MODEL_API_KEY"
+        );
+        // Another origin, a variable no secret supplies, one that goes and one set twice
+        // are refused.
         for text in [
-            "VEOVEO_ISSUER=https://veoveo.example.com\nVEOVEO_COMPUTER_MODEL_API_KEY=other\nVEOVEO_COMPUTER_VENDOR_API_KEY=second\n".to_owned(),
+            "VEOVEO_ISSUER=https://other.example.com\nVEOVEO_COMPUTER_MODEL_API_KEY=first\n"
+                .to_owned(),
+            format!("{held}VEOVEO_OTHER=third\n"),
+            "VEOVEO_ISSUER=https://veoveo.example.com\n".to_owned(),
             format!("{held}VEOVEO_COMPUTER_MODEL_API_KEY=other\n"),
-            held.to_owned(),
-            "VEOVEO_ISSUER=https://other.example.com\n".to_owned(),
         ] {
-            assert_eq!(addition(&text, &digest), None, "{text}");
+            assert_eq!(change(&text), None, "{text}");
         }
+    }
+
+    /// The sandbox's reading of a file and the installer's of its text agree. A host
+    /// without the sandbox's `sha256sum`, a Mac, reads with `shasum -a 256`, which
+    /// prints the same.
+    #[test]
+    fn the_sandbox_reads_variable_digests_as_the_installer_does() {
+        let script = if std::path::Path::new("/usr/bin/sha256sum").exists() {
+            VARIABLE_DIGESTS.to_owned()
+        } else {
+            VARIABLE_DIGESTS.replace("/usr/bin/sha256sum", "/usr/bin/shasum -a 256")
+        };
+        let text = "# comment = not a variable\nVEOVEO_ISSUER=https://veoveo.example.com\n\n  indented=no\nVEOVEO_KEY='a b\\c $x'\n_LAST=\"end\"";
+        let path =
+            std::env::temp_dir().join(format!("veoveo-installer-variables-{}", std::process::id()));
+        std::fs::write(&path, text).unwrap();
+        let output = std::process::Command::new("/bin/sh")
+            .args(["-c", &script, "sh"])
+            .arg(&path)
+            .output()
+            .unwrap();
+        std::fs::remove_file(&path).unwrap();
+        assert!(output.status.success());
+        let read: Vec<(String, String)> = String::from_utf8(output.stdout)
+            .unwrap()
+            .lines()
+            .filter_map(|line| line.split_once(' '))
+            .map(|(name, digest)| (name.to_owned(), digest.to_owned()))
+            .collect();
+        assert_eq!(read, variable_digests(text));
+        assert_eq!(
+            read.iter()
+                .map(|(name, _)| name.as_str())
+                .collect::<Vec<_>>(),
+            ["VEOVEO_ISSUER", "VEOVEO_KEY", "_LAST"]
+        );
     }
 
     #[test]

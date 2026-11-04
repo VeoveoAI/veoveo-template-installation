@@ -2,7 +2,8 @@
 //! own keys and the supplied secrets, the authorization server's public key set, and the
 //! seed `hub.json`. Keys are made once and never replaced: a run over existing files
 //! recovers them, checks that they agree with what the private directory supplies and
-//! refuses, without writing, when they do not. A rotation is a separate, reviewed act.
+//! refuses, without writing, when they do not. A rotation is a separate, reviewed act:
+//! only a supplied secret the operator names is rotated, to its file's value.
 
 use std::path::{Path, PathBuf};
 
@@ -51,8 +52,9 @@ pub fn directory(inputs: &Inputs) -> Result<(PathBuf, &Identity)> {
     Ok((inputs.private.path(&identity.directory), identity))
 }
 
-/// Prepares, or with `check` only verifies, Hub's trusted files.
-pub fn prepare(inputs: &Inputs, check: bool) -> Result<Report> {
+/// Prepares, or with `check` only verifies, Hub's trusted files, rotating the supplied
+/// secrets `rotate` names to their files' values.
+pub fn prepare(inputs: &Inputs, check: bool, rotate: &[String]) -> Result<Report> {
     let (directory, identity) = directory(inputs)?;
     let hub = inputs
         .declaration
@@ -78,6 +80,7 @@ pub fn prepare(inputs: &Inputs, check: bool) -> Result<Report> {
             .iter()
             .map(|(name, file)| (name.clone(), inputs.private.path(file)))
             .collect(),
+        rotate: rotate.to_vec(),
     };
     let paths = Paths::new(&directory);
     let people = people(identity, inputs, &paths)?;
@@ -90,6 +93,9 @@ pub struct Wanted {
     pub config: String,
     pub environment: std::collections::BTreeMap<String, String>,
     pub secrets: Vec<(String, PathBuf)>,
+    /// The supplied secrets the operator names for rotation, whose files hold their
+    /// new values.
+    pub rotate: Vec<String>,
 }
 
 pub struct Paths {
@@ -156,35 +162,64 @@ pub fn prepare_in(
             .with_context(|| format!("cannot read {}", paths.environment.display()))?;
         let mut values = parse_environment(&text)
             .with_context(|| format!("{} is not valid", paths.environment.display()))?;
-        let additions = recover(&values, wanted).with_context(|| {
+        let Changes {
+            additions,
+            rotations,
+        } = recover(&values, wanted).with_context(|| {
             format!(
                 "{} does not agree with this installation",
                 paths.environment.display()
             )
         })?;
-        if additions.is_empty() {
+        if additions.is_empty() && rotations.is_empty() {
             decided.push((
                 &paths.environment,
                 format!("kept, {} values; Hub's keys recovered", values.len()),
             ));
         } else {
-            // An addition keeps every line the file holds and appends the new variables.
-            let names: Vec<&str> = additions.iter().map(|(name, _)| name.as_str()).collect();
+            // A rotation sets its variable's line in place and an addition appends the
+            // new variables; every other line the file holds is kept as it was.
+            let names = |changes: &[(String, String)]| {
+                changes
+                    .iter()
+                    .map(|(name, _)| name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            let mut done = Vec::new();
+            if !rotations.is_empty() {
+                done.push(format!(
+                    "{} {}",
+                    if check { "would rotate" } else { "rotated" },
+                    names(&rotations)
+                ));
+            }
+            if !additions.is_empty() {
+                done.push(format!(
+                    "{} {}",
+                    if check { "would add" } else { "added" },
+                    names(&additions)
+                ));
+            }
             decided.push((
                 &paths.environment,
                 format!(
-                    "{} {}, keeping its {} values; Hub's keys recovered",
-                    if check { "would add" } else { "added" },
-                    names.join(", "),
-                    values.len()
+                    "{}, keeping its {} other values; Hub's keys recovered",
+                    done.join(" and "),
+                    values.len() - rotations.len()
                 ),
             ));
-            let mut appended = text.clone();
-            if !appended.is_empty() && !appended.ends_with('\n') {
-                appended.push('\n');
+            let mut changed = rotated(&text, &rotations);
+            if !changed.is_empty() && !changed.ends_with('\n') {
+                changed.push('\n');
             }
-            appended.push_str(&render_environment(&additions));
-            writes.push((&paths.environment, appended, false));
+            changed.push_str(&render_environment(&additions));
+            writes.push((&paths.environment, changed, false));
+            for (name, value) in rotations {
+                if let Some(held) = values.iter_mut().find(|(held, _)| *held == name) {
+                    held.1 = value;
+                }
+            }
             values.extend(additions);
         }
         values
@@ -313,11 +348,26 @@ fn create(wanted: &Wanted) -> Result<Vec<(String, String)>> {
     Ok(values)
 }
 
+/// What an existing `hub.env` gains, each variable with its value: the secrets files
+/// newly supply, and the supplied secrets named for rotation whose files hold another.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Changes {
+    pub additions: Vec<(String, String)>,
+    pub rotations: Vec<(String, String)>,
+}
+
 /// An existing `hub.env` keeps its keys; it must hold every one, the origin and
 /// settings this installation has, and every secret a file supplies must be its value.
-/// A secret a file supplies that it lacks is an addition, which this returns with its
-/// value; a different value is a rotation, refused.
-pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<Vec<(String, String)>> {
+/// A secret a file supplies that it lacks is an addition; a different value is a
+/// rotation, made only for a supplied secret `wanted.rotate` names and otherwise
+/// refused. Only supplied secrets can be named.
+pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<Changes> {
+    for name in &wanted.rotate {
+        ensure!(
+            wanted.secrets.iter().any(|(supplied, _)| supplied == name),
+            "{name} is not a secret [identity.secrets] supplies: Hub's own keys, its origin and its settings are not rotated"
+        );
+    }
     let value = |name: &str| {
         values
             .iter()
@@ -355,16 +405,27 @@ pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<Vec<(Stri
         "it holds other values of {} than private.toml: change them through a reviewed rotation",
         differing.join(", ")
     );
-    let mut additions = Vec::new();
+    let mut changes = Changes::default();
     for (name, file) in &wanted.secrets {
+        let named = wanted.rotate.contains(name);
         match (value(name), file.exists()) {
-            (Some(held), true) => ensure!(
-                read_secret(file)? == held,
-                "its {name} differs from {}: rotate it separately",
+            (Some(held), true) => {
+                let supplied = read_secret(file)?;
+                if supplied != held {
+                    ensure!(
+                        named,
+                        "its {name} differs from {}: rotate it with `veoveo-installer identity hub --rotate {name}`",
+                        file.display()
+                    );
+                    changes.rotations.push((name.clone(), supplied));
+                }
+            }
+            (Some(_), false) => ensure!(
+                !named,
+                "{name} is named for rotation, and {}, which supplies it, is not there",
                 file.display()
             ),
-            (Some(_), false) => {}
-            (None, true) => additions.push((
+            (None, true) => changes.additions.push((
                 name.clone(),
                 read_secret(file).with_context(|| format!("{name} is supplied in a file"))?,
             )),
@@ -374,7 +435,30 @@ pub fn recover(values: &[(String, String)], wanted: &Wanted) -> Result<Vec<(Stri
             ),
         }
     }
-    Ok(additions)
+    Ok(changes)
+}
+
+/// `text` with the line of each rotated variable set to its new value; every other
+/// line, and each line's ending, as it was.
+fn rotated(text: &str, rotations: &[(String, String)]) -> String {
+    text.split_inclusive('\n')
+        .map(|line| {
+            let body = line.strip_suffix('\n').unwrap_or(line);
+            let rotation = body
+                .split_once('=')
+                .and_then(|(name, _)| rotations.iter().find(|(rotated, _)| rotated == name));
+            match rotation {
+                Some(rotation) => {
+                    let mut set = render_environment(std::slice::from_ref(rotation));
+                    if !line.ends_with('\n') {
+                        set.pop();
+                    }
+                    set
+                }
+                None => line.to_owned(),
+            }
+        })
+        .collect()
 }
 
 /// The seed: this repository's, with the access-token key's ID, and people's members
@@ -477,6 +561,7 @@ mod tests {
                         ("VEOVEO_DATABASE_PASSWORD".into(), password),
                         ("VEOVEO_IDP_OIDC_CLIENT_SECRET".into(), secret),
                     ],
+                    rotate: Vec::new(),
                 },
                 seed: json!({
                     "authorizationServers": [{"id": "hub", "accessTokenKeyId": "example", "accessTokenSigningKey": "access_token_signing_key"}],
@@ -674,6 +759,7 @@ mod tests {
             config: fixture.wanted.config.clone(),
             environment: fixture.wanted.environment.clone(),
             secrets: Vec::new(),
+            rotate: Vec::new(),
         };
         let error = prepare_in(&fixture.paths(), &moved, &fixture.seed, None, false).unwrap_err();
         assert!(
@@ -743,6 +829,116 @@ mod tests {
                 "fixture-vendor-key".to_owned()
             )
         );
+        assert_eq!(
+            (&after[0], &after[2]),
+            (&before[0], &before[2]),
+            "the key set and the seed are kept"
+        );
+        let rerun = prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            Some(seed),
+            false,
+        )
+        .unwrap();
+        assert!(
+            rerun.lines.iter().all(|line| line.contains("kept")),
+            "{rerun:?}"
+        );
+        assert_eq!(fixture.files(), after);
+    }
+
+    #[test]
+    fn a_named_supplied_secret_is_rotated_in_place_and_nothing_else_can_be_named() {
+        let mut fixture = Fixture::new("rotation");
+        prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            None,
+            false,
+        )
+        .unwrap();
+        let before = fixture.files();
+        let seed: Value = serde_json::from_slice(&before[2].1).unwrap();
+        let name = "VEOVEO_IDP_OIDC_CLIENT_SECRET";
+        let file = fixture
+            .wanted
+            .secrets
+            .iter()
+            .find(|(supplied, _)| supplied == name)
+            .unwrap()
+            .1
+            .clone();
+        std::fs::write(&file, "fixture-rotated-secret").unwrap();
+
+        // Hub's own keys and its settings cannot be named, and nothing is written.
+        for other in ["VEOVEO_FORWARDED_TOKEN_KEY_B64", "VEOVEO_LISTEN_ADDRESS"] {
+            fixture.wanted.rotate = vec![other.to_owned()];
+            let error = prepare_in(
+                &fixture.paths(),
+                &fixture.wanted,
+                &fixture.seed,
+                Some(seed.clone()),
+                false,
+            )
+            .unwrap_err();
+            assert!(
+                format!("{error:#}").contains("not a secret [identity.secrets] supplies"),
+                "{error:#}"
+            );
+            assert_eq!(fixture.files(), before);
+        }
+
+        fixture.wanted.rotate = vec![name.to_owned()];
+        let report = prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            Some(seed.clone()),
+            true,
+        )
+        .unwrap();
+        assert!(
+            report.lines[0].contains(&format!("would rotate {name}")),
+            "{report:?}"
+        );
+        assert!(!report.lines.join("\n").contains("fixture-rotated-secret"));
+        assert_eq!(fixture.files(), before, "a check writes nothing");
+
+        let report = prepare_in(
+            &fixture.paths(),
+            &fixture.wanted,
+            &fixture.seed,
+            Some(seed.clone()),
+            false,
+        )
+        .unwrap();
+        assert!(
+            report.lines[0].contains(&format!("rotated {name}")),
+            "{report:?}"
+        );
+        let after = fixture.files();
+        let lines = |file: &[u8]| {
+            std::str::from_utf8(file)
+                .unwrap()
+                .lines()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        };
+        let (held, rotated) = (lines(&before[1].1), lines(&after[1].1));
+        assert_eq!(held.len(), rotated.len());
+        for (held, rotated) in held.iter().zip(&rotated) {
+            if held.starts_with(&format!("{name}=")) {
+                assert_eq!(
+                    parse_environment(rotated).unwrap(),
+                    [(name.to_owned(), "fixture-rotated-secret".to_owned())]
+                );
+            } else {
+                assert_eq!(held, rotated, "every other line is kept where it was");
+            }
+        }
         assert_eq!(
             (&after[0], &after[2]),
             (&before[0], &before[2]),

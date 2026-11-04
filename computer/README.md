@@ -231,7 +231,9 @@ The default model is `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro`, present in the select
 OpenCode bundled catalog; a person may pick a DeepInfra model or Claude Haiku 5.5, Sonnet
 5.5, Opus 5.5 or Fable 5.1 for a session. Adding the Anthropic key to an installation is
 an addition to Hub's `hub.env`: supply it in `[identity.secrets]`, run
-`veoveo-installer identity hub`, then `plan` and `apply`. Catalog fetch, warming, self-update and sharing are
+`veoveo-installer identity hub`, then `plan` and `apply`. Replacing a vendor's key is a
+rotation: replace its file, run `veoveo-installer identity hub --rotate NAME`, then `plan`
+and `apply`; each Computer takes the new key when it next enters or is replaced. Catalog fetch, warming, self-update and sharing are
 disabled. Computer configuration sets `snapshots: false` and disables the built-in
 `opencode.vcs.git` and `opencode.vcs.hg` plugins. Native Lore supplies source history
 and undo. It also disables the `opencode.provider.ollama`, `opencode.provider.lmstudio`
