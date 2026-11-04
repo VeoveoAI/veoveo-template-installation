@@ -282,10 +282,11 @@ Check Lore from the Computer's OpenCode shell, which inherits `HOME` and both
 variables.
 
 The Hub's own skills, [skills/](skills/), are the Computer's guidance: `computer` (what
-the Computer provides, its home, the Hub CLI and its version), `lore` (cloning,
-committing and pushing, creating a repository, bringing a Git checkout in, sharing),
-`served-branches`, `artifact-transfers`, `knowledge` (searching the servers' records
-by meaning and words) and `mcp-apps` (writing a server's App view for the Hub's sandbox). Each is a directory with its `SKILL.md`, in the
+the Computer provides, its home, the Hub CLI, signed transfers and its version), `lore`
+(cloning, committing and pushing, creating a repository, bringing a Git checkout in),
+`served-branches` (what the Hub needs to serve a branch), `knowledge` (searching the
+servers' records by meaning and words) and `mcp-apps` (writing a server's App view for
+the Hub's sandbox). They name no server: each server's skills teach its own tools. Each is a directory with its `SKILL.md`, in the
 Agent Skills format. Installation publishes them as `computers.skills` in the trusted Hub
 control document, each skill's name mapping each of its files, by its path within the
 skill, to the file's text. Hub serves them only to Computer clients

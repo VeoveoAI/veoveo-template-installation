@@ -1,6 +1,6 @@
 ---
 name: mcp-apps
-description: "How to write the HTML view of an MCP App a server ships: what the Hub's sandbox allows, how the view talks to its server, and Time's App as the example."
+description: "How to write the HTML view of an MCP App a server ships: what the Hub's sandbox allows and how the view talks to its server."
 ---
 
 # MCP Apps
@@ -9,10 +9,7 @@ An MCP App is a server's interactive view: one HTML document at `ui://<slug>/<pa
 MIME `text/html;profile=mcp-app`, which the Hub shows in a sandboxed frame. A person
 opens it at `https://<host>/apps/<slug>/<page>`. A Rust server declares it in its
 `Routes` with `RoutesBuilder::app`, and names the tools the view may call with
-`RoutesBuilder::app_tools`. Time's App, `ui://time/now`, is the example to copy:
-[`now.html`](https://github.com/VeoveoAI/veoveo-mcp-time/blob/main/crates/veoveo-mcp-time/assets/now.html)
-and [`app.rs`](https://github.com/VeoveoAI/veoveo-mcp-time/blob/main/crates/veoveo-mcp-time/src/mcp/app.rs).
-The full contract is the SDK's
+`RoutesBuilder::app_tools`. The full contract is the SDK's
 [Apps design](https://github.com/VeoveoAI/veoveo-hub-sdk/blob/main/crates/veoveo-hub-sdk/src/apps/DESIGN.md).
 
 ## What the sandbox allows
@@ -46,9 +43,8 @@ request runs as the signed-in person through the Hub.
    `appCapabilities.availableDisplayModes`. Apply the answer's `hostContext` (theme,
    `timeZone`, display mode), then send `ui/notifications/initialized`.
 2. Load data with `resources/read` on the server's own resources. Change things with
-   `tools/call`, naming the tool as the server knows it (`resolve_time`, not
-   `time__resolve_time`). Only tools linked to this view with app visibility are
-   callable.
+   `tools/call`, naming the tool as the server knows it (`<tool>`, not
+   `<slug>__<tool>`). Only tools linked to this view with app visibility are callable.
 3. Answer `ping` and `ui/resource-teardown`, and report height with
    `ui/notifications/size-changed`.
 4. For live data, send `subscriptions/listen` naming the server's own resources. Read
@@ -60,7 +56,7 @@ request runs as the signed-in person through the Hub.
    from the server as strings.
 
 ```html
-<button type="button" id="go">Resolve</button>
+<input id="text"> <button type="button" id="go">Save</button>
 <script>
   const pending = new Map(); let next = 1;
   const request = (method, params) => new Promise((resolve, reject) => {
@@ -85,8 +81,8 @@ request runs as the signed-in person through the Hub.
     window.parent.postMessage({ jsonrpc: "2.0", method: "ui/notifications/initialized" }, "*");
   })();
   document.getElementById("go").addEventListener("click", async () => {
-    const result = await request("tools/call",
-      { name: "resolve_time", arguments: { expression: { format: "rfc3339", value: "2026-11-05T09:00:00Z" } } });
+    const text = document.getElementById("text").value;
+    const result = await request("tools/call", { name: "save_note", arguments: { text } });
     console.log(result.structuredContent);
   });
 </script>

@@ -377,7 +377,10 @@ Everything outside `/sandbox` and `/tmp` comes with the Computer version and is
 read-only; `/etc/computer` holds the immutable connection configuration. The Hub's own
 skills for Computers are [computer/skills/](computer/skills/), one directory per skill,
 published as `computers.skills` through the live control plane; the Hub serves them to
-Computer clients at `skill://veoveo/{name}/…`.
+Computer clients at `skill://veoveo/{name}/…`. They hold only what no single server
+owns: the Computer, Lore, and contracts or host behavior that span servers. A server's
+tools are taught by that server's own skills, which reach the agent through discovery,
+so these name no server, server tool or server skill.
 
 OpenCode's configuration ([opencode.json](computer/opencode.json)) selects
 `deepinfra/XiaomiMiMo/MiMo-V2.6-Pro` by default and offers only DeepInfra's models, the

@@ -5,14 +5,14 @@ description: "Find records across the Hub's servers by meaning and words, with t
 
 # Knowledge
 
-Each server that keeps searchable records serves one tool, `<slug>__search_knowledge`,
-such as `artifact__search_knowledge`. The search runs on that server, over its own
+Each server that keeps searchable records serves one tool, `<slug>__search_knowledge`.
+The search runs on that server, over its own
 records, and returns only what the caller may read. There is no central index: to search
 everything, call each server's tool and merge the hits yourself.
 
 ## Which servers and collections
 
-A collection is named `<slug>.<plural>`, such as `artifact.artifacts`. A server's resource
+A collection is named `<slug>.<plural>`. A server's resource
 templates mark each of its collections in `_meta["ai.veoveo/knowledge"].collection`; list
 the templates to see what a server searches. The servers whose tools list
 `search_knowledge` are the ones to call.
@@ -25,7 +25,7 @@ the templates to see what a server searches. The servers whose tools list
     {"type": "text", "text": "a red kite over the dunes"},
     {"type": "image", "url": "<signed GET URL>", "mediaType": "image/png", "size": 48213}
   ],
-  "collections": ["artifact.artifacts"],
+  "collections": ["<slug>.<plural>"],
   "limit": 10
 }
 ```
@@ -33,10 +33,10 @@ the templates to see what a server searches. The servers whose tools list
 - `parts` is 1 to 16 parts, in order, each `text`, `image`, `audio` or `video`. All the
   parts together make one query. Any server takes any modality: an image query on a
   server of text records still ranks them by meaning.
-- A media part is a URL the caller signed, with its `mediaType`, `size` in bytes and,
-  when the signature requires them, `headers`. For a local file, upload it to Artifact
-  (the `artifact-transfers` skill), then sign a download with `artifact__create_download`
-  and pass its `get` URL and headers. Keep signed URLs out of notes, logs and answers.
+- A media part is a signed GET URL the caller already holds, such as one a server's
+  download tool returns, with its `mediaType`, `size` in bytes and, when the signature
+  requires them, `headers`, all passed as given. Keep signed URLs out of notes, logs and
+  answers.
 - `collections` names at most 16 of the server's collections, each once. Leave it out to
   search all of them.
 - `limit` is 1 to 20; it is 10 when left out.

@@ -1,6 +1,6 @@
 ---
 name: computer
-description: "Use at the start of a session and whenever work depends on this private Computer: what it provides, what persists in the home, the Hub CLI, and checking or applying a Computer update."
+description: "Use whenever work depends on this private Computer: what it provides, what persists in the home, the Hub CLI, and how files move through signed URLs."
 ---
 
 # This Computer
@@ -13,8 +13,9 @@ their authorization.
 From a shell or a script, `veoveo-hub-sdk-cli tools` lists the same Hub tools as the
 owner and `veoveo-hub-sdk-cli call <tool> '<JSON arguments>'` calls one, waiting for a
 Task-backed tool to end; `resources`, `prompts` and `read <uri>` work the same way and
-`--json` prints JSON. It needs no flags or sign-in: the proxy supplies the owner's Hub
-token. Its `login`, `logout` and `ask` do not apply here.
+`--json` prints JSON, with a result's `_meta`, such as the Task a write started, which
+`veoveo-hub-sdk-cli tasks get <task-id>` follows. It needs no flags or sign-in: the proxy
+supplies the owner's Hub token. Its `login`, `logout` and `ask` do not apply here.
 
 ## Home and publication
 
@@ -29,14 +30,21 @@ identified scratch, preserving user changes and other sessions. Keeping `~`
 publishes nothing: there is no home sync, automatic commit/push or automatic
 output upload.
 
-## This Computer's version
+## Signed transfers
 
-Call the Hub tool `console__computer` at the start of a session: it reports this
-Computer's version, the current one and what an update brings. If an update is
-available or was just installed, tell the person what's new in a line or two;
-restart only when the person asks, with `restart: true`. A restart keeps `~` and
-ends running programs, this session included; the Hub answers before it restarts.
-`COMPUTER_VERSION` names the version this Computer started at. A program here reads
-the same status with `GET /computer/status` on the Hub's origin (`COMPUTER_HUB_URL`
-without its path) and `Authorization: Bearer $COMPUTER_HUB_REFERENCE`; the proxy
-supplies the owner's token. The person's browser shows it at `/computer/status`.
+A signed URL a tool returns, to upload or download bytes, is a credential. Here only
+`/usr/bin/curl` may send it to the public host's `/artifacts/` path; OpenCode's own
+`fetch` and other programs are refused. Send it with exactly its method, URL and
+headers, without rewriting or redirecting it or adding other authorization. Keep it
+private: write it to a mode 0600 curl config under `~` (`umask 077`), run
+`/usr/bin/curl --config <file>`, then delete the file, and use no verbose or trace
+output. Record IDs, byte counts and hashes, never the URL. When a signed URL expires, ask the
+tool for a new one.
+
+## Version
+
+`COMPUTER_VERSION` names the version this Computer started at. A program here reads its
+status, the current version and what an update brings with `GET /computer/status` on the
+Hub's origin (`COMPUTER_HUB_URL` without its path) and
+`Authorization: Bearer $COMPUTER_HUB_REFERENCE`; the proxy supplies the owner's token.
+The person's browser shows it at `/computer/status`.
