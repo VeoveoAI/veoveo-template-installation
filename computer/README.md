@@ -284,8 +284,8 @@ variables.
 The Hub's own skills, [skills/](skills/), are the Computer's guidance: `computer` (what
 the Computer provides, its home, the Hub CLI and its version), `lore` (cloning,
 committing and pushing, creating a repository, bringing a Git checkout in, sharing),
-`served-branches`, `artifact-transfers` and `knowledge` (searching the servers' records
-by meaning and words). Each is a directory with its `SKILL.md`, in the
+`served-branches`, `artifact-transfers`, `knowledge` (searching the servers' records
+by meaning and words) and `mcp-apps` (writing a server's App view for the Hub's sandbox). Each is a directory with its `SKILL.md`, in the
 Agent Skills format. Installation publishes them as `computers.skills` in the trusted Hub
 control document, each skill's name mapping each of its files, by its path within the
 skill, to the file's text. Hub serves them only to Computer clients
