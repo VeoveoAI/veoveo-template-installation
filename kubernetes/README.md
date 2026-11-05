@@ -307,7 +307,8 @@ configuration sizes each instance at 4 CPUs and 8 GiB, as limits with zero reque
 an instance reserves nothing ([design](../DESIGN.md#configuration-ownership)). It names the
 `nvidia` runtime class, which exposes no device by itself: a repository that wants the GPU
 asks in its own `openshell/image/Dockerfile`, with `ENV NVIDIA_VISIBLE_DEVICES=all` and
-`ENV NVIDIA_DRIVER_CAPABILITIES=all` and the driver's libraries.
+`ENV NVIDIA_DRIVER_CAPABILITIES=all` and the driver's libraries. The base policy admits the device
+nodes, which exist only then.
 
 Hub reads it on every push and creates each instance inline with the branch's own
 image and the template's driver configuration; a

@@ -10,8 +10,11 @@
 version: 1
 filesystem_policy:
   include_workdir: true
-  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log, /opt/veoveo/lore]
-  read_write: [/sandbox, /tmp, /dev/null]
+  # The GPU's device nodes exist only in a sandbox whose image asks the nvidia runtime for
+  # them, and a path that does not exist is skipped. OpenShell adds them itself only for a
+  # sandbox with a GPU resource claim, which a factory sandbox does not have.
+  read_only: [/bin, /usr, /lib, /lib64, /etc, /proc, /dev/urandom, /var/log, /opt/veoveo/lore, /run/nvidia-persistenced]
+  read_write: [/sandbox, /tmp, /dev/null, /dev/nvidiactl, /dev/nvidia0, /dev/nvidia-uvm, /dev/nvidia-uvm-tools, /dev/nvidia-modeset]
 network_policies:
   hub_metadata:
     endpoints:
