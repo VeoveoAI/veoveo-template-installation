@@ -68,11 +68,12 @@ server:
   drivers:
     kubernetes:
       resourceAdmission:
-        # The only repositories whose digest-pinned images may be image volumes: Lore and
-        # the Hub SDK CLI. Upgrading either changes its digest, never this list.
+        # The only repositories whose digest-pinned images may be image volumes: Lore, the
+        # Hub SDK CLI and file-viewer. Upgrading one changes its digest, never this list.
         imageRepositories:
           - registry.veoveo-system.svc.cluster.local:5000/veoveo/lore
           - registry.veoveo-system.svc.cluster.local:5000/veoveo/hub-sdk-cli
+          - registry.veoveo-system.svc.cluster.local:5000/veoveo/file-viewer
   tls:
     enableMtls: true
     certSecretName: openshell-server-tls
