@@ -45,6 +45,11 @@
             "name": "lore",
             "mount_path": "/opt/veoveo/lore",
             "read_only": true
+          },
+          {
+            "name": "file-viewer",
+            "mount_path": "/opt/veoveo/file-viewer",
+            "read_only": true
           }
         ]
       }
