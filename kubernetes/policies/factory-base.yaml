@@ -88,7 +88,32 @@ network_policies:
   internet:
     endpoints:
       - {host: "**.*.*", ports: [80, 443]}
-      - {host: github.com, ports: [80, 443]}
+      # OpenShell refuses a wildcard of two labels or fewer, so a bare name people need is listed here.
+      # Python
+      - {host: pypi.org, ports: [80, 443]}
+      - {host: astral.sh, ports: [80, 443]}
+      # JavaScript
+      - {host: nodejs.org, ports: [80, 443]}
+      - {host: bun.sh, ports: [80, 443]}
+      - {host: deno.land, ports: [80, 443]}
+      - {host: jsr.io, ports: [80, 443]}
+      - {host: unpkg.com, ports: [80, 443]}
+      # Rust and Go
       - {host: crates.io, ports: [80, 443]}
+      - {host: go.dev, ports: [80, 443]}
+      - {host: golang.org, ports: [80, 443]}
+      - {host: gopkg.in, ports: [80, 443]}
+      # Other languages
+      - {host: rubygems.org, ports: [80, 443]}
+      - {host: getcomposer.org, ports: [80, 443]}
+      - {host: pub.dev, ports: [80, 443]}
+      # Source
+      - {host: github.com, ports: [80, 443]}
+      - {host: gitlab.com, ports: [80, 443]}
+      - {host: bitbucket.org, ports: [80, 443]}
+      - {host: codeberg.org, ports: [80, 443]}
+      # Models
+      - {host: huggingface.co, ports: [80, 443]}
+      - {host: hf.co, ports: [80, 443]}
     binaries:
       - path: /**

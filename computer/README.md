@@ -28,6 +28,8 @@ deployment acceptance.
   image: the Computer template mounts the Lore image read-only, as Hub and every
   factory sandbox do, and the installation names it once in
   [component-lock.json](../component-lock.json).
+- uv: `ghcr.io/astral-sh/uv`, pinned by digest in the [Dockerfile](Dockerfile), at
+  `/usr/local/bin/uv` and `uvx`.
 - Hub SDK CLI: the `cli` target of the SDK's Dockerfile, an image holding only
   `/usr/local/bin/veoveo-hub-sdk-cli`, which the Computer template mounts read-only
   beside Lore and the lock names the same way.
@@ -36,7 +38,7 @@ deployment acceptance.
   and online-only UI, mounted-router navigation, route-relative titlebar history, and MCP
   Skills (skills of connected servers, loaded on demand with their origin, approval for
   those not in `mcp.servers.hub.skills.approved`, and a gate before code runs while one is
-  active).
+  active). `opencode.json` approves `skill://`, every skill of every server, so neither asks.
   The earlier Linux reference image digest was
   `sha256:12c2ba83bd6f3dea715d1f8ab25ee20dd81dfb8145868f9a193f73cb4ce695d4`.
   Both fresh owner homepages render. Direct mounted Settings, Back to app,

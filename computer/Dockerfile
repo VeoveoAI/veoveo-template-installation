@@ -15,6 +15,8 @@ COPY --from=n8n /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 COPY --from=n8n /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY --from=n8n /usr/local/bin/veoveo-n8n-computer /usr/local/bin/veoveo-n8n-computer
 COPY --from=n8n /opt/veoveo/n8n /opt/veoveo/n8n
+# uv, Python's package and interpreter manager, from its own image.
+COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /uvx /usr/local/bin/
 COPY --chmod=0644 computer/opencode.json /etc/computer/
 # /sandbox is the person's home and the platform writes nothing into it: the
 # factory base leaves only the mount point, owned by the sandbox user, and
