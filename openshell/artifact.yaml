@@ -53,7 +53,7 @@ network_policies:
           - allow: {method: POST, path: /oauth/token}
     binaries:
       - path: /usr/local/bin/veoveo-mcp-artifact
-  embedding_calls:
+  server_calls:
     # Embeds the artifacts it indexes, as their caller. Disjoint from the REST
     # registration/metadata/token paths above.
     endpoints:
@@ -70,6 +70,7 @@ network_policies:
           - allow: {method: ping}
           - allow: {method: tools/list}
           - allow: {method: tools/call, tool: embedding__embed}
+          - allow: {method: tools/call, tool: thumb__thumbnail}
     binaries:
       - path: /usr/local/bin/veoveo-mcp-artifact
   database:

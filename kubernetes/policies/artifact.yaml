@@ -78,9 +78,9 @@ network_policies:
           path: /oauth/token
     binaries:
     - path: /usr/local/bin/veoveo-mcp-artifact
-  embedding_calls:
-    # Embeds the artifacts it indexes, as their caller, on the profile the caller came
-    # through.
+  server_calls:
+    # As their caller, on the profile the caller came through: embeds the artifacts it indexes,
+    # and asks for the thumbnail of an artifact its App shows.
     endpoints:
     - host: veoveo.example.com
       port: 443
@@ -101,6 +101,9 @@ network_policies:
       - allow:
           method: tools/call
           tool: embedding__embed
+      - allow:
+          method: tools/call
+          tool: thumb__thumbnail
     - host: veoveo.example.com
       port: 443
       path: /mcp/computer
@@ -120,6 +123,9 @@ network_policies:
       - allow:
           method: tools/call
           tool: embedding__embed
+      - allow:
+          method: tools/call
+          tool: thumb__thumbnail
     binaries:
     - path: /usr/local/bin/veoveo-mcp-artifact
   database:
