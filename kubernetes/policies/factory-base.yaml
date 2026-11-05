@@ -47,6 +47,33 @@ network_policies:
           - allow: {method: POST, path: /oauth/token}
     binaries:
       - path: /sandbox/src/**
+  # A server reads a repository's files through Hub's route, as the person it works for.
+  # Hub and Lore decide each read.
+  hub_lore_files:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /lore/**
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /lore/*/repositories}
+          - allow: {method: GET, path: /lore/*/repositories/*/files/**}
+    binaries:
+      - path: /sandbox/src/**
+  # Uploads to the URLs Artifact signs, under /artifacts/ on the public host. No credential
+  # binding: the proxy forwards their method, Host, path, query, headers and body as signed.
+  artifact_bytes:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /artifacts/**
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: PUT, path: /artifacts/**}
+    binaries:
+      - path: /sandbox/src/**
   database:
     endpoints:
       - host: veoveo-postgres-rw.veoveo-system.svc.cluster.local

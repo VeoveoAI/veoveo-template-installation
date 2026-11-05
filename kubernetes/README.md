@@ -270,8 +270,9 @@ recreates its sandbox.
 ## Factory sandbox policy and providers
 
 Every factory sandbox gets [factory-base.yaml](policies/factory-base.yaml): its
-checkout in `/sandbox/src`, Hub's metadata and token endpoints and PostgreSQL for the
-server it builds there, and open internet access stated as one explicit rule. Each
+checkout in `/sandbox/src`, Hub's metadata and token endpoints, Hub's route to a repository's
+files, the upload URLs Artifact signs and PostgreSQL for the server it builds there, and open
+internet access stated as one explicit rule. Each
 instance also gets two providers whose profiles carry their own endpoints:
 [factory-registration](../openshell/providers/factory-registration.yaml), the
 instance's registration token for Hub, and
@@ -303,7 +304,10 @@ in workspace `installation`, which `factory.template` names. The installer's
 `templates` step creates it as it does the Computer template, with the
 [filled](#naming-each-image-once) factory driver configuration and no image. That
 configuration sizes each instance at 4 CPUs and 8 GiB, as limits with zero requests, so
-an instance reserves nothing ([design](../DESIGN.md#configuration-ownership)).
+an instance reserves nothing ([design](../DESIGN.md#configuration-ownership)). It names the
+`nvidia` runtime class, which exposes no device by itself: a repository that wants the GPU
+asks in its own `openshell/image/Dockerfile`, with `ENV NVIDIA_VISIBLE_DEVICES=all` and
+`ENV NVIDIA_DRIVER_CAPABILITIES=all` and the driver's libraries.
 
 Hub reads it on every push and creates each instance inline with the branch's own
 image and the template's driver configuration; a

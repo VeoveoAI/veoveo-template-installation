@@ -1,5 +1,8 @@
 {
   "kubernetes": {
+    "pod": {
+      "runtime_class_name": "nvidia"
+    },
     "volumes": [
       {
         "name": "lore",
