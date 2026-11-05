@@ -166,7 +166,7 @@ driver_config = "kubernetes/computer-driver-config.json"
 environment = { SSL_CERT_DIR = "/etc/ssl/certs", VEOVEO_LORE_REMOTE = "grpcs://lore.veoveo-system.svc.cluster.local:41337", VEOVEO_CLI_HUB = "https://veoveo.example.com", VEOVEO_CLI_PROFILE = "computer", VEOVEO_CLI_BEARER_ENV = "COMPUTER_HUB_REFERENCE" }
 release_note = """
 Your Computer can reach pypi.org.
-pip and uv can now install from Python's own package index, without a mirror. Your files and n8n are unchanged."""
+Python's own package index is now reachable, so Python tools can install from it without a mirror; pip itself is not preinstalled. Your files and n8n are unchanged."""
 [[step.template]]
 workspace = "installation"
 name = "factory-v1"
