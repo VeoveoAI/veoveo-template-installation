@@ -165,8 +165,8 @@ image = "computer"
 driver_config = "kubernetes/computer-driver-config.json"
 environment = { SSL_CERT_DIR = "/etc/ssl/certs", VEOVEO_LORE_REMOTE = "grpcs://lore.veoveo-system.svc.cluster.local:41337", VEOVEO_CLI_HUB = "https://veoveo.example.com", VEOVEO_CLI_PROFILE = "computer", VEOVEO_CLI_BEARER_ENV = "COMPUTER_HUB_REFERENCE" }
 release_note = """
-You can pick Claude for a session in OpenCode.
-OpenCode's model list now has Claude Haiku 5.5, Sonnet 5.5, Opus 5.5 and Fable 5.1 beside DeepInfra's models, and MiMo stays the default. The Anthropic key stays with the platform, as the DeepInfra key does: your Computer holds only a placeholder, which works only for Anthropic's API and only from OpenCode. n8n's Assistant keeps its model. Your files and n8n are unchanged."""
+Your Computer can reach pypi.org.
+pip and uv can now install from Python's own package index, without a mirror. Your files and n8n are unchanged."""
 [[step.template]]
 workspace = "installation"
 name = "factory-v1"

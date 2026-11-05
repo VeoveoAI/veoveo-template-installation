@@ -168,5 +168,7 @@ network_policies:
       ports: [80, 443]
     - host: crates.io
       ports: [80, 443]
+    - host: pypi.org
+      ports: [80, 443]
     binaries:
     - path: /**

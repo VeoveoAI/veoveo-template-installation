@@ -430,8 +430,9 @@ sets idle collection (7200 in the reference); the forwarding capacity is Hub's
 `computers.forwardingConnectionLimit`, beside the gateway's per-sandbox and per-replica
 TCP limits, which are separate from SSH's.
 
-A Computer has the factory's open internet access, stated as the same one rule, so its
-toolchain fetches packages and clones and OpenCode fetches pages. A program that a rule
+A Computer has open internet access stated as the factory's is, one rule of every name of
+three or more labels plus the two-label names in use, which for a Computer adds `pypi.org`,
+so its toolchain fetches packages and clones and OpenCode fetches pages. A program that a rule
 for an exact host names keeps to that rule there, and `hub_computer` names every program
 on Hub's host: the Computer's own status, restart, previous version, keep-on and stop,
 which its programs and the Hub CLI call with the owner's credential. Credentials stay with the proxy: it puts one in place of its placeholder
