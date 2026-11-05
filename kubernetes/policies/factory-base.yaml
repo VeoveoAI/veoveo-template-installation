@@ -75,6 +75,7 @@ network_policies:
         enforcement: enforce
         rules:
           - allow: {method: PUT, path: /artifacts/**}
+          - allow: {method: GET, path: /artifacts/**}
     binaries:
       - path: /sandbox/src/**
   database:
