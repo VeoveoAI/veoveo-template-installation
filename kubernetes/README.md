@@ -193,7 +193,7 @@ images stay at their upstream registries, pinned by digest. Every Veoveo image i
 rebuilt from source and published under `veoveo/`: the OpenShell gateway, supervisor
 and sandbox runtime (`veoveo/openshell/{gateway,supervisor,sandbox}`, all from one
 OpenShell revision), Hub, Lore, the Hub SDK CLI (`veoveo/hub-sdk-cli`, the SDK
-Dockerfile's `cli` target), the PostgreSQL extension image, the factory base,
+Dockerfile's `cli` target), `veoveo/file-viewer`, the PostgreSQL extension image, the factory base,
 n8n for Computers (`veoveo/n8n-computer`, veoveo-mcp-n8n's Dockerfile's `computer`
 target, which the Computer image copies from), Computer, Artifact, Media, the Media
 fixture provider, Embedding and its runtime.
@@ -258,7 +258,7 @@ fails plan.
 
 OpenShell's resource admission stays on. It admits an image volume only when its
 reference is pinned by digest and its repository is listed, which
-[openshell.values.yaml](openshell.values.yaml) does for exactly these two repositories
+[openshell.values.yaml](openshell.values.yaml) does for exactly these three repositories
 (`server.drivers.kubernetes.resourceAdmission.imageRepositories`); the gateway also
 runs with `allow_driver_config`. Upgrading Lore builds and publishes one image and puts
 its digest in the lock; the repository list does not change. `plan` then shows Lore's
