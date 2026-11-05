@@ -147,7 +147,10 @@ Lore's server settings ([lore.toml](kubernetes/lore.toml)) trust only Hub's
 `{origin}/oauth` issuer, with audience `{origin}/resources/lore`, `at+jwt` tokens and
 resource IDs `urc-{id}`; Lore's public client is `lore-computer`, with the `lore:login`
 scope and the scope template `lore-repo-{id}`. QUIC is off, so every Lore operation is
-gRPC that OpenShell mediates. Lore runs no hook: what a workload may do in Lore is its
+gRPC that OpenShell mediates, but for Hub's reads of a file by its content address. Those
+go to Lore's HTTP endpoint, on port 41339 with the same certificate as gRPC, as the person
+whose token they carry; the [NetworkPolicy](kubernetes/lore.yaml) and Hub's sandbox policy
+admit that port for Hub alone. Lore runs no hook: what a workload may do in Lore is its
 token's grants and its provider profile's endpoint rules.
 
 Lore lists each person's repositories with its `auth_service` catalog, which asks Hub's

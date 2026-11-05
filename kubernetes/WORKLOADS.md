@@ -19,6 +19,7 @@ authentication or Lore permission system.
 | PostgreSQL | `veoveo-postgres-rw.veoveo-system.svc.cluster.local:5432` |
 | Private S3 | `https://seaweedfs-s3.veoveo-system.svc.cluster.local:9000` |
 | Native Lore | `grpcs://lore.veoveo-system.svc.cluster.local:41337` |
+| Lore's HTTP endpoint (Hub only) | `https://lore.veoveo-system.svc.cluster.local:41339` |
 | Log store (console only) | `http://victorialogs.veoveo-system.svc.cluster.local:9428` |
 | Image builder (Hub only) | `tcp://buildkitd.veoveo-system.svc.cluster.local:1234` |
 | Local registry, every Veoveo image | `registry.veoveo-system.svc.cluster.local:5000` |

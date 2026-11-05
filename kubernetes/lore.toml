@@ -28,6 +28,12 @@ enabled = false
 cert_file = "/etc/lore/tls/tls.crt"
 pkey_file = "/etc/lore/tls/tls.key"
 
+# Lore's HTTP endpoint, which Hub alone reaches to read a file by its content address, with
+# the same certificate as gRPC.
+[server.http.certificate]
+cert_file = "/etc/lore/tls/tls.crt"
+pkey_file = "/etc/lore/tls/tls.key"
+
 [immutable_store]
 mode = "s3_postgres"
 

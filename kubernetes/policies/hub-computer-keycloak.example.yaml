@@ -100,6 +100,16 @@ network_policies:
     binaries:
     - path: /usr/local/bin/veoveo-hub
     - path: /opt/veoveo/lore/usr/local/bin/lore
+  # Lore's HTTP endpoint, where the Hub binary alone reads a file by its content address
+  # with the person's token.
+  lore_files:
+    endpoints:
+    - host: lore.veoveo-system.svc.cluster.local
+      port: 41339
+      protocol: tcp
+      tls: skip
+    binaries:
+    - path: /usr/local/bin/veoveo-hub
   # BuildKit builds each branch's openshell/image/; buildctl runs as its own executable.
   image_builder:
     endpoints:

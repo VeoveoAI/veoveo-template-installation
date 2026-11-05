@@ -132,6 +132,7 @@
         "resourceName": "lore",
         "audience": "https://veoveo.example.com/resources/lore",
         "endpoint": "grpcs://lore.veoveo-system.svc.cluster.local:41337",
+        "httpEndpoint": "https://lore.veoveo-system.svc.cluster.local:41339",
         "authorizationServer": "hub",
         "policyVersion": "reference-policy",
         "loginScopes": [
