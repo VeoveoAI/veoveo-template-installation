@@ -24,6 +24,11 @@ from it with `lore clone "$VEOVEO_LORE_REMOTE/<repository ID>" <destination>`, a
 checkout, `lore stage --scan .` stages new and changed files (`lore status` lists only
 what is staged or tracked), `lore commit "<message>"` records them and `lore push`
 publishes them; `lore sync` updates the checkout.
+To show a person a pushed file, give them its page on the Hub,
+`<Hub>/view/lore/<repository ID>/<branch>/<path>`, where `<Hub>` is the Hub's origin,
+`COMPUTER_HUB_URL` without its path. It opens for whoever is signed in with a grant on the
+repository: an HTML file runs as itself with the files beside it, and any other file opens
+in a viewer chosen by its name. It needs no server and no hosting.
 Git works as usual for other sources. To bring a Git checkout into Lore, first add
 `.git/` to a `.loreignore` file at its top, because Lore leaves out only what that file
 lists and an ignore rule does not remove what is already committed; then run
