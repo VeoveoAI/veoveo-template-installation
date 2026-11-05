@@ -1,0 +1,12 @@
+{
+  "name": "veoveo-file-viewer",
+  "private": true,
+  "description": "file-viewer as published: the pinned packages the FileViewer image lays out.",
+  "dependencies": {
+    "@file-viewer/assets-cad": "3.3.3",
+    "@file-viewer/assets-design": "3.3.3",
+    "@file-viewer/assets-drawing": "3.3.3",
+    "@file-viewer/web-full": "3.3.3",
+    "file-viewer-copy-assets": "3.3.3"
+  }
+}

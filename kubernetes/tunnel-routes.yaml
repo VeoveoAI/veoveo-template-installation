@@ -51,4 +51,14 @@ config:
     # issuer. Keycloak's management port and its other services stay private.
     # - hostname: auth.veoveo.example.com
     #   service: http://keycloak.veoveo-system.svc.cluster.local:8080
+    # The content domain, another registrable domain so that the browser sends none of the
+    # Hub's or an App's cookies there. It reaches Hub's service apps the same way, with a
+    # proxied CNAME * -> <tunnel id>.cfargotunnel.com in its own zone. That zone bypasses the
+    # edge cache, since a cached file would skip the check on every request. Render its name.
+    - hostname: "*.veoveo-content.example.net"
+      service: https://openshell.openshell.svc.cluster.local:8080
+      originRequest:
+        httpHostHeader: vv-control--hub--apps.openshell.localhost
+        originServerName: vv-control--hub--apps.openshell.localhost
+        caPool: /etc/cloudflared-ca/gateway.crt
     - service: http_status:404

@@ -149,6 +149,7 @@ fn inputs() -> veoveo_installer::inputs::Inputs {
     }
     for image in [
         "lore",
+        "file-viewer",
         "hub-sdk-cli",
         "postgres",
         "openshell-gateway",

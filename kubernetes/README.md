@@ -228,6 +228,12 @@ binaries are `/opt/veoveo/lore/usr/local/bin/lore` and
 `/opt/veoveo/hub-sdk-cli/usr/local/bin/veoveo-hub-sdk-cli`, the paths the policies and
 the `vv-lore` and `vv-factory-lore` profiles name.
 
+Hub also mounts the `file-viewer` image ([FileViewer.Dockerfile](../factory/FileViewer.Dockerfile),
+target `runtime`, build context [factory/file-viewer](../factory/file-viewer)) at
+`/opt/veoveo/file-viewer`, whose files it serves on the content domain. It holds files only
+and nothing runs from it, so no other workload mounts it and its name in the lock changes only
+Hub's sandbox.
+
 [component-lock.json](../component-lock.json) names each of these images once, by digest
 in the local registry, in its `images` member, which the
 [component lock format](https://github.com/VeoveoAI/veoveo-core/blob/main/platform/installation/contract/DESIGN.md)

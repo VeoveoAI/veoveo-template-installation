@@ -15,6 +15,7 @@ filesystem_policy:
   - /var/log
   - /var/lib/veoveo
   - /opt/veoveo/lore
+  - /opt/veoveo/file-viewer
   read_write:
   - /tmp
   - /dev/null

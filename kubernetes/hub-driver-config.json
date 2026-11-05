@@ -20,6 +20,12 @@
         "image": {
           "reference": "@image:lore@"
         }
+      },
+      {
+        "name": "file-viewer",
+        "image": {
+          "reference": "@image:file-viewer@"
+        }
       }
     ],
     "containers": {
