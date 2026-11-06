@@ -62,6 +62,7 @@ network_policies:
         rules:
           - allow: {method: GET, path: /lore/*/repositories}
           - allow: {method: GET, path: /lore/*/repositories/*/files/**}
+          - allow: {method: GET, path: /lore/*/repositories/*/tree/*}
     binaries:
       - path: /sandbox/src/**
   # Uploads to the URLs Artifact signs, under /artifacts/ on the public host. No credential
