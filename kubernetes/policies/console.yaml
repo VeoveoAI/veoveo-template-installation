@@ -92,6 +92,9 @@ network_policies:
           method: GET
           path: /factory/*/instance
       - allow:
+          method: GET
+          path: /factory/*/instances
+      - allow:
           method: PUT
           path: /factory/*/watch
     - host: veoveo.example.com

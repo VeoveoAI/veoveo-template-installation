@@ -28,6 +28,7 @@ network_policies:
           - allow: {method: POST, path: /openshell.v1.OpenShell/CreateProvider}
           - allow: {method: POST, path: /openshell.v1.OpenShell/UpdateProvider}
           - allow: {method: POST, path: /openshell.v1.OpenShell/GetSandbox}
+          - allow: {method: POST, path: /openshell.v1.OpenShell/ListSandboxes}
           - allow: {method: POST, path: /openshell.v1.OpenShell/CreateSandbox}
           - allow: {method: POST, path: /openshell.v1.OpenShell/StartSandbox}
           - allow: {method: POST, path: /openshell.v1.OpenShell/StopSandbox}
