@@ -63,6 +63,22 @@ network_policies:
           - allow: {method: GET, path: /lore/*/repositories}
           - allow: {method: GET, path: /lore/*/repositories/*/files/**}
           - allow: {method: GET, path: /lore/*/repositories/*/tree/*}
+          - allow: {method: GET, path: /lore/*/repositories/*/branches}
+          - allow: {method: GET, path: /lore/*/repositories/*/history/*}
+          - allow: {method: GET, path: /lore/*/repositories/*/changes/*}
+    binaries:
+      - path: /sandbox/src/**
+  # A server reads the factory as the person it works for, so it can say what is running.
+  # Hub decides what that person may see.
+  hub_factory_read:
+    endpoints:
+      - host: veoveo.example.com
+        port: 443
+        path: /factory/**
+        protocol: rest
+        enforcement: enforce
+        rules:
+          - allow: {method: GET, path: /factory/*/instances}
     binaries:
       - path: /sandbox/src/**
   # Uploads to the URLs Artifact signs, under /artifacts/ on the public host. No credential
