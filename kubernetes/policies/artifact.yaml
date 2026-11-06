@@ -104,6 +104,9 @@ network_policies:
       - allow:
           method: tools/call
           tool: thumb__thumbnail
+      - allow:
+          method: tools/call
+          tool: thumb__ready_thumbnails
     - host: veoveo.example.com
       port: 443
       path: /mcp/computer
@@ -126,6 +129,9 @@ network_policies:
       - allow:
           method: tools/call
           tool: thumb__thumbnail
+      - allow:
+          method: tools/call
+          tool: thumb__ready_thumbnails
     binaries:
     - path: /usr/local/bin/veoveo-mcp-artifact
   database:
