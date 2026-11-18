@@ -13,6 +13,8 @@ all-features = true
 # https://rustsec.org/advisories/RUSTSEC-2025-0134.html
 ignore = [
     { id = "RUSTSEC-2025-0134", reason = "Reviewed unmaintained rustls-pemfile 2.2.0 via pinned openshell-core (5a7728c304b5528e954e9ae900cf21f84e1a12b1); informational maintenance notice, no patched release. Remove when the SDK drops the dependency." },
+    # Unmaintained with no vulnerability and no patched release; these go when the graph drops them.
+    { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained, with no patched release; core and the SDK use it, and rmcp, schemars and sqlx depend on it" },
 ]
 unused-ignored-advisory = "deny"
 
