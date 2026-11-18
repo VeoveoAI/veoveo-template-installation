@@ -3152,8 +3152,8 @@ dependencies = [
 
 [[package]]
 name = "rmcp"
-version = "3.9.0"
-source = "git+https://github.com/VeoveoAI/rust-sdk?rev=e8c8868f252b22835b960942d38a4b51182e0270#e8c8868f252b22835b960942d38a4b51182e0270"
+version = "3.11.0"
+source = "git+https://github.com/VeoveoAI/rust-sdk?rev=1e7caf018db7eb3bed2e81023e10fc0ce58af8a5#1e7caf018db7eb3bed2e81023e10fc0ce58af8a5"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -3162,6 +3162,7 @@ dependencies = [
  "http",
  "indexmap",
  "libc",
+ "percent-encoding",
  "pin-project-lite",
  "reqwest 0.13.5",
  "serde",
@@ -3173,6 +3174,8 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "tracing",
+ "unicode-general-category",
+ "unicode-normalization",
 ]
 
 [[package]]
@@ -4467,6 +4470,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c1cb5db39152898a79168971543b1cb5020dff7fe43c8dc468b0885f5e29df5"
 
 [[package]]
+name = "unicode-general-category"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b993bddc193ae5bd0d623b49ec06ac3e9312875fdae725a975c51db1cc1677f"
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4585,7 +4594,7 @@ dependencies = [
 [[package]]
 name = "veoveo-hub-sdk"
 version = "0.1.0"
-source = "git+https://github.com/VeoveoAI/veoveo-hub-sdk?rev=5ff33f1f669385099fdd405f6e6bbd6ee190a45c#5ff33f1f669385099fdd405f6e6bbd6ee190a45c"
+source = "git+https://github.com/VeoveoAI/veoveo-hub-sdk?rev=fb79f3f24b289b0afc647d2a3da208f858d08f10#fb79f3f24b289b0afc647d2a3da208f858d08f10"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -4613,7 +4622,7 @@ dependencies = [
 [[package]]
 name = "veoveo-hub-sdk-cli"
 version = "0.1.0"
-source = "git+https://github.com/VeoveoAI/veoveo-hub-sdk?rev=5ff33f1f669385099fdd405f6e6bbd6ee190a45c#5ff33f1f669385099fdd405f6e6bbd6ee190a45c"
+source = "git+https://github.com/VeoveoAI/veoveo-hub-sdk?rev=fb79f3f24b289b0afc647d2a3da208f858d08f10#fb79f3f24b289b0afc647d2a3da208f858d08f10"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -4634,7 +4643,7 @@ dependencies = [
 [[package]]
 name = "veoveo-hub-sdk-macros"
 version = "0.1.0"
-source = "git+https://github.com/VeoveoAI/veoveo-hub-sdk?rev=5ff33f1f669385099fdd405f6e6bbd6ee190a45c#5ff33f1f669385099fdd405f6e6bbd6ee190a45c"
+source = "git+https://github.com/VeoveoAI/veoveo-hub-sdk?rev=fb79f3f24b289b0afc647d2a3da208f858d08f10#fb79f3f24b289b0afc647d2a3da208f858d08f10"
 dependencies = [
  "proc-macro2",
  "quote",
