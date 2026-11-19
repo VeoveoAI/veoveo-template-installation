@@ -9,7 +9,7 @@
     {
       "name": "veoveo-hub-sdk",
       "repository": "https://github.com/VeoveoAI/veoveo-hub-sdk",
-      "revision": "5ff33f1f669385099fdd405f6e6bbd6ee190a45c"
+      "revision": "fb79f3f24b289b0afc647d2a3da208f858d08f10"
     },
     {
       "name": "veoveo-mcp-console",
@@ -44,7 +44,7 @@
     {
       "name": "veoveo-mcp-n8n",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-n8n",
-      "revision": "93012dff55fb8af9c1372d10d2a4ad07de61c9d6"
+      "revision": "b3fc0b99d9c7f9f005c6fb9d13c711b0e5dafb6a"
     }
   ]
 }
