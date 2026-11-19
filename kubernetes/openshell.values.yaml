@@ -34,6 +34,10 @@ gateway:
 supervisor:
   image:
     digest: "@digest:openshell-supervisor@"
+  # The destination roots every sandbox's supervisor adds to its trust. The chart mounts the
+  # ConfigMap in the gateway, and the Kubernetes driver copies it into each sandbox namespace.
+  network:
+    additionalCaConfigMapName: platform-destination-roots-v1
 sandboxRuntime:
   image:
     digest: "@digest:openshell-sandbox@"
@@ -43,18 +47,9 @@ server:
     - name: database-ca
       configMap:
         name: postgres-client-ca
-    - name: destination-ca
-      configMap:
-        name: platform-destination-roots-v1
-        items:
-          - key: ca.crt
-            path: ca.crt
   extraVolumeMounts:
     - name: database-ca
       mountPath: /etc/openshell/database-ca
-      readOnly: true
-    - name: destination-ca
-      mountPath: /etc/openshell/platform-ca
       readOnly: true
   disableTls: false
   workspaceStorageClass: local-path
@@ -113,6 +108,5 @@ gatewayConfig:
     # realm puts the openshell client's roles, scopes among them, in roles, so the claims
     # and role names stay as above. The issuer must answer before the gateway starts.
   openshell.drivers.kubernetes:
-    additional_ca_bundle: /etc/openshell/platform-ca/ca.crt
     allow_driver_config: true
     workspace_mode: managed

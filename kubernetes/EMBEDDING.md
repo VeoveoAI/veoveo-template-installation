@@ -14,9 +14,8 @@ Mac development/MPS and the disposable Docker CUDA probe remain separate evidenc
 Follow [WORKLOADS.md](WORKLOADS.md) for current foundation, native custody and live
 Hub publication; the older Docker embedding guide is not this deployment path.
 Integrate these additions with the current foundation, not the earlier shared
-values from this worktree's base. Preserve its native destination-CA staging
-(`additional_ca_bundle`, gateway fix `f39b1fee` and subsequent checked fixes),
-both existing CA mounts, and the native-service alias DNS supervisor fix
+values from this worktree's base. Preserve its destination-CA ConfigMap
+(`supervisor.network.additionalCaConfigMapName`), the database CA mount, and the native-service alias DNS supervisor fix
 `b849a25c`. Verify the selected gateway/supervisor image receipts and new workload
 generation before relying on those paths; do not replace shared values or restart
 unrelated workloads to install embedding.

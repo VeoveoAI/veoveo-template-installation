@@ -418,10 +418,9 @@ tunnel, and never rewrite the public host to Service DNS.
 
 ## Native OpenShell gateway
 
-Build the chart's gateway and supervisor from maintained OpenShell source `8bd83351d776127fcd619fb9329ecc9e41873016`,
-which adds strict credential binding and uses HTTP/2 upstream only when the upstream selects it, and its sandbox
-runtime from `1ab0e2386cbd943ec84a8701cd5d54dfa68e55a7`
-(the chart is identical at all three), with OpenShell's own image workflow
+Build the chart's gateway, supervisor and sandbox runtime from maintained OpenShell source `5f630f42ccf26336419a90ce01cccba40dfbf6c1`,
+upstream v0.1.9 with the fork's changes, among them strict credential binding and HTTP/2 upstream only when the
+upstream selects it (the chart is the same revision's), with OpenShell's own image workflow
 and publish all three to the [local registry](#logs-image-builder-and-registry) as
 `veoveo/openshell/gateway`, `veoveo/openshell/supervisor` and
 `veoveo/openshell/sandbox`. That revision mounts digest-pinned images from listed
@@ -490,15 +489,15 @@ TLS and mTLS enabled; the chart's idempotent native PKI hook owns gateway/client
 certificates and sandbox signing keys. Keep the gateway ID stable across restarts.
 Do not export private gateway/bootstrap keys into application workloads.
 
-The selected gateway must include the complete native Kubernetes
-`additional_ca_bundle` plumbing through `0299a1ec1e9f8305ebfe967c2b033f36ecc7ba18`;
-the supervisor also requires the Service-DNS fix through `b849a25c`. Create the public-only
+The supervisor requires the Service-DNS fix through `b849a25c`. Create the public-only
 `platform-destination-roots-v1` ConfigMap in `openshell`, key `ca.crt`, from a
 reviewed PEM bundle containing the retained chart gateway CA, the current Lore and
 Seaweed destination roots and the installation's PostgreSQL CA certificate. Do not
-include private keys or unrelated certificates. The example mounts it read-only at
-`/etc/openshell/platform-ca` through existing chart extra volumes and sets the
-native driver path to `ca.crt` there:
+include private keys or unrelated certificates. The example names it in the chart's
+`supervisor.network.additionalCaConfigMapName`: the chart mounts it in the gateway, and
+the Kubernetes driver copies it into each sandbox namespace and mounts it only in that
+sandbox's supervisor, which adds it to the system roots. A changed bundle takes effect
+after a gateway restart, for sandboxes created or restarted afterwards:
 
 ```sh
 kubectl -n openshell create configmap platform-destination-roots-v1 \
@@ -527,7 +526,7 @@ retain **both** database-CA and destination-CA mounts: Helm replaces volume list
 rather than appending them. These inputs are not deployed TLS acceptance.
 
 The installer's `openshell` step installs the chart from OpenShell's source at
-`ebd6a1c3d5ae0bb440f680a10f4457a9317f2f65`, whose chart is identical to that of `8bd83351d`, the revision the gateway and supervisor images are built from, from the checkout `private.toml` names
+`5f630f42ccf26336419a90ce01cccba40dfbf6c1`, the revision the images are built from, from the checkout `private.toml` names
 (`[helm.openshell] source`), with
 openshell.values.yaml and the private identity values (`[helm.openshell] values`).
 The service endpoint is `https://openshell.openshell.svc.cluster.local:8080`.
