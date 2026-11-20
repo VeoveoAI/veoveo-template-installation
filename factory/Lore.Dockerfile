@@ -5,7 +5,7 @@
 # Build the CLI/server together from the same source revision.
 # Every host builds from source, because Lore's arm64 release
 # binaries carry a Neoverse tuning that Apple Silicon does not run.
-FROM rust:1.99.0-trixie@sha256:6ff07edce8775d0f64be7aba9197229407301bddf2054d62c27b541a6238a181 AS build
+FROM rust:1.100.0-trixie@sha256:223cc32ddca8f3ee90c436dbc94b6b5f052ea7f9653c5201e9612f08ad7d21b8 AS build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends protobuf-compiler libprotobuf-dev \
     && rm -rf /var/lib/apt/lists/* /var/log/apt /var/log/dpkg.log
