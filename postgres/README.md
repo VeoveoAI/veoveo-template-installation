@@ -5,8 +5,8 @@ application PostgreSQL. On Linux the same [Dockerfile](Dockerfile) builds the im
 the [K3s foundation](../kubernetes/README.md) publishes to its registry and runs as a
 StatefulSet.
 
-The application database uses the existing pinned PostgreSQL 18.6 image with
-pinned PGDG pgvector 0.8.7 and PostGIS 3.6.4 packages. Keycloak's separate database is unchanged.
+The application database uses the existing pinned PostgreSQL 19.0 image with
+pinned PGDG pgvector 0.8.7 and PostGIS 3.7.0 packages. Keycloak's separate database stays on PostgreSQL 18.7.
 The build context is only this directory; no installation credentials enter it.
 
 ```sh
@@ -14,7 +14,9 @@ docker compose build vv-postgres
 docker compose up -d --no-deps --no-build --pull never vv-postgres
 ```
 
-Keep the existing volume, credentials, connection URLs and loopback listener. The
+Keep the existing volume, credentials, connection URLs and loopback listener. A volume an
+earlier PostgreSQL major version initialized does not start under this one: upgrade it with
+`pg_upgrade`, or, for development data, start from an empty volume. The
 image keeps the upstream entrypoint and PostgreSQL layout. It holds the existing
 server/client packages while installing the extensions, rather than upgrading the
 server as a side effect. Neither extension needs a new service or preload setting.

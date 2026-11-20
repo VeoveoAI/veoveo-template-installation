@@ -195,7 +195,9 @@ The first start creates only `veoveo_owner` (`LOGIN CREATEROLE CREATEDB`, a memb
 `pg_signal_backend`) with the `veoveo` database, the gateway's and Lore's logins, the
 `openshell_gateway` database, the `lore` schema and `max_connections = 512`. Everything
 after is plain SQL: Hub creates server roles and data-environment databases, and
-settings change with `ALTER SYSTEM`. An operator's declared roles would fight the
+settings change with `ALTER SYSTEM`. A new PostgreSQL major version starts only on data
+`pg_upgrade` moved to it, run once against the volume while the StatefulSet is stopped;
+development data may instead start from an empty volume. An operator's declared roles would fight the
 memberships PostgreSQL gives Hub's role in every role it creates. `pg_hba.conf` admits
 TLS with a password to every database, so databases created at run time are reachable.
 The gateway, Lore and Hub name the CA through `sslrootcert`; servers in sandboxes

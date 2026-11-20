@@ -28,7 +28,7 @@ veoveo-installer fixture keycloak
 ```
 
 Provisioning enables `COMPOSE_PROFILES=keycloak` in the ignored `.env`. Keycloak
-26.8.1 runs in production mode with a dedicated PostgreSQL 18.6 database, not the
+26.8.1 runs in production mode with a dedicated PostgreSQL 18.7 database, not the
 in-memory test fixture. All three containers restart with Docker. The operator-owned external volume
 `vv-local_vv-keycloak-db` survives container replacement and `compose down -v`.
 Provisioning creates it explicitly and refuses to replace missing credentials when
