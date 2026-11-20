@@ -4,32 +4,32 @@
     {
       "name": "veoveo-hub",
       "repository": "https://github.com/VeoveoAI/veoveo-hub",
-      "revision": "58e79a2e96f55ca89aa9e255460a65f79f58915d"
+      "revision": "128e5ebf9a76315b0b471eee2daa7c6d21621315"
     },
     {
       "name": "veoveo-hub-sdk",
       "repository": "https://github.com/VeoveoAI/veoveo-hub-sdk",
-      "revision": "fb79f3f24b289b0afc647d2a3da208f858d08f10"
+      "revision": "82e0de16b600975a0d78f6a3b7045b9a372ab024"
     },
     {
       "name": "veoveo-mcp-console",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-console",
-      "revision": "055372c9d5a133aacae6853ecaf96d36f8d68bc9"
+      "revision": "1a8a38c25e5d5019cc1ea4535badd03acfda5ec9"
     },
     {
       "name": "veoveo-mcp-artifact",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-artifact",
-      "revision": "fa97ecc275a10bf643e28970dfde830119f880ed"
+      "revision": "3f264d0aad2cdde70065ec2dcb3b8b51720d9ad2"
     },
     {
       "name": "veoveo-mcp-media",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-media",
-      "revision": "8f6857ab6191cecc05974b0c4b5b2434365df558"
+      "revision": "05d44fff7dc802c9a8e6d2091952a73afb296a75"
     },
     {
       "name": "veoveo-mcp-embedding",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-embedding",
-      "revision": "a30929b3df8a5ca3152baf9d02fdf7ed51a467af"
+      "revision": "a497d01f631ed15e81cb232b2d463bd6379dfb84"
     },
     {
       "name": "veoveo-runtime-embedding",
@@ -39,12 +39,12 @@
     {
       "name": "veoveo-mcp-time",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-time",
-      "revision": "2885af88f31fe8cae1f3dc6a0d22a038184fe2a5"
+      "revision": "2bde6c09c89ee0e7d3ca148ad81f418312d7c47f"
     },
     {
       "name": "veoveo-mcp-n8n",
       "repository": "https://github.com/VeoveoAI/veoveo-mcp-n8n",
-      "revision": "9c93992cf64f2eccd10f9cd34fd1114a6c36a828"
+      "revision": "ce6b7cf28b2fef6ee5927a9fd9c12c8eafc21d9f"
     }
   ]
 }
