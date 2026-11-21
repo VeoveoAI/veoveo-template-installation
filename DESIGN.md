@@ -98,6 +98,15 @@ modules and `veoveo-n8n-computer` run as programs of the Computer version. Each 
 Hub when it restarts, a Computer as a new Computer version, and a factory instance
 when its next push recreates it.
 
+OpenShell's gateway, supervisor and sandbox images come from one revision of the
+VeoveoAI fork. An installation adopts a revision only after
+[veoveo-qualify-openshell](https://github.com/VeoveoAI/veoveo-qualify-openshell)
+reports no failed scenario for it on macOS and on a Linux host with a GPU, run against
+a standalone gateway built from that revision. The suite commits its reports under
+`results/<version>/`, and the adoption's record names them. A limit the revision lifts
+is a design to revisit; a limit it adds, or a failure, stops the adoption until a design
+decides it.
+
 ## Identity
 
 Lore owns source/revision semantics and enforces its unchanged native signed-token
