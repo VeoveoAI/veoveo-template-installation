@@ -121,6 +121,21 @@ network_policies:
       tls: skip
     binaries:
     - path: /usr/local/bin/buildctl
+  # BuildKit asks buildctl for a Docker Hub pull token when it pulls a base it does not
+  # hold; buildctl fetches it anonymously from Docker Hub's token service.
+  docker_hub_token:
+    endpoints:
+    - host: auth.docker.io
+      port: 443
+      path: /token
+      protocol: rest
+      enforcement: enforce
+      rules:
+      - allow:
+          method: GET
+          path: /token
+    binaries:
+    - path: /usr/local/bin/buildctl
   browser_code_exchange:
     endpoints:
     - host: veoveo.example.com

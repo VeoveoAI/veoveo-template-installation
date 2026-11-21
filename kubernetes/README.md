@@ -215,7 +215,10 @@ workload, PostgreSQL included: on a first installation, apply the steps up to
 `registry-builder-logs`, each named with `--step`, publish the images, then apply
 the rest. Hub's
 own policy admits BuildKit for `/usr/local/bin/buildctl`,
-which builds each branch's environment image from its `openshell/image/` alone.
+which builds each branch's environment image from its `openshell/image/` alone, and
+Docker Hub's token service (`GET https://auth.docker.io/token`), from which `buildctl`
+fetches the pull token BuildKit asks for when it pulls a Docker Hub base it does not
+hold. A base from any other registry than Docker Hub or this registry fails the build.
 
 ### Naming each image once
 
